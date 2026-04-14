@@ -25,7 +25,7 @@ This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/Agenti
 - **Epic 1:** Done — `AppState` types (`src/lib/types.ts`), `loadAppState` / `saveAppState` (`src/lib/storage.ts`), URL/interval/jitter validation, unique ids, enabled enrollment + field validation (`src/lib/state.ts`). In-dashboard error messaging for conflicts ships with Epic 3+ UI.
 - **Epic 2:** Done — `src/background/scheduler.ts`: `chrome.alarms` (names `urlar:i:*` / `urlar:g:*`), `tabs.update` on fire, `nextFireAt` persisted, `tabs.onRemoved` + `applyTabRemoved`, storage debounce resync.
 - **Epic 3 (partial):** **3.0 done** — Large **page overlay** countdown (`dist/page-overlay.js` content script), prefs `urlAutoRefresher_prefs_v1` (`showPageOverlayTimer`, default **on**), dashboard **Display** checkbox. Jobs still **not** creatable from UI — use devtools storage or complete **3.1** next.
-- **Next:** Epic **3.1** — add individual job from dashboard (tab, `targetUrl`, interval, jitter, Save) — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). Latest handoff: [doc/handoff/HANDOFF-2026-04-14-next-agent.md](doc/handoff/HANDOFF-2026-04-14-next-agent.md).
+- **Next:** Epic **3.1** — add individual job from dashboard (tab, `targetUrl`, interval, jitter, Save) — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). **Latest handoff (2026-04-15):** [doc/handoff/HANDOFF-2026-04-14-next-agent.md](doc/handoff/HANDOFF-2026-04-14-next-agent.md) — requirements↔TDD first steps, Tier 1/2, shadow fix + TEST_PLAN notes.
 
 ## Run and test
 

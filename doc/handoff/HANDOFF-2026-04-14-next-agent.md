@@ -1,8 +1,10 @@
-# Handoff — 2026-04-14 (next agent)
+# Handoff — next agent (URL Auto Refresher)
 
-**Before this note:** Code review and tech-debt passes (per [.cursor/rules/handoff-checklist.mdc](../../.cursor/rules/handoff-checklist.mdc)); **`npm run ci`** run 2026-04-14.
+**Last updated:** 2026-04-15 — extends the 2026-04-14 baseline with post-push fixes and test documentation. **`npm run ci`** was green when this note was refreshed.
 
 This file lives under **`doc/handoff/`** so it can be committed. (Optional duplicate: `.cursor/handoff/handoff-YYYY-MM-DD_HHmm.md` is gitignored per [.gitignore](../../.gitignore).)
+
+**Canonical agent entry:** [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) — keep **Current state** in sync when epics move.
 
 ---
 
@@ -12,19 +14,23 @@ This file lives under **`doc/handoff/`** so it can be committed. (Optional dupli
 
 1. **Read the detailed requirements** — Primary spec: [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) (epic/story text, outcomes, data sketch, reference UI notes). Add [doc/requirements/](../requirements/) if present. Skim [.cursor/skills/TEST_TDD.md](../../.cursor/skills/TEST_TDD.md) and the **tester** skill for project test rules.
 
-2. **Scope of “done” for this pass** — Align tests with requirements for everything **marked complete** in the plan through the **latest finished epic/story** at handoff time (currently **Epics 0–2** and **Epic 3.0**; not 3.1+ until those stories ship).
+2. **Read [TEST_PLAN.md](../../TEST_PLAN.md)** — Tier 1 vs Tier 2, what Vitest **does not** cover (`src/content/page-overlay.ts`, real service worker integration), and optional Playwright/Edge automation path.
 
-3. **Gap analysis** — For each finished story, ask: *Is there a test (or small set of tests) that would fail if that outcome regressed?* Cover **behavior the plan promises** (storage, validation, scheduling math, tab lifecycle, overlay schedule/prefs where testable without a browser). Do **not** assume the existing suite is sufficient because it is green.
+3. **Scope of “done” for the gap-analysis pass** — Align tests with requirements for everything **marked complete** in the plan through the **latest finished epic/story** (currently **Epics 0–2** and **Epic 3.0**; not 3.1+ until those stories ship).
 
-4. **If gaps exist** — **Add tests first** to encode the requirement (prefer pure functions / mocked `chrome` per existing patterns, e.g. `src/lib/storage.test.ts`). Then run **`npm run ci`** and only then adjust production code if tests reveal a bug. For logic that cannot be unit-tested cleanly, document the gap in **TEST_PLAN.md** Tier 2 / manual and keep Tier 1 as strong as possible.
+4. **Gap analysis** — For each finished story, ask: *Is there a test (or small set of tests) that would fail if that outcome regressed?* Cover **behavior the plan promises** (storage, validation, scheduling math, tab lifecycle, overlay **schedule** / prefs parsing — testable without a browser). Do **not** assume the existing suite is sufficient because it is green.
 
-5. **Intent** — This closes the loop between **written epics** and **TDD**; prior work did not always follow strict red → green. The next agent should **repair coverage to match requirements** for shipped scope before building **Epic 3.1+**.
+5. **If gaps exist** — **Add tests first** to encode the requirement (prefer pure functions / mocked `chrome` per existing patterns, e.g. `src/lib/storage.test.ts`). Then run **`npm run ci`** and only then adjust production code if tests reveal a bug. For logic that cannot be unit-tested cleanly, document the gap in **TEST_PLAN.md** Tier 2 / manual.
+
+6. **Intent** — Close the loop between **written epics** and **TDD** for Tier-1-testable behavior; prior work did not always follow strict red → green. **Content script DOM** remains Tier 2 / manual until Playwright (or similar) is added per **TEST_PLAN.md**.
 
 ---
 
-## Code review
+## Code review (refreshed)
 
-**PASS** — Recent work is coherent for an MV3 extension: prefs and schedule math stay in `src/lib/` with tests; service worker handles overlay state via `chrome.runtime.onMessage` and does not trust client-supplied tab ids (uses `sender.tab.id`). Content script uses closed Shadow DOM to limit style bleed. No secrets in repo. **WARN (minor):** `page-overlay.ts` rebuilds digit `innerHTML` every 500ms; acceptable at current scale; revisit if profiling shows cost on heavy pages.
+**PASS** — MV3 layout is sound: prefs and overlay **schedule** live in `src/lib/` with tests; service worker resolves overlay state via `chrome.runtime.onMessage` using **`sender.tab.id`** (not client-supplied ids). **Content script** [src/content/page-overlay.ts](../../src/content/page-overlay.ts) uses **`attachShadow({ mode: 'open' })`** so a **second** `showOverlay()` can reuse `host.shadowRoot` (closed mode exposed `null` from script and could cause a **double `attachShadow` throw** — fixed in commit `5b4ea1f`).
+
+**WARN (minor):** `paintDigits()` sets `innerHTML` on an interval; acceptable unless profiling says otherwise.
 
 ---
 
@@ -32,55 +38,57 @@ This file lives under **`doc/handoff/`** so it can be committed. (Optional dupli
 
 | Priority | Category | Note |
 |----------|----------|------|
-| Do first (Epic 3) | Tests / UX | **Individual job CRUD** still missing from dashboard — users cannot create jobs from UI yet; overlay only appears when storage already has an enabled job for the tab. Add **3.1** with **TDD** if the user wants red-before-green discipline. |
-| Medium | Tier 2 | **TEST_PLAN.md** — no Playwright/E2E; browser validation of overlay + alarms is manual. |
+| Do first (Epic 3) | Tests / UX | **Individual job CRUD** still missing from dashboard — users cannot create jobs from UI yet; overlay only appears when storage already has an enabled job for the tab. Implement **3.1** with **TDD** if the user wants red-before-green discipline. |
+| Medium | Tier 2 | **[TEST_PLAN.md](../../TEST_PLAN.md)** documents manual vs **Playwright + extension load** (Chromium or Edge channel, headless where supported). **No `npm run test:e2e` in repo yet** — add when you wire automation. |
 | Medium | Integration | **Message contract** (dashboard ↔ background) will grow with Epic 3; consider thin typed handlers + tests (mock `chrome.runtime`). |
-| Low | Docs | Keep **AGENT_HANDOFF.md** “Current state” in sync after each epic; **Ref.1** in [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) (UI reference PNGs) still open until assets are added. |
+| Low | Docs | **Ref.1** in [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) (UI reference PNGs under `doc/ui-reference/auto-refresh-plus/`) still open until assets are added. |
 
 ---
 
 ## Code coverage / tests
 
-**`npm run ci`** — **green** (2026-04-14). Vitest: **42 tests**, 9 files. Build: `dist/background.js`, **`dist/page-overlay.js`**, `dashboard/dashboard.js`, `icons/*.png`.
+**`npm run ci`** — must stay **green** before merge. Vitest: **42 tests**, 9 files. Build: `dist/background.js`, **`dist/page-overlay.js`**, `dashboard/dashboard.js`, `icons/*.png`.
+
+**Vitest does not execute** the content script or real `chrome.alarms` — see **TEST_PLAN.md** Tier 1 “Not covered” table.
 
 ---
 
 ## Project readiness
 
-**N/A** — Not a release milestone; Epic 3.1+ in progress.
+**N/A** — Not a release milestone; Epic 3.1+ next.
 
 ---
 
 ## Repository state (for a fresh clone)
 
-- **Docs:** Single tree **`doc/`** — plan at [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md); **`Docs/`** at repo root removed (historical; see [doc/README.md](../README.md)).
-- **Product epics:** 0–2 done; **Epic 3.0** (page overlay + dashboard toggle) implemented and marked **[x]** in the plan; **3.1–3.3** remain.
+- **Docs:** Single tree **`doc/`** — plan at [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md); see [doc/README.md](../README.md).
+- **Product epics:** 0–2 done; **Epic 3.0** (page overlay + dashboard toggle) **[x]** in plan; **3.1–3.3** open.
 - **Prefs:** `urlAutoRefresher_prefs_v1` — `showPageOverlayTimer` defaults **`true`** ([src/lib/prefs.ts](../../src/lib/prefs.ts)).
-- **Overlay:** Content script [src/content/page-overlay.ts](../../src/content/page-overlay.ts); handler [src/background/page-overlay-handler.ts](../../src/background/page-overlay-handler.ts); [manifest.json](../../manifest.json) lists `dist/page-overlay.js`.
+- **Overlay:** [src/content/page-overlay.ts](../../src/content/page-overlay.ts), [src/background/page-overlay-handler.ts](../../src/background/page-overlay-handler.ts), [manifest.json](../../manifest.json) → `dist/page-overlay.js`.
 
 ---
 
-## Done before this handoff (summary)
+## Done through 2026-04-15 (summary)
 
-- Consolidated documentation under **`doc/`** (plan, ui-reference, handoff notes); updated links across README, `.cursor/` skills, **PM_PLAN**, etc.
-- Removed Flutter-only rule text and **game-readiness** skill; trimmed **`.gitignore`** template comments.
-- Implemented **large on-page Min/Sec countdown** (Epic **3.0**): default on, dashboard checkbox, storage-backed prefs.
-- Added unit tests for **`prefs`** parsing and **`page-overlay-schedule`** (tab → `nextFireAt`).
+- Consolidated **`doc/`**, removed root **`Docs/`**, updated cross-links; template cleanup (Flutter line, **game-readiness** skill removed).
+- Epic **3.0**: on-page Min/Sec overlay, prefs, dashboard checkbox; unit tests for **prefs** + **page-overlay-schedule** (tab → `nextFireAt`).
+- **Fix:** Shadow root **`open`** mode to avoid double-`attachShadow` when overlay stays visible across storage updates (`5b4ea1f`).
+- **Docs:** [TEST_PLAN.md](../../TEST_PLAN.md) expanded (Tier 1 gaps, Tier 2 manual vs Playwright/Edge headless notes); [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) links Tier 2 (`6fb30a8` and related).
 
 ---
 
 ## Next up
 
-1. Follow the **First steps (mandatory): requirements vs TDD** section above (requirements read-through, gap analysis, extra tests for finished epics/stories, then green CI).
+1. Follow **First steps (mandatory)** and **TEST_PLAN.md** above.
 2. Re-read **Epic 3.1–3.3** in [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
-3. Implement **3.1** — add individual job from dashboard (tab pick, `targetUrl`, interval, jitter, Save) with **failing tests first** if following TDD.
-4. Run **`npm run ci`** after each logical step; manual Edge smoke once jobs can be created from UI (overlay should show on scheduled tabs when pref is on).
+3. Implement **3.1** — add individual job from dashboard (tab pick, `targetUrl`, interval, jitter, Save); **failing tests first** if using TDD.
+4. Run **`npm run ci`** after each step; manual Edge smoke (or future Playwright) for overlay + alarms end-to-end.
 
 ---
 
 ## Open questions / blockers
 
-- None for environment. **Product:** Tab-picker UX and error surfacing follow the plan and mutual-exclusion rules in **`src/lib/state.ts`**.
+- None for environment. **Product:** Tab-picker UX and mutual-exclusion errors follow **`src/lib/state.ts`** and the plan.
 
 ---
 
@@ -89,9 +97,10 @@ This file lives under **`doc/handoff/`** so it can be committed. (Optional dupli
 | Area | Path |
 |------|------|
 | Plan / checkboxes | [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) |
+| Tests (tiers) | [TEST_PLAN.md](../../TEST_PLAN.md) |
 | Agent entry | [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md), [PM_PLAN.md](../../PM_PLAN.md) |
 | Scheduler | [src/background/scheduler.ts](../../src/background/scheduler.ts) |
 | Overlay | [src/content/page-overlay.ts](../../src/content/page-overlay.ts), [src/background/page-overlay-handler.ts](../../src/background/page-overlay-handler.ts) |
 | State / storage | [src/lib/state.ts](../../src/lib/state.ts), [src/lib/storage.ts](../../src/lib/storage.ts) |
 | Dashboard | [dashboard/dashboard.html](../../dashboard/dashboard.html), [src/dashboard/dashboard.ts](../../src/dashboard/dashboard.ts) |
-| Build | [Scripts/build.mjs](../../Scripts/build.mjs) (background, dashboard, **page-overlay** bundles) |
+| Build | [Scripts/build.mjs](../../Scripts/build.mjs) |
