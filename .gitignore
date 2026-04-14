@@ -1,0 +1,39 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE / editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and temp
+*.log
+*.tmp
+logs/
+~$*
+
+# Common build / output
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+.cache/
+
+# Dependencies
+node_modules/
+# target/
+# .venv/
+# vendor/
+
+# Local handoff notes (keep template _template.md and README in repo)
+.cursor/handoff/handoff-*.md

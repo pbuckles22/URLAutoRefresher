@@ -1,0 +1,19 @@
+{
+  "name": "url-auto-refresher",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Edge MV3 extension: scheduled tab refreshes with global groups and individuals",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "node scripts/build.mjs && node scripts/gen-icons.mjs",
+    "build:icons": "node scripts/gen-icons.mjs"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
