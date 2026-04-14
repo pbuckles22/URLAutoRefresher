@@ -38,4 +38,28 @@ describe('applyTabRemoved', () => {
     expect(next.globalGroups[0].targets).toHaveLength(0);
     expect(next.globalGroups[0].enabled).toBe(false);
   });
+
+  it('removes one tab from multi-target global and keeps group enabled (Epic 2.3)', () => {
+    const state = {
+      ...DEFAULT_STATE,
+      globalGroups: [
+        {
+          id: 'g1',
+          name: 'G',
+          targets: [
+            { tabId: 1, windowId: 1, targetUrl: 'https://a.com' },
+            { tabId: 2, windowId: 1, targetUrl: 'https://b.com' },
+          ],
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: true,
+        },
+      ],
+    };
+    const next = applyTabRemoved(state, 1);
+    expect(next.globalGroups[0].targets).toEqual([
+      { tabId: 2, windowId: 1, targetUrl: 'https://b.com' },
+    ]);
+    expect(next.globalGroups[0].enabled).toBe(true);
+  });
 });

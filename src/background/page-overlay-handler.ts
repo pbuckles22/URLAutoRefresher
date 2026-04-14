@@ -1,6 +1,6 @@
 import { PAGE_OVERLAY_GET_STATE, type PageOverlayStateResponse } from '../lib/messages';
+import { getPageOverlayUiState } from '../lib/page-overlay-ui';
 import { loadAppState } from '../lib/storage';
-import { getNextFireAtForTab, tabHasActiveRefreshJob } from '../lib/page-overlay-schedule';
 import { loadExtensionPrefs } from '../lib/prefs';
 
 export function attachPageOverlayMessageHandler(): void {
@@ -17,14 +17,11 @@ export function attachPageOverlayMessageHandler(): void {
       let response: PageOverlayStateResponse;
       try {
         const [state, prefs] = await Promise.all([loadAppState(), loadExtensionPrefs()]);
-        if (!prefs.showPageOverlayTimer || !tabHasActiveRefreshJob(state, tabId)) {
+        const ui = getPageOverlayUiState(state, prefs, tabId);
+        if (!ui.show) {
           response = { ok: true, show: false };
         } else {
-          response = {
-            ok: true,
-            show: true,
-            nextFireAt: getNextFireAtForTab(state, tabId),
-          };
+          response = { ok: true, show: true, nextFireAt: ui.nextFireAt };
         }
       } catch {
         response = { ok: true, show: false };

@@ -45,6 +45,70 @@
         >
       </label>
     </section>
+
+    <section style="margin-top: 1.75rem" aria-labelledby="add-job-heading">
+      <h2 id="add-job-heading" style="font-size: 1rem; font-weight: 600; margin: 0 0 0.75rem">
+        Individual job
+      </h2>
+      <p style="margin: 0 0 0.75rem; color: #9aa0a6; font-size: 0.9rem">
+        Pick a tab, set the URL to load on each refresh, interval and jitter (seconds), then Save.
+      </p>
+      <form data-add-individual-form style="display: flex; flex-direction: column; gap: 0.5rem; max-width: 28rem">
+        <label style="display: flex; flex-direction: column; gap: 0.25rem">
+          <span>Tab</span>
+          <select data-job-tab required style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+            ><option value="">Select a tab…</option></select
+          >
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 0.25rem">
+          <span>Target URL</span>
+          <input
+            data-job-target-url
+            type="text"
+            required
+            placeholder="https://…"
+            autocomplete="off"
+            style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+          />
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 0.25rem">
+          <span>Interval (seconds)</span>
+          <input
+            data-job-interval
+            type="number"
+            min="1"
+            step="1"
+            value="60"
+            required
+            style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+          />
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 0.25rem">
+          <span>Jitter (seconds)</span>
+          <input
+            data-job-jitter
+            type="number"
+            min="0"
+            step="1"
+            value="0"
+            required
+            style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+          />
+        </label>
+        <button
+          type="submit"
+          data-job-save
+          style="align-self: flex-start; margin-top: 0.25rem; padding: 0.4rem 1rem; border-radius: 6px; border: none; background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer"
+        >
+          Save
+        </button>
+      </form>
+      <p data-add-job-error role="alert" style="margin: 0.5rem 0 0; color: #f28b82; min-height: 1.25rem"></p>
+      <ul
+        data-individual-jobs-list
+        style="margin: 1rem 0 0; padding-left: 1.25rem; color: #e8eaed; line-height: 1.5"
+      ></ul>
+    </section>
     <script src="dashboard.js"></script>
   </body>
 </html>

@@ -52,4 +52,27 @@ describe('storage (chrome.storage.local)', () => {
     expect(loaded).toEqual(next);
     expect(mem[STORAGE_KEY]).toEqual(next);
   });
+
+  it('round-trips global groups and nextFireAt (Epic 1.1)', async () => {
+    const next = {
+      ...DEFAULT_STATE,
+      globalGroups: [
+        {
+          id: 'g1',
+          name: 'Sync',
+          targets: [
+            { tabId: 10, windowId: 2, targetUrl: 'https://one.example/' },
+            { tabId: 11, windowId: 2, targetUrl: 'https://two.example/' },
+          ],
+          baseIntervalSec: 120,
+          jitterSec: 15,
+          enabled: true,
+          nextFireAt: 1_700_000_000_000,
+        },
+      ],
+    };
+    await saveAppState(next);
+    const loaded = await loadAppState();
+    expect(loaded).toEqual(next);
+  });
 });

@@ -24,8 +24,9 @@ This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/Agenti
 - **Epic 0:** Done — MV3 shell, `manifest.json`, service worker build (`dist/background.js`), full-page `dashboard/`, `sidepanel/` stub, toolbar opens dashboard.
 - **Epic 1:** Done — `AppState` types (`src/lib/types.ts`), `loadAppState` / `saveAppState` (`src/lib/storage.ts`), URL/interval/jitter validation, unique ids, enabled enrollment + field validation (`src/lib/state.ts`). In-dashboard error messaging for conflicts ships with Epic 3+ UI.
 - **Epic 2:** Done — `src/background/scheduler.ts`: `chrome.alarms` (names `urlar:i:*` / `urlar:g:*`), `tabs.update` on fire, `nextFireAt` persisted, `tabs.onRemoved` + `applyTabRemoved`, storage debounce resync.
-- **Epic 3 (partial):** **3.0 done** — Large **page overlay** countdown (`dist/page-overlay.js` content script), prefs `urlAutoRefresher_prefs_v1` (`showPageOverlayTimer`, default **on**), dashboard **Display** checkbox. Jobs still **not** creatable from UI — use devtools storage or complete **3.1** next.
-- **Next:** Epic **3.1** — add individual job from dashboard (tab, `targetUrl`, interval, jitter, Save) — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). **Latest handoff (2026-04-15):** [doc/handoff/HANDOFF-2026-04-14-next-agent.md](doc/handoff/HANDOFF-2026-04-14-next-agent.md) — requirements↔TDD first steps, Tier 1/2, shadow fix + TEST_PLAN notes.
+- **Epic 3 (partial):** **3.0–3.1 done** — Page overlay + prefs; dashboard **Individual job** form (tab picker, target URL, interval, jitter, Save) via `buildIndividualJobFromForm` + `saveAppState`; list of saved jobs on the dashboard. **3.2** next — start/stop, edit, delete, countdown rows.
+- **Next:** Epic **3.2** — full individual lifecycle (start/stop, edit, delete; one countdown row per job) — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
+- **Latest handoff:** [doc/handoff/HANDOFF-2026-04-15-next-agent.md](doc/handoff/HANDOFF-2026-04-15-next-agent.md) (post–Epic 3.1, TDD + CI).
 
 ## Run and test
 
@@ -34,17 +35,17 @@ npm install
 npm run ci
 ```
 
-`npm run ci` runs **`npm test`** then **`npm run build`** — use it before every PR; the same command runs in **GitHub Actions** (`.github/workflows/ci.yml`). For local iteration only, you can run `npm test` and `npm run build` separately.
+`npm run ci` runs **`npm test`**, **`npm run build`**, and **`npm run test:e2e`** (Playwright with the unpacked extension). Use it before every PR; the same command runs in **GitHub Actions** (`.github/workflows/ci.yml`, with **xvfb** on Linux). For local iteration you can run `npm test`, `npm run build`, or `npm run test:e2e` separately.
 
 Load unpacked in Edge from this repo root after a successful build (needs `dist/background.js`, `dist/page-overlay.js`, `dashboard/dashboard.js`, and `icons/`).
 
-**Tier 2 (browser / content script):** Not automated in CI yet. See [TEST_PLAN.md](TEST_PLAN.md) — manual smoke vs optional **Playwright + extension load** (Chromium or Edge channel, including headless where supported).
+**Tier 2 (browser / content script):** Automated via **`npm run test:e2e`** — see [TEST_PLAN.md](TEST_PLAN.md). Additional manual smoke in Edge is still useful for release confidence.
 
 ## Conventions
 
 - Prefer pure functions for business logic where possible.
 - **Docs:** Use the **techwriter** skill when editing README, AGENT_HANDOFF, or internal docs.
-- **Tests:** Black-box; run your project test command after logic or test changes; keep the suite green (see .cursor/skills/tester/SKILL.md). Prefer writing a failing test before new production code (TDD) where applicable.
+- **Tests:** Black-box; run **`npm run ci`** after logic or test changes. **TDD:** test-first for **Tier 1 (Vitest)** and **Tier 2 (Playwright)** before production code when that tier applies — see [.cursor/skills/TEST_TDD.md](.cursor/skills/TEST_TDD.md) and the tester skill.
 
 ---
 

@@ -2,6 +2,17 @@
 
 Define **Tier 1** (fast feedback: unit, headless, or local) and **Tier 2** (integration, browser, device, or E2E) for this Edge extension.
 
+## TDD for both tiers (before coding)
+
+**Policy:** Treat **Tier 1** (Vitest) and **Tier 2** (Playwright) as separate test-first gates. See [.cursor/skills/TEST_TDD.md](.cursor/skills/TEST_TDD.md) for the full loop.
+
+| Tier | Command | When to use TDD here |
+|------|---------|----------------------|
+| **1** | `npm test` | New or changed behavior in `src/lib/**`, or other code covered by unit tests (mocked `chrome`). **Red → green** before merging. |
+| **2** | `npm run build && npm run test:e2e` | Behavior that must hold in a **real** Chromium + unpacked extension (dashboard, content script, overlay, storage from extension pages, etc.). **Red → green** before merging. |
+
+**Typical order:** Tier 1 first for extractable logic; Tier 2 for the browser/extension slice. If the work is browser-only, Tier 2 can lead; add Tier 1 when you pull logic into `src/lib`.
+
 ---
 
 ## Tier 1: Fast feedback
@@ -9,6 +20,14 @@ Define **Tier 1** (fast feedback: unit, headless, or local) and **Tier 2** (inte
 ```bash
 npm test
 ```
+
+**Coverage (optional):**
+
+| Command | What you see |
+|---------|----------------|
+| `npm run test:coverage` | Full `src/**` instrumentation; headline % is low because `background/`, `content/`, and `dashboard/` are not executed in Vitest. |
+| `npm run test:coverage:lib` | **Only `src/lib/**`** — headline % matches unit-tested logic (~90%+). |
+| Open `coverage/index.html` | After either command: HTML report with **per-folder** drill-down (same full-repo mix unless you used `:lib`). |
 
 Vitest covers **pure logic** with mocked `chrome` where needed:
 
@@ -21,17 +40,18 @@ Vitest covers **pure logic** with mocked `chrome` where needed:
 | Alarm names / `when` / tab lifecycle | `src/lib/alarm-*.test.ts`, `tab-lifecycle.test.ts` |
 | Prefs parsing | `src/lib/prefs.test.ts` |
 | Overlay **schedule** (which tab gets which `nextFireAt`) | `src/lib/page-overlay-schedule.test.ts` |
+| Add individual job form (validation → `IndividualJob`) | `src/lib/individual-job-form.test.ts` |
 
 ### Not covered by Tier 1 (by design)
 
-These run in a **real browser** and are **not** executed by Vitest:
+Vitest does **not** execute the real browser or extension host:
 
-- **`src/content/page-overlay.ts`** — Shadow DOM, `attachShadow`, `innerHTML` updates, `chrome.runtime.sendMessage` from a content script context.
-- **Service worker** scheduling side effects beyond what unit tests mock (`src/background/scheduler.ts` integration with real `chrome.alarms`).
+- **`src/content/page-overlay.ts`** — full DOM / shadow / messaging path is exercised by **Tier 2** Playwright (see below), not by Vitest.
+- **Service worker** scheduling side effects beyond what unit tests mock (`src/background/scheduler.ts` integration with real `chrome.alarms`) — still **manual or future E2E** (alarm fire + `tabs.update` timing).
 
-**Regression risk:** e.g. shadow mode (`open` vs `closed`) and double-`attachShadow` behavior must be validated in **Tier 2** or manual smoke, not by `npm test`.
+**Regression risk:** e.g. shadow mode (`open` vs `closed`) and double-`attachShadow` behavior: Tier 2 overlay checks complement `npm test`; deeper alarm timing remains a gap until automated.
 
-### CI gate (tests + build)
+### CI gate (Tier 1 + build + Tier 2 E2E)
 
 Run before opening a PR and whenever you change logic, tests, or build scripts:
 
@@ -39,7 +59,9 @@ Run before opening a PR and whenever you change logic, tests, or build scripts:
 npm run ci
 ```
 
-This runs **`npm test`** then **`npm run build`** (service worker, dashboard, **page-overlay** content script, icons). **GitHub Actions** runs the same on every push/PR to `main` / `master` (see `.github/workflows/ci.yml`). A green workflow is the project’s **enforced** red/green bar for Tier 1.
+This runs **`npm test`** (Vitest), **`npm run build`** (service worker, dashboard, **page-overlay** content script, icons), then **`npm run test:e2e`** (Playwright: unpacked extension + HTTP fixture page). **GitHub Actions** runs the same on every push/PR to `main` / `master` (see `.github/workflows/ci.yml`; Linux uses **xvfb** so headed Chromium can load the extension).
+
+**Linux without a display:** run E2E under a virtual framebuffer, e.g. `xvfb-run -a npm run test:e2e` (CI does this automatically).
 
 ---
 
@@ -54,20 +76,28 @@ Use when behavior spans a real browser, extension APIs, or the content script / 
 
 Use a short checklist in release notes or handoff when Tier 2 automation is not wired yet.
 
-### Option B — Automated browser tests (headless-capable)
+### Option B — Automated browser tests (Playwright)
 
-You do **not** have to stay 100% manual. Common approach:
+```bash
+npm run build
+npm run test:e2e
+```
 
-1. **Playwright** (or **Puppeteer**) driving **Chromium** or **Microsoft Edge** with the extension loaded via `--load-extension` / `--disable-extensions-except` (see Playwright docs: *Chrome extensions* / persistent context with extension path).
-2. **Headless:** Edge (Chromium) supports headless modes similar to Chrome (`--headless=new`). Playwright can launch **`channel: 'msedge'`** on Windows/macOS so tests run against **real Edge**, including headless where the channel supports it.
-3. **CI:** Linux runners often use **Chromium** + the same load-extension flags as a **stand-in** for Edge, or install **Microsoft Edge** / use a Windows runner if you require Edge-specific behavior. Many teams accept Chromium-in-CI and run Edge manually or on a scheduled job.
+Implementation:
 
-**Not in repo yet:** There is no `npm run test:e2e` until Playwright (or similar) is added and a minimal spec exists (e.g. open fixture page, assert shadow host present when state is seeded). When added, document the exact command here and in `AGENT_HANDOFF.md`.
+- **`playwright.config.ts`** — starts **`e2e/fixture-server.mjs`** (HTTP fixture so content scripts match `http://*/*`).
+- **`e2e/extension-helpers.ts`** — `chromium.launchPersistentContext` with `--load-extension=<repo root>` (see Playwright docs: *Chrome extensions*).
+- **`e2e/extension.spec.ts`** — dashboard loads; seeds `chrome.storage.local` from an extension page; asserts overlay **shadow** `.card` after reload; toggles **Display** pref and asserts overlay removed.
+- **`e2e/epic-3-1.spec.ts`** — dashboard **Individual job** form: tab picker, URL, interval, jitter, Save → `individualJobs` persisted in storage.
 
-### What to automate first (when you add Tier 2)
+**Headed Chromium:** MV3 extensions are exercised with **`headless: false`** (Playwright `channel: 'chromium'`). **CI (Linux)** runs under **xvfb** so no physical display is required.
 
-- Content script **injects once**, overlay visible when storage says show + job exists (seed storage from test).
-- Optional: message handler returns expected shape for `PAGE_OVERLAY_GET_STATE` (can also stay unit-tested with mocked `chrome` in the service worker if extracted).
+**Edge vs Chromium:** CI uses **Chromium** as a stand-in; validate in **Edge** manually or add a `channel: 'msedge'` project later if needed.
+
+### Further automation (optional)
+
+- **Alarms + `tabs.update`:** add E2E or integration tests that wait for a short alarm (flaky/slow) or use a test-only hook — not wired yet.
+- **Message contract:** `getPageOverlayUiState` is unit-tested; E2E covers the full content ↔ background path.
 
 ---
 

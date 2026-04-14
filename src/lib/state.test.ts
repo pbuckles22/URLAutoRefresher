@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_STATE,
   parseStoredPayload,
+  validateStateFields,
   validateUniqueIds,
   validateEnabledEnrollment,
   validateGlobalGroupTargets,
@@ -73,6 +74,17 @@ describe('validateUniqueIds', () => {
     });
     expect(r.ok).toBe(false);
   });
+
+  it('fails when two individual jobs share an id', () => {
+    const r = validateUniqueIds({
+      ...DEFAULT_STATE,
+      individualJobs: [
+        { id: 'dup', target: sampleTarget(1), baseIntervalSec: 60, jitterSec: 0, enabled: false },
+        { id: 'dup', target: sampleTarget(2), baseIntervalSec: 60, jitterSec: 0, enabled: false },
+      ],
+    });
+    expect(r.ok).toBe(false);
+  });
 });
 
 describe('validateGlobalGroupTargets', () => {
@@ -84,6 +96,83 @@ describe('validateGlobalGroupTargets', () => {
       baseIntervalSec: 60,
       jitterSec: 0,
       enabled: true,
+    });
+    expect(r.ok).toBe(false);
+  });
+});
+
+describe('validateStateFields (Epic 1.2)', () => {
+  it('accepts valid global and individual URLs and intervals', () => {
+    const r = validateStateFields({
+      schemaVersion: 1,
+      globalGroups: [
+        {
+          id: 'g1',
+          name: 'G',
+          targets: [{ tabId: 1, windowId: 1, targetUrl: 'https://a.com' }],
+          baseIntervalSec: 10,
+          jitterSec: 0,
+          enabled: false,
+        },
+      ],
+      individualJobs: [
+        {
+          id: 'i1',
+          target: { tabId: 2, windowId: 1, targetUrl: 'https://b.com' },
+          baseIntervalSec: 20,
+          jitterSec: 5,
+          enabled: false,
+        },
+      ],
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it('rejects non-http(s) target URL on individual job', () => {
+    const r = validateStateFields({
+      ...DEFAULT_STATE,
+      individualJobs: [
+        {
+          id: 'i1',
+          target: { tabId: 1, windowId: 1, targetUrl: 'ftp://example.com' },
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: false,
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it('rejects invalid interval on global group', () => {
+    const r = validateStateFields({
+      ...DEFAULT_STATE,
+      globalGroups: [
+        {
+          id: 'g1',
+          name: 'G',
+          targets: [{ tabId: 1, windowId: 1, targetUrl: 'https://a.com' }],
+          baseIntervalSec: 0,
+          jitterSec: 0,
+          enabled: false,
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it('rejects negative jitter', () => {
+    const r = validateStateFields({
+      ...DEFAULT_STATE,
+      individualJobs: [
+        {
+          id: 'i1',
+          target: { tabId: 1, windowId: 1, targetUrl: 'https://a.com' },
+          baseIntervalSec: 60,
+          jitterSec: -1,
+          enabled: false,
+        },
+      ],
     });
     expect(r.ok).toBe(false);
   });
