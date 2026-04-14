@@ -38,6 +38,8 @@ npm run ci
 
 Load unpacked in Edge from this repo root after a successful build (needs `dist/background.js`, `dist/page-overlay.js`, `dashboard/dashboard.js`, and `icons/`).
 
+**Tier 2 (browser / content script):** Not automated in CI yet. See [TEST_PLAN.md](TEST_PLAN.md) — manual smoke vs optional **Playwright + extension load** (Chromium or Edge channel, including headless where supported).
+
 ## Conventions
 
 - Prefer pure functions for business logic where possible.
