@@ -8,7 +8,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "node Scripts/build.mjs && node Scripts/gen-icons.mjs",
-    "build:icons": "node Scripts/gen-icons.mjs"
+    "build:icons": "node Scripts/gen-icons.mjs",
+    "ci": "npm test && npm run build"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.268",

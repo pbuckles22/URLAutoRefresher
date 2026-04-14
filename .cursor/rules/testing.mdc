@@ -5,6 +5,6 @@ alwaysApply: false
 
 # Testing
 
-- **Tier 1:** Fast feedback (unit tests, headless checks, local runs). Document the exact command in TEST_PLAN.md. Keep green after any logic or test change.
+- **Tier 1:** Fast feedback (unit tests, headless checks, local runs). Document the exact command in TEST_PLAN.md. Keep green after any logic or test change. **Enforcement:** `npm run ci` (Vitest + `npm run build`); must pass locally and in CI (`.github/workflows/ci.yml`) before merge.
 - **Tier 2:** Integration, browser, device, or E2E tests when behavior spans a real runtime. Document commands in TEST_PLAN.md.
 - **New behavior:** If the behavior needs Tier 2 to validate, add tests and run them before considering the feature done. See TEST_TDD.md and the tester skill.

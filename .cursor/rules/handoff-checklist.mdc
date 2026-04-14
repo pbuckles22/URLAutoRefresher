@@ -12,7 +12,7 @@ When the user wants a handoff, or when you are writing or updating a handoff not
 
 1. **Code review** — Use the **code-reviewer** skill (`.cursor/skills/code-reviewer/SKILL.md`). Review the changed or relevant code since last handoff (or main branch). Output PASS/WARN/FAIL and a short summary. Put the summary in the handoff note under **Code review**.
 2. **Tech debt evaluation** — Use the **tech-debt-evaluator** skill (`.cursor/skills/tech-debt-evaluator/SKILL.md`). Assess current debt; produce prioritized list. Put the short summary or "Do first" items in the handoff note under **Tech debt**.
-3. **Tests / coverage** — Run the test and coverage commands documented in **AGENT_HANDOFF.md** (and TEST_PLAN.md). Note whether the suite is green and, if useful, a one-line summary. Put in the handoff note under **Code coverage** (or **Tests**).
+3. **Tests / coverage** — Run **`npm run ci`** (or the documented commands in **AGENT_HANDOFF.md** / **TEST_PLAN.md**). Note whether Tier 1 is green and, if useful, a one-line summary. Put in the handoff note under **Code coverage** (or **Tests**).
 4. **Project readiness (optional)** — If your project has a readiness skill (e.g. game-readiness, product-readiness), use it and put the summary under **Project readiness**. Otherwise note "N/A" or skip that section.
 
 5. **Tier 2 (integration / E2E) if needed** — If you added or changed behavior that requires integration or E2E validation, run the Tier 2 command from TEST_PLAN.md. Note in the handoff whether Tier 2 was run and the result. See `.cursor/rules/testing.mdc` and TEST_PLAN.md.

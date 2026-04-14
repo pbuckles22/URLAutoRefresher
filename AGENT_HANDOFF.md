@@ -30,11 +30,12 @@ This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/Agenti
 
 ```bash
 npm install
-npm test
-npm run build
+npm run ci
 ```
 
-Load unpacked in Edge from this repo root after `npm run build` (needs `dist/background.js`, `dashboard/dashboard.js`, and `icons/`).
+`npm run ci` runs **`npm test`** then **`npm run build`** — use it before every PR; the same command runs in **GitHub Actions** (`.github/workflows/ci.yml`). For local iteration only, you can run `npm test` and `npm run build` separately.
+
+Load unpacked in Edge from this repo root after a successful build (needs `dist/background.js`, `dashboard/dashboard.js`, and `icons/`).
 
 ## Conventions
 

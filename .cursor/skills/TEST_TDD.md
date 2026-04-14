@@ -14,5 +14,6 @@
 2. **Write code** — Implement until **green**.
 3. **Tier 2 if needed** — Add integration or E2E test(s) per TEST_PLAN.md.
 4. **Document** — Update AGENT_HANDOFF or docs if contract/scope changed.
+5. **CI gate** — Run **`npm run ci`** (tests + production build). Same check runs on GitHub Actions for pushes/PRs to `main` / `master`.
 
 Never leave failing tests in the tree.

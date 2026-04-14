@@ -15,7 +15,7 @@ Use this skill when writing or running tests, or when touching app logic or new 
 - **Test-first:** For each new behavior, **write a failing test before writing production code**. See TEST_TDD.md.
 - **TDD loop:** (1) Write test → run your project test command → **red**. (2) Write code → **green**. (3) Add Tier 2 if the behavior needs integration or E2E validation. (4) Document if needed.
 - **Integration / E2E:** For behavior that needs a real runtime, add tests per TEST_PLAN.md Tier 2 and run the documented command.
-- **Continuous:** Run your project test command after each small step. Keep the suite green.
+- **Continuous:** Run your project test command after each small step. Keep the suite green. Before merge-ready work, run **`npm run ci`** (tests + build); CI runs the same in GitHub Actions.
 
 ## Source of truth
 
