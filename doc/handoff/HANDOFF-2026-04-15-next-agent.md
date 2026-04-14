@@ -1,5 +1,7 @@
 # Handoff — next agent (URL Auto Refresher)
 
+**Status:** Historical snapshot dated **2026-04-15** (post–Epic **3.1**). For **current** onboarding, use the [**2026-04-14** handoff series](./HANDOFF-2026-04-14-next-agent.md) — latest full note is [**`.2`**](./HANDOFF-2026-04-14-next-agent.2.md) (post–Epic **3.2**, **`Last updated:` 2026-04-14**).
+
 **Last updated:** 2026-04-15 — baseline after **Epic 3.1** (dashboard add individual job), Tier 1/2 TDD policy, coverage split, Playwright CI. **`npm run ci`** was green when this note was written.
 
 This file lives under **`doc/handoff/`** so it can be committed. (Optional duplicate: `.cursor/handoff/handoff-YYYY-MM-DD_HHmm.md` is gitignored per [.gitignore](../../.gitignore).)

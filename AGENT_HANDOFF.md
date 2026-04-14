@@ -26,7 +26,7 @@ This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/Agenti
 - **Epic 2:** Done — `src/background/scheduler.ts`: `chrome.alarms` (names `urlar:i:*` / `urlar:g:*`), `tabs.update` on fire, `nextFireAt` persisted, `tabs.onRemoved` + `applyTabRemoved`, storage debounce resync.
 - **Epic 3 (partial):** **3.0–3.2 done** — Overlay + prefs; add job form (`buildIndividualJobFromForm`); per-job rows with **Start/Stop**, **Delete**, **Edit** (`buildIndividualJobUpdateFromForm`, `individual-jobs` helpers), `[data-job-countdown]` + 1s tick + `storage.onChanged`; Playwright `e2e/epic-3-2.spec.ts`.
 - **Next:** Epic **3.3** — shared list row component (ahead of Global UI) — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
-- **Latest handoff:** [doc/handoff/HANDOFF-2026-04-14-next-agent.md](doc/handoff/HANDOFF-2026-04-14-next-agent.md) (post–Epic 3.2; supersedes the 2026-04-15 snapshot).
+- **Latest handoff:** [doc/handoff/HANDOFF-2026-04-14-next-agent.md](doc/handoff/HANDOFF-2026-04-14-next-agent.md) (index). **Current baseline:** [doc/handoff/HANDOFF-2026-04-14-next-agent.2.md](doc/handoff/HANDOFF-2026-04-14-next-agent.2.md) — post–Epic **3.2**, **`Last updated:` 2026-04-14**. Older dot revisions (`.1`) and the separate **2026-04-15** snapshot remain in `doc/handoff/` without overwriting.
 
 ## Run and test
 
