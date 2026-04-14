@@ -5,7 +5,7 @@ description: UI/UX review and alignment. Use when writing or reviewing screens, 
 
 # UI/UX — Project
 
-Use this skill when implementing or reviewing UI: screens, widgets, animations, haptics, layout, colors, tap targets, and feedback. Ensures alignment with doc/requirements/ (if present) and DESIGN_SYSTEM.md.
+Use this skill when implementing or reviewing UI: screens, widgets, animations, haptics, layout, colors, tap targets, and feedback. Ensures alignment with doc/requirements/ (if present) and DESIGN_SYSTEM.md. For third-party layout inspiration, see [doc/ui-reference/README.md](../../doc/ui-reference/README.md) and the **Reference UI + agent guidance** section in [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](../../doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
 
 ---
 

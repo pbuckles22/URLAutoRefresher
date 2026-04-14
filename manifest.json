@@ -22,5 +22,12 @@
   "options_ui": {
     "page": "dashboard/dashboard.html",
     "open_in_tab": true
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["dist/page-overlay.js"],
+      "run_at": "document_idle"
+    }
+  ]
 }

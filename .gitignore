@@ -31,9 +31,6 @@ coverage/
 
 # Dependencies
 node_modules/
-# target/
-# .venv/
-# vendor/
 
 # Local handoff notes (keep template _template.md and README in repo)
 .cursor/handoff/handoff-*.md

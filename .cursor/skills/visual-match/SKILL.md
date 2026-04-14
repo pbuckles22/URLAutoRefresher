@@ -5,7 +5,7 @@ description: Match UI graphics to reference examples (examples/ screenshots and 
 
 # Visual match — Project
 
-Use this skill when implementing or changing UI graphics (layout, grid, colors, strokes, icons) so the result **matches the reference examples** in `examples/` (screenshots, PDFs, specs). Ensures consistent look and alignment with design.
+Use this skill when implementing or changing UI graphics (layout, grid, colors, strokes, icons) so the result **matches the reference examples** in `examples/` (screenshots, PDFs, specs). For this extension’s third-party UI inspiration (list density, dashboard layout), also use [doc/ui-reference/README.md](../../doc/ui-reference/README.md) and [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](../../doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) (**Reference UI + agent guidance**).
 
 ---
 

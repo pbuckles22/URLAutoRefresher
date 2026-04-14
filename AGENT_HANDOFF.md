@@ -8,10 +8,10 @@ This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/Agenti
 
 ## Source of truth
 
-- **Relocating the repo (UNC → local):** [Docs/HANDOFF_MOVE_TO_LOCAL.md](Docs/HANDOFF_MOVE_TO_LOCAL.md)
-- **Product / epics:** [Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md](Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md)
+- **Relocating the repo (UNC → local):** [doc/handoff/HANDOFF_MOVE_TO_LOCAL.md](doc/handoff/HANDOFF_MOVE_TO_LOCAL.md)
+- **Product / epics:** [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md)
 - **Scope / phases:** [PM_PLAN.md](PM_PLAN.md)
-- **Skills:** [.cursor/skills/](.cursor/skills/) — DEV_GUIDE.md, TEST_TDD.md, DESIGN_SYSTEM.md, techwriter, tester, code-reviewer, tech-debt-evaluator, pm-governance, ui-ux, game-readiness, visual-match
+- **Skills:** [.cursor/skills/](.cursor/skills/) — DEV_GUIDE.md, TEST_TDD.md, DESIGN_SYSTEM.md, techwriter, tester, code-reviewer, tech-debt-evaluator, pm-governance, ui-ux, visual-match
 
 ## Pod (agents always working)
 
@@ -23,8 +23,9 @@ This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/Agenti
 
 - **Epic 0:** Done — MV3 shell, `manifest.json`, service worker build (`dist/background.js`), full-page `dashboard/`, `sidepanel/` stub, toolbar opens dashboard.
 - **Epic 1:** Done — `AppState` types (`src/lib/types.ts`), `loadAppState` / `saveAppState` (`src/lib/storage.ts`), URL/interval/jitter validation, unique ids, enabled enrollment + field validation (`src/lib/state.ts`). In-dashboard error messaging for conflicts ships with Epic 3+ UI.
-- **Epic 2:** Done — `src/background/scheduler.ts`: `chrome.alarms` (names `urlar:i:*` / `urlar:g:*`), `tabs.update` on fire, `nextFireAt` persisted, `tabs.onRemoved` + `applyTabRemoved`, storage debounce resync. In-dashboard enable/save for jobs still Epic 3 (state today via devtools or future UI).
-- **Next:** Epic 3 — Dashboard UI for individual jobs (add/edit/start/stop) — [Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md](Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md).
+- **Epic 2:** Done — `src/background/scheduler.ts`: `chrome.alarms` (names `urlar:i:*` / `urlar:g:*`), `tabs.update` on fire, `nextFireAt` persisted, `tabs.onRemoved` + `applyTabRemoved`, storage debounce resync.
+- **Epic 3 (partial):** **3.0 done** — Large **page overlay** countdown (`dist/page-overlay.js` content script), prefs `urlAutoRefresher_prefs_v1` (`showPageOverlayTimer`, default **on**), dashboard **Display** checkbox. Jobs still **not** creatable from UI — use devtools storage or complete **3.1** next.
+- **Next:** Epic **3.1** — add individual job from dashboard (tab, `targetUrl`, interval, jitter, Save) — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). Latest handoff: [doc/handoff/HANDOFF-2026-04-14-next-agent.md](doc/handoff/HANDOFF-2026-04-14-next-agent.md).
 
 ## Run and test
 
@@ -35,7 +36,7 @@ npm run ci
 
 `npm run ci` runs **`npm test`** then **`npm run build`** — use it before every PR; the same command runs in **GitHub Actions** (`.github/workflows/ci.yml`). For local iteration only, you can run `npm test` and `npm run build` separately.
 
-Load unpacked in Edge from this repo root after a successful build (needs `dist/background.js`, `dashboard/dashboard.js`, and `icons/`).
+Load unpacked in Edge from this repo root after a successful build (needs `dist/background.js`, `dist/page-overlay.js`, `dashboard/dashboard.js`, and `icons/`).
 
 ## Conventions
 

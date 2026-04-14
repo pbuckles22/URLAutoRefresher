@@ -4,6 +4,8 @@ Manifest V3 Edge extension: **global sync groups** vs **individual jobs**, jitte
 
 **How to use this doc:** Check off stories (`[x]`) as you ship them. Epics build top-to-bottom (see dependency diagram at the bottom).
 
+**Source of truth:** This file is the canonical checklist for product epics, reference-UI work, and agent-facing scope notes. Cursor (or other) task lists should stay aligned with the checkboxes here—update this doc when scope changes.
+
 ---
 
 ## Progress overview
@@ -13,13 +15,48 @@ Manifest V3 Edge extension: **global sync groups** vs **individual jobs**, jitte
 | [x] **0** | Extension shell & entry | 3 |
 | [x] **1** | Data model & persistence | 3 |
 | [x] **2** | Scheduling (service worker) | 4 |
-| [ ] **3** | Individual jobs (vertical slice) | 3 |
+| [ ] **3** | Individual jobs (vertical slice) | 4 |
 | [ ] **4** | Global groups | 3 |
 | [ ] **5** | Unified UI (choice C) | 4 |
 | [ ] **6** | Toolbar badge (focus-aware) | 3 |
 | [ ] **7** | Ship notes for Edge | 2 |
+| [ ] **8** | Live-aware pause (Twitch-first) | 3 |
+| [ ] **9** | Blip / error-text triggered refresh | 3 |
 
 *(Optional: set an epic row to `[x]` when **all** its stories are done.)*
+
+---
+
+## Reference UI + agent guidance (checklist)
+
+Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only**—not our branding. Paths: [`doc/ui-reference/README.md`](../ui-reference/README.md) and `doc/ui-reference/auto-refresh-plus/` (PNG files).
+
+**Work items (check off when done):**
+
+- [ ] **Ref.1** — `doc/ui-reference/auto-refresh-plus/` contains the three reference screenshots (`time-interval-tab.png`, `active-tabs-list.png`, `page-monitor-tab.png`) plus [`doc/ui-reference/README.md`](../ui-reference/README.md) describing each file.
+- [x] **Ref.2** — [`.cursor/skills/DESIGN_SYSTEM.md`](../../.cursor/skills/DESIGN_SYSTEM.md) points here for UI inspiration and defers to **Borrow vs exclude** below for scope.
+- [x] **Ref.3** — [`.cursor/skills/ui-ux/SKILL.md`](../../.cursor/skills/ui-ux/SKILL.md) and [`.cursor/skills/visual-match/SKILL.md`](../../.cursor/skills/visual-match/SKILL.md) mention `doc/ui-reference/README.md` when matching layout or list density to references.
+
+**Borrow from the reference (our product):**
+
+- Clear **primary action** (Start / Stop) and compact navigation (tabs or sections) so the surface stays scannable.
+- **Per-row list** for active work: title or label, **URL**, and a **next-refresh countdown** (maps to our `nextFireAt` / UI tick).
+- **Large on-page countdown** (Min / Sec digit tiles) for tabs that have an **active** auto-refresh job—**on by default**, with a **dashboard** toggle (`showPageOverlayTimer` in `chrome.storage.local`). Implemented as a content script + shadow DOM (not third-party “page timer” feature parity).
+- Interval UX that maps to our model: **base interval + jitter** (seconds)—we do **not** need the reference’s full preset grid, random min/max, or “specific seconds” radio maze unless we choose to add them later.
+
+**Exclude for Epics 0–7 (do not build to match the reference):**
+
+- Hard refresh (bypass cache), cap on number of refreshes, email alerts, XHR-only refresh mode, account / rate-us / promo footer chrome.
+- Full **Page Monitor** parity in the core track—that behavior is **Epic 9** (blip / error-text refresh), not Epic 3–5.
+
+**Map reference → our UI:**
+
+| Reference idea | Our plan |
+|----------------|----------|
+| “Time Interval” tab | Dashboard / side panel: interval + jitter fields per job or group |
+| “Active Tabs” list | **Individual** rows (Epic 3+), then **Global** rows (Epic 4+) |
+| Large on-page timer card | **Epic 3.0** — our overlay + dashboard toggle (default on) |
+| “Page Monitor” (find / lose text) | **Epic 9** — user-defined phrases or regex → trigger refresh |
 
 ---
 
@@ -58,6 +95,7 @@ Manifest V3 Edge extension: **global sync groups** vs **individual jobs**, jitte
 
 **Goal:** First end-to-end workflow without globals.
 
+- [x] **3.0** — **Page overlay timer** — content script shows a large **Min / Sec** countdown on `http`/`https` pages when that tab has an **enabled** individual or global refresh job; **default on**; **dashboard** checkbox turns it off/on (`urlAutoRefresher_prefs_v1`). *Outcome: in-page visibility of time-to-refresh.*
 - [ ] **3.1** — Dashboard: **add Individual job** — pick tab, set `targetUrl`, interval, jitter, Save. *Outcome: first usable path.*
 - [ ] **3.2** — Start / Stop, edit, delete individuals; **one countdown row** per job. *Outcome: full individual lifecycle.*
 - [ ] **3.3** — Extract shared **list row** component for Epic 5. *Outcome: less duplication before Global UI.*
@@ -101,6 +139,34 @@ Manifest V3 Edge extension: **global sync groups** vs **individual jobs**, jitte
 
 - [ ] **7.1** — README: load unpacked, permissions, **focus-aware badge vs tiled windows** (one shared `chrome.action` badge). *Outcome: install + explain.*
 - [ ] **7.2** — Manual QA script from [Testing checklist (manual)](#testing-checklist-manual) + multi-window scenarios. *Outcome: regression path for releases.*
+
+---
+
+## Epic 8 — Live-aware scheduling (Twitch-first)
+
+**Goal:** While a stream is **live**, **pause** the scheduled refresh for that job; when **offline** (no longer live), **resume** the same schedule without making the user recreate the job.
+
+**Product intent:** **Twitch** is the supported use case. The same detection logic may run on other URLs, but **non-Twitch pages are not expected** to behave like Twitch’s live/offline model. If another site happens to align and it works, fine; if users want correct live/offline semantics on arbitrary hosts, treat that as **follow-up bugs or enhancements**, not Epic 8 v1 blockers.
+
+- [ ] **8.1** — Detect **live vs offline** on **twitch.tv** (DOM heuristics or documented signals; spike / adjust if Twitch changes markup). *Outcome: reliable signal for our primary use case.*
+- [ ] **8.2** — Integrate with scheduling: when live, **do not fire** the periodic refresh for that job; when offline again, **resume** the alarm loop (implementation detail: e.g. `enabled` vs explicit `pausedForLive`—decide in code; align with `src/background/scheduler.ts`). *Outcome: pause/resume matches stream state.*
+- [ ] **8.3** — Tab close, navigation away from target, and service worker lifecycle: no orphaned alarms; clear UX or logs if detection is unavailable. *Outcome: same robustness as Epic 2 tab lifecycle.*
+
+**Technical notes:** Likely requires **content script(s)** on Twitch (and manifest matches); messaging to the service worker. Depends on solid **per-tab individual jobs** (Epic 3+).
+
+---
+
+## Epic 9 — Blip / error-text triggered refresh
+
+**Goal:** After small connectivity blips, specific **words or patterns** sometimes appear on the page; optionally **refresh immediately** when those appear (user-configured strings or regex).
+
+- [ ] **9.1** — Per-job (or per-tab) config: **watch phrases and/or regex** (user-defined only). *Outcome: user controls what counts as a “blip” signal.*
+- [ ] **9.2** — **Content script** observes page text (or DOM); on match, message background → **refresh** (`tabs.update` to stored `targetUrl` or reload—align with product rules and mutual exclusion). *Outcome: recovery refresh without waiting for the next alarm.*
+- [ ] **9.3** — **Rate limiting** and loop prevention (debounce, max triggers per minute). *Outcome: no runaway refresh storms.*
+
+**Privacy / security:** Only **user-supplied** patterns; no exfiltration. **Permissions:** content scripts + host access as needed.
+
+**Technical notes:** Builds on Epic 3+; similar UX lineage to the reference “Page Monitor” tab, scoped to **our** asks only.
 
 ---
 
@@ -230,5 +296,11 @@ flowchart TD
   epic5[Epic 5 UI choice C]
   epic6[Epic 6 Badge]
   epic7[Epic 7 Edge docs]
+  epic8[Epic 8 Live pause Twitch]
+  epic9[Epic 9 Error text refresh]
   epic0 --> epic1 --> epic2 --> epic3 --> epic4 --> epic5 --> epic6 --> epic7
+  epic7 --> epic8
+  epic7 --> epic9
 ```
+
+Epic **8** and **9** follow **Epic 7** on the roadmap. **Technically** they need stable **per-tab jobs** (Epic 3) and benefit from **unified UI** (Epic 5); treat **Epic 7** as the quality gate before heavy **content-script** work.

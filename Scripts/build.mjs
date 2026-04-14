@@ -30,3 +30,9 @@ await esbuild.build({
   entryPoints: [join(root, 'src/dashboard/dashboard.ts')],
   outfile: join(root, 'dashboard/dashboard.js'),
 });
+
+await esbuild.build({
+  ...common,
+  entryPoints: [join(root, 'src/content/page-overlay.ts')],
+  outfile: join(distDir, 'page-overlay.js'),
+});

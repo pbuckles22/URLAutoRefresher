@@ -1,6 +1,6 @@
 # PM_PLAN — URL Auto Refresher
 
-High-level phases stay aligned with [Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md](Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md).
+High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
 
 ## Current
 
@@ -8,5 +8,10 @@ High-level phases stay aligned with [Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md](Docs/
 - **Epic 1:** Done — `AppState`, `chrome.storage.local` helpers, validation, mutual exclusion (Vitest).
 - **Epic 2:** Done — alarms, refresh + reschedule, `nextFireAt`, tab lifecycle (`scheduler.ts`).
 - **Next:** Epic 3 — individual job dashboard slice.
+
+## Later (see EDGE plan)
+
+- **Epic 8** — Live-aware pause/resume (Twitch-first): pause refresh while live, resume when offline. Details: [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
+- **Epic 9** — Blip / error-text triggered refresh (user-defined phrases or regex). Same doc.
 
 Keep this file in sync with AGENT_HANDOFF "Current state" and `doc/requirements/` when you add them.

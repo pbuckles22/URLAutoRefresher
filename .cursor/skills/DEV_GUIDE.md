@@ -6,8 +6,8 @@
 
 ## Architecture
 
-- **Product plan:** [Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md](../../Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md)
-- **Layout:** `manifest.json` at repo root; `src/background/` (`index.ts` entry, `scheduler.ts` — alarms + `tabs.update`); `src/lib/` shared logic (schedule, validation, state, storage, alarm names, tab lifecycle); `dashboard/` and `sidepanel/` UI; `dist/` built background bundle (gitignored).
+- **Product plan:** [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](../../doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md)
+- **Layout:** `manifest.json` at repo root; `src/background/` (`index.ts`, `scheduler.ts`, `page-overlay-handler.ts`); `src/content/page-overlay.ts` (in-page countdown overlay); `src/lib/` shared logic; `dashboard/` and `sidepanel/` UI; `dist/` holds built `background.js` and `page-overlay.js` (gitignored).
 
 ## Conventions
 

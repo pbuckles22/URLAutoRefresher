@@ -8,18 +8,19 @@ Chromium Manifest V3 extension for Edge: scheduled refreshes to a **configured t
 
 ## Documentation
 
-- [Project plan and epics](Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md)
+- [Documentation index (`doc/`)](doc/README.md)
+- [Project plan and epics](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md)
 - [Agent handoff & source of truth](AGENT_HANDOFF.md)
-- [Handoff: move repo to local disk (UNC → `C:\Users\pbuck\Dev`)](Docs/HANDOFF_MOVE_TO_LOCAL.md)
+- [Handoff: move repo to local disk (UNC → `C:\Users\pbuck\Dev`)](doc/handoff/HANDOFF_MOVE_TO_LOCAL.md)
 
 ## What’s included (agentic)
 
 | Area | Contents |
 |------|----------|
 | **.cursor/rules** | `always.mdc`, `handoff-checklist.mdc`, `testing.mdc` |
-| **.cursor/skills** | DEV_GUIDE, TEST_TDD, DESIGN_SYSTEM, techwriter, tester, code-reviewer, tech-debt-evaluator, pm-governance, ui-ux, game-readiness, visual-match |
+| **.cursor/skills** | DEV_GUIDE, TEST_TDD, DESIGN_SYSTEM, techwriter, tester, code-reviewer, tech-debt-evaluator, pm-governance, ui-ux, visual-match |
 | **.cursor/handoff** | Handoff note template and README |
-| **doc/** | Placeholder for requirements |
+| **doc/** | Plan, requirements, UI references, handoff notes ([index](doc/README.md)) |
 | **examples/** | Placeholder for reference UI/specs |
 | **script/** | README — add your own test runner scripts |
 
@@ -40,7 +41,7 @@ Chromium Manifest V3 extension for Edge: scheduled refreshes to a **configured t
    If you see **EPERM** during cleanup, close editors/terminals using `node_modules`, delete `node_modules` manually if needed, and retry.
 
 2. **`npm test`** — Vitest (Tier 1).
-3. **`npm run build`** — produces `dist/background.js`, `dashboard/dashboard.js`, and placeholder `icons/*.png`.
+3. **`npm run build`** — produces `dist/background.js`, `dist/page-overlay.js` (content script), `dashboard/dashboard.js`, and placeholder `icons/*.png`.
 4. **`npm run ci`** — runs tests then build; same check as GitHub Actions — use before PRs.
 5. Edge → **Extensions** → **Developer mode** → **Load unpacked** → select this folder (the one containing `manifest.json`).
 
@@ -96,4 +97,4 @@ git commit -m "Describe your change"
 
 ## Status
 
-Epics **0** (shell) and **1** (storage + validation) are in progress; alarms and UI flows follow [Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md](Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md). The toolbar badge uses one shared `chrome.action` state across windows (see plan — focus-aware countdown).
+Epics **0** (shell) and **1** (storage + validation) are in progress; alarms and UI flows follow [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). The toolbar badge uses one shared `chrome.action` state across windows (see plan — focus-aware countdown).

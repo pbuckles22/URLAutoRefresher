@@ -81,9 +81,9 @@ If `node_modules` on the NAS copy was half-broken, deleting it before `npm insta
 
 | Doc | Purpose |
 |-----|---------|
-| [AGENT_HANDOFF.md](../AGENT_HANDOFF.md) | Agent context, run/test commands, current epic |
-| [EDGE_URL_AUTO_REFRESHER_PLAN.md](EDGE_URL_AUTO_REFRESHER_PLAN.md) | Epics, checkboxes, product spec |
-| [PM_PLAN.md](../PM_PLAN.md) | Short phase summary |
+| [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) | Agent context, run/test commands, current epic |
+| [EDGE_URL_AUTO_REFRESHER_PLAN.md](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) | Epics, checkboxes, product spec |
+| [PM_PLAN.md](../../PM_PLAN.md) | Short phase summary |
 
 **Progress at handoff time:** Epics **0–2** are implemented (shell, storage/validation, alarms + `tabs.update` + tab lifecycle). **Next:** **Epic 3** — dashboard UI to add/edit/start/stop **individual** jobs (no more relying on devtools for state).
 

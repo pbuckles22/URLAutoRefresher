@@ -1,4 +1,4 @@
-/** Aligned with Docs/EDGE_URL_AUTO_REFRESHER_PLAN.md data sketch. */
+/** Aligned with doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md data sketch. */
 
 export type TargetRef = {
   tabId: number;

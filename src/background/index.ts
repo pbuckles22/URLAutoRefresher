@@ -2,9 +2,11 @@
  * MV3 service worker — dashboard + side panel + scheduling (Epic 2).
  */
 
+import { attachPageOverlayMessageHandler } from './page-overlay-handler';
 import { attachSchedulingListeners, bootstrapScheduling } from './scheduler';
 
 attachSchedulingListeners();
+attachPageOverlayMessageHandler();
 void bootstrapScheduling();
 
 void chrome.sidePanel.setOptions({
