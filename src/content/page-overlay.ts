@@ -82,7 +82,9 @@ function shadowCss(): string {
 }
 
 function buildShadow(host: HTMLDivElement): ShadowRoot {
-  const root = host.attachShadow({ mode: 'closed' });
+  // Use "open" so host.shadowRoot is readable on later showOverlay() calls. "closed" is always null
+  // from script, so `host.shadowRoot ?? buildShadow(host)` would call attachShadow twice and throw.
+  const root = host.attachShadow({ mode: 'open' });
   const style = document.createElement('style');
   style.textContent = shadowCss();
   const card = document.createElement('div');
