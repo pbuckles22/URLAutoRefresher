@@ -52,7 +52,7 @@ Default branch is **`main`** (`HEAD` → `refs/heads/main`).
 ```powershell
 Set-Location "\\chaosnas.local\buckles\My.Documents\Development\URLAutoRefresher"
 git branch -M main
-pwsh -File .\scripts\setup-github.ps1
+pwsh -File .\Scripts\setup-github.ps1
 ```
 
 Requires [GitHub CLI](https://cli.github.com/) and a one-time `gh auth login`.
