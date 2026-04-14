@@ -2,9 +2,11 @@
  * Full-page dashboard: prefs (Epic 3.0), add individual job (Epic 3.1), lifecycle (Epic 3.2).
  */
 import { formatIndividualJobCountdown } from '../lib/dashboard-countdown';
+import { buildGlobalGroupFromForm } from '../lib/global-group-form';
 import { createIndividualJobListRow } from '../lib/individual-job-list-row';
 import { buildIndividualJobFromForm, buildIndividualJobUpdateFromForm } from '../lib/individual-job-form';
 import { removeIndividualJobById, replaceIndividualJob, setIndividualJobEnabled } from '../lib/individual-jobs';
+import { defaultTargetUrlForTab, tabRowsFromWindowsSnapshot } from '../lib/window-tab-browser';
 import { loadExtensionPrefs, saveExtensionPrefs } from '../lib/prefs';
 import { loadAppState, saveAppState, STORAGE_KEY } from '../lib/storage';
 
@@ -30,6 +32,67 @@ const jitterInput = document.querySelector<HTMLInputElement>('[data-job-jitter]'
 const addJobForm = document.querySelector<HTMLFormElement>('[data-add-individual-form]');
 const addJobError = document.querySelector<HTMLElement>('[data-add-job-error]');
 const jobsList = document.querySelector<HTMLUListElement>('[data-individual-jobs-list]');
+
+const globalGroupForm = document.querySelector<HTMLFormElement>('[data-global-group-form]');
+const globalGroupName = document.querySelector<HTMLInputElement>('[data-global-group-name]');
+const globalTabBrowser = document.querySelector<HTMLUListElement>('[data-global-tab-browser]');
+const globalRefreshTabs = document.querySelector<HTMLButtonElement>('[data-global-refresh-tabs]');
+const globalIntervalInput = document.querySelector<HTMLInputElement>('[data-global-interval]');
+const globalJitterInput = document.querySelector<HTMLInputElement>('[data-global-jitter]');
+const globalFormError = document.querySelector<HTMLElement>('[data-global-form-error]');
+
+async function renderGlobalTabBrowser(): Promise<void> {
+  if (!globalTabBrowser) {
+    return;
+  }
+  const windows = await chrome.windows.getAll({ populate: true });
+  const rows = tabRowsFromWindowsSnapshot(windows);
+  globalTabBrowser.innerHTML = '';
+  for (const row of rows) {
+    const li = document.createElement('li');
+    li.setAttribute('data-global-tab-row', String(row.tabId));
+    li.setAttribute('data-window-id', String(row.windowId));
+    li.style.display = 'grid';
+    li.style.gridTemplateColumns = 'auto minmax(6rem, 1fr) minmax(10rem, 2fr)';
+    li.style.gap = '0.5rem';
+    li.style.alignItems = 'center';
+    li.style.marginBottom = '0.35rem';
+
+    const pick = document.createElement('label');
+    pick.style.display = 'flex';
+    pick.style.alignItems = 'center';
+    pick.style.gap = '0.35rem';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.setAttribute('data-global-tab-include', '');
+    pick.appendChild(cb);
+    pick.appendChild(document.createTextNode('Include'));
+
+    const titleEl = document.createElement('span');
+    titleEl.setAttribute('data-global-tab-title', '');
+    const tlabel = row.title.trim() || row.url || `Tab ${row.tabId}`;
+    titleEl.textContent = `${tlabel} (${row.tabId})`;
+    titleEl.style.overflow = 'hidden';
+    titleEl.style.textOverflow = 'ellipsis';
+    titleEl.style.whiteSpace = 'nowrap';
+    titleEl.style.fontSize = '0.9rem';
+
+    const urlIn = document.createElement('input');
+    urlIn.type = 'text';
+    urlIn.setAttribute('data-global-target-url', '');
+    urlIn.placeholder = 'https://…';
+    urlIn.value = defaultTargetUrlForTab(row.url);
+    urlIn.autocomplete = 'off';
+    urlIn.style.padding = '0.35rem 0.5rem';
+    urlIn.style.borderRadius = '6px';
+    urlIn.style.border = '1px solid #5f6368';
+    urlIn.style.background = '#303134';
+    urlIn.style.color = '#e8eaed';
+
+    li.append(pick, titleEl, urlIn);
+    globalTabBrowser.appendChild(li);
+  }
+}
 
 async function populateTabSelect(): Promise<void> {
   if (!tabSelect) {
@@ -219,4 +282,73 @@ if (addJobForm && tabSelect && urlInput && intervalInput && jitterInput) {
   });
 }
 
-void populateTabSelect().then(() => renderIndividualJobs());
+if (globalRefreshTabs) {
+  globalRefreshTabs.addEventListener('click', () => void renderGlobalTabBrowser());
+}
+
+if (
+  globalGroupForm &&
+  globalGroupName &&
+  globalTabBrowser &&
+  globalIntervalInput &&
+  globalJitterInput
+) {
+  globalGroupForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    void (async () => {
+      if (globalFormError) {
+        globalFormError.textContent = '';
+      }
+      const targets: Array<{
+        tabId: number;
+        windowId: number;
+        targetUrl: string;
+        label?: string;
+      }> = [];
+      for (const li of globalTabBrowser.querySelectorAll('[data-global-tab-row]')) {
+        const tabId = Number(li.getAttribute('data-global-tab-row'));
+        const windowId = Number(li.getAttribute('data-window-id'));
+        const checked = li.querySelector<HTMLInputElement>('[data-global-tab-include]')?.checked;
+        if (!checked) {
+          continue;
+        }
+        const targetUrl = li.querySelector<HTMLInputElement>('[data-global-target-url]')?.value ?? '';
+        const titleText = li.querySelector('[data-global-tab-title]')?.textContent ?? '';
+        const m = /^(.*) \((\d+)\)\s*$/.exec(titleText);
+        const label = m?.[1]?.trim();
+        targets.push({
+          tabId,
+          windowId,
+          targetUrl,
+          ...(label ? { label } : {}),
+        });
+      }
+      const built = buildGlobalGroupFromForm({
+        name: globalGroupName.value,
+        baseIntervalSec: Number(globalIntervalInput.value),
+        jitterSec: Number(globalJitterInput.value),
+        targets,
+      });
+      if (!built.ok) {
+        if (globalFormError) {
+          globalFormError.textContent = built.error;
+        }
+        return;
+      }
+      const state = await loadAppState();
+      const next = { ...state, globalGroups: [...state.globalGroups, built.value] };
+      try {
+        await saveAppState(next);
+      } catch (err) {
+        if (globalFormError) {
+          globalFormError.textContent = err instanceof Error ? err.message : String(err);
+        }
+        return;
+      }
+      globalGroupName.value = '';
+      await renderIndividualJobs();
+    })();
+  });
+}
+
+void Promise.all([populateTabSelect(), renderGlobalTabBrowser()]).then(() => renderIndividualJobs());

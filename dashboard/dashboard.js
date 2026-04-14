@@ -18,6 +18,93 @@
     return `${m}:${String(s).padStart(2, "0")}`;
   }
 
+  // src/lib/validation.ts
+  function validateHttpUrl(input) {
+    const trimmed = input.trim();
+    if (!trimmed) {
+      return { ok: false, error: "URL is required" };
+    }
+    let url;
+    try {
+      url = new URL(trimmed);
+    } catch {
+      return { ok: false, error: "Invalid URL" };
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return { ok: false, error: "URL must start with http:// or https://" };
+    }
+    return { ok: true, value: trimmed };
+  }
+  function validateIntervalSec(n) {
+    if (!Number.isFinite(n) || n <= 0) {
+      return { ok: false, error: "Interval must be a positive number (seconds)" };
+    }
+    return { ok: true, value: n };
+  }
+  function validateJitterSec(n) {
+    if (!Number.isFinite(n) || n < 0) {
+      return { ok: false, error: "Jitter must be a non-negative number (seconds)" };
+    }
+    return { ok: true, value: n };
+  }
+
+  // src/lib/global-group-form.ts
+  function buildGlobalGroupFromForm(input, newId = () => crypto.randomUUID()) {
+    const name = input.name.trim();
+    if (!name) {
+      return { ok: false, error: "Enter a group name" };
+    }
+    if (input.targets.length < 1) {
+      return { ok: false, error: "Select at least one tab" };
+    }
+    const seen = /* @__PURE__ */ new Set();
+    for (const t of input.targets) {
+      if (!Number.isInteger(t.tabId) || t.tabId < 1) {
+        return { ok: false, error: "Invalid tab" };
+      }
+      if (!Number.isInteger(t.windowId) || t.windowId < 0) {
+        return { ok: false, error: "Invalid window" };
+      }
+      if (seen.has(t.tabId)) {
+        return { ok: false, error: `Duplicate tab ${t.tabId} in selection` };
+      }
+      seen.add(t.tabId);
+    }
+    const interval = validateIntervalSec(input.baseIntervalSec);
+    if (!interval.ok) {
+      return interval;
+    }
+    const jitter = validateJitterSec(input.jitterSec);
+    if (!jitter.ok) {
+      return jitter;
+    }
+    const targets = [];
+    for (const t of input.targets) {
+      const url = validateHttpUrl(t.targetUrl);
+      if (!url.ok) {
+        return url;
+      }
+      const label = t.label?.trim();
+      targets.push({
+        tabId: t.tabId,
+        windowId: t.windowId,
+        targetUrl: url.value,
+        ...label ? { label } : {}
+      });
+    }
+    return {
+      ok: true,
+      value: {
+        id: newId(),
+        name,
+        targets,
+        baseIntervalSec: interval.value,
+        jitterSec: jitter.value,
+        enabled: true
+      }
+    };
+  }
+
   // src/lib/individual-job-list-row.ts
   function rowStyle() {
     return "list-style: none; margin: 0.75rem 0; padding: 0.75rem; border: 1px solid #5f6368; border-radius: 8px; background: #303134;";
@@ -111,36 +198,6 @@
     return li;
   }
 
-  // src/lib/validation.ts
-  function validateHttpUrl(input) {
-    const trimmed = input.trim();
-    if (!trimmed) {
-      return { ok: false, error: "URL is required" };
-    }
-    let url;
-    try {
-      url = new URL(trimmed);
-    } catch {
-      return { ok: false, error: "Invalid URL" };
-    }
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
-      return { ok: false, error: "URL must start with http:// or https://" };
-    }
-    return { ok: true, value: trimmed };
-  }
-  function validateIntervalSec(n) {
-    if (!Number.isFinite(n) || n <= 0) {
-      return { ok: false, error: "Interval must be a positive number (seconds)" };
-    }
-    return { ok: true, value: n };
-  }
-  function validateJitterSec(n) {
-    if (!Number.isFinite(n) || n < 0) {
-      return { ok: false, error: "Jitter must be a non-negative number (seconds)" };
-    }
-    return { ok: true, value: n };
-  }
-
   // src/lib/individual-job-form.ts
   function buildIndividualJobFromForm(input, newId = () => crypto.randomUUID()) {
     if (!Number.isInteger(input.tabId) || input.tabId < 1) {
@@ -229,6 +286,40 @@
     const next = [...state.individualJobs];
     next[idx] = updated;
     return { ...state, individualJobs: next };
+  }
+
+  // src/lib/window-tab-browser.ts
+  function defaultTargetUrlForTab(url) {
+    const u = url.trim();
+    if (u.startsWith("http://") || u.startsWith("https://")) {
+      return u;
+    }
+    return "";
+  }
+  function tabRowsFromWindowsSnapshot(windows) {
+    const rows = [];
+    for (const w of windows) {
+      const wid = w.id;
+      if (typeof wid !== "number" || wid < 0) {
+        continue;
+      }
+      const tabs = w.tabs ?? [];
+      for (const tab of tabs) {
+        const tid = tab.id;
+        if (typeof tid !== "number") {
+          continue;
+        }
+        rows.push({
+          tabId: tid,
+          windowId: wid,
+          index: typeof tab.index === "number" ? tab.index : 0,
+          title: tab.title?.trim() ?? "",
+          url: tab.url ?? ""
+        });
+      }
+    }
+    rows.sort((a, b) => a.windowId - b.windowId || a.index - b.index);
+    return rows;
   }
 
   // src/lib/prefs.ts
@@ -422,6 +513,61 @@
   var addJobForm = document.querySelector("[data-add-individual-form]");
   var addJobError = document.querySelector("[data-add-job-error]");
   var jobsList = document.querySelector("[data-individual-jobs-list]");
+  var globalGroupForm = document.querySelector("[data-global-group-form]");
+  var globalGroupName = document.querySelector("[data-global-group-name]");
+  var globalTabBrowser = document.querySelector("[data-global-tab-browser]");
+  var globalRefreshTabs = document.querySelector("[data-global-refresh-tabs]");
+  var globalIntervalInput = document.querySelector("[data-global-interval]");
+  var globalJitterInput = document.querySelector("[data-global-jitter]");
+  var globalFormError = document.querySelector("[data-global-form-error]");
+  async function renderGlobalTabBrowser() {
+    if (!globalTabBrowser) {
+      return;
+    }
+    const windows = await chrome.windows.getAll({ populate: true });
+    const rows = tabRowsFromWindowsSnapshot(windows);
+    globalTabBrowser.innerHTML = "";
+    for (const row of rows) {
+      const li = document.createElement("li");
+      li.setAttribute("data-global-tab-row", String(row.tabId));
+      li.setAttribute("data-window-id", String(row.windowId));
+      li.style.display = "grid";
+      li.style.gridTemplateColumns = "auto minmax(6rem, 1fr) minmax(10rem, 2fr)";
+      li.style.gap = "0.5rem";
+      li.style.alignItems = "center";
+      li.style.marginBottom = "0.35rem";
+      const pick = document.createElement("label");
+      pick.style.display = "flex";
+      pick.style.alignItems = "center";
+      pick.style.gap = "0.35rem";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.setAttribute("data-global-tab-include", "");
+      pick.appendChild(cb);
+      pick.appendChild(document.createTextNode("Include"));
+      const titleEl = document.createElement("span");
+      titleEl.setAttribute("data-global-tab-title", "");
+      const tlabel = row.title.trim() || row.url || `Tab ${row.tabId}`;
+      titleEl.textContent = `${tlabel} (${row.tabId})`;
+      titleEl.style.overflow = "hidden";
+      titleEl.style.textOverflow = "ellipsis";
+      titleEl.style.whiteSpace = "nowrap";
+      titleEl.style.fontSize = "0.9rem";
+      const urlIn = document.createElement("input");
+      urlIn.type = "text";
+      urlIn.setAttribute("data-global-target-url", "");
+      urlIn.placeholder = "https://\u2026";
+      urlIn.value = defaultTargetUrlForTab(row.url);
+      urlIn.autocomplete = "off";
+      urlIn.style.padding = "0.35rem 0.5rem";
+      urlIn.style.borderRadius = "6px";
+      urlIn.style.border = "1px solid #5f6368";
+      urlIn.style.background = "#303134";
+      urlIn.style.color = "#e8eaed";
+      li.append(pick, titleEl, urlIn);
+      globalTabBrowser.appendChild(li);
+    }
+  }
   async function populateTabSelect() {
     if (!tabSelect) {
       return;
@@ -599,5 +745,61 @@
       })();
     });
   }
-  void populateTabSelect().then(() => renderIndividualJobs());
+  if (globalRefreshTabs) {
+    globalRefreshTabs.addEventListener("click", () => void renderGlobalTabBrowser());
+  }
+  if (globalGroupForm && globalGroupName && globalTabBrowser && globalIntervalInput && globalJitterInput) {
+    globalGroupForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      void (async () => {
+        if (globalFormError) {
+          globalFormError.textContent = "";
+        }
+        const targets = [];
+        for (const li of globalTabBrowser.querySelectorAll("[data-global-tab-row]")) {
+          const tabId = Number(li.getAttribute("data-global-tab-row"));
+          const windowId = Number(li.getAttribute("data-window-id"));
+          const checked = li.querySelector("[data-global-tab-include]")?.checked;
+          if (!checked) {
+            continue;
+          }
+          const targetUrl = li.querySelector("[data-global-target-url]")?.value ?? "";
+          const titleText = li.querySelector("[data-global-tab-title]")?.textContent ?? "";
+          const m = /^(.*) \((\d+)\)\s*$/.exec(titleText);
+          const label = m?.[1]?.trim();
+          targets.push({
+            tabId,
+            windowId,
+            targetUrl,
+            ...label ? { label } : {}
+          });
+        }
+        const built = buildGlobalGroupFromForm({
+          name: globalGroupName.value,
+          baseIntervalSec: Number(globalIntervalInput.value),
+          jitterSec: Number(globalJitterInput.value),
+          targets
+        });
+        if (!built.ok) {
+          if (globalFormError) {
+            globalFormError.textContent = built.error;
+          }
+          return;
+        }
+        const state = await loadAppState();
+        const next = { ...state, globalGroups: [...state.globalGroups, built.value] };
+        try {
+          await saveAppState(next);
+        } catch (err2) {
+          if (globalFormError) {
+            globalFormError.textContent = err2 instanceof Error ? err2.message : String(err2);
+          }
+          return;
+        }
+        globalGroupName.value = "";
+        await renderIndividualJobs();
+      })();
+    });
+  }
+  void Promise.all([populateTabSelect(), renderGlobalTabBrowser()]).then(() => renderIndividualJobs());
 })();

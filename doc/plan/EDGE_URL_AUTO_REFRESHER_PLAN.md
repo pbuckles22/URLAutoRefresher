@@ -15,7 +15,7 @@ Manifest V3 Edge extension: **global sync groups** vs **individual jobs**, jitte
 | [x] **0** | Extension shell & entry | 3 |
 | [x] **1** | Data model & persistence | 3 |
 | [x] **2** | Scheduling (service worker) | 4 |
-| [ ] **3** | Individual jobs (vertical slice) | 4 |
+| [x] **3** | Individual jobs (vertical slice) | 4 |
 | [ ] **4** | Global groups | 3 |
 | [ ] **5** | Unified UI (choice C) | 4 |
 | [ ] **6** | Toolbar badge (focus-aware) | 3 |
@@ -106,7 +106,7 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** Build globals from real windows/tabs; match product model; safe moves vs individuals.
 
-- [ ] **4.1** — **Window/tab browser:** `windows.getAll({ populate: true })`, checklist of tabs, per-row `targetUrl`. *Outcome: real multi-window global groups.*
+- [x] **4.1** — **Window/tab browser:** `windows.getAll({ populate: true })`, checklist of tabs, per-row `targetUrl`. *Outcome: real multi-window global groups.*
 - [ ] **4.2** — Create / edit / delete globals; **Global (N)** header, shared countdown, group start/stop. *Outcome: globals behave per spec.*
 - [ ] **4.3** — Enforce mutual exclusion when moving a tab between individual and global. *Outcome: safe transitions.*
 

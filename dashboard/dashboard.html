@@ -30,8 +30,8 @@
   <body>
     <h1 data-app-title>URL Auto Refresher</h1>
     <p>
-      Dashboard shell (Epic 0). Use the toolbar icon anytime to return here. Individual and global
-      job lists will appear in later epics.
+      Use the toolbar icon anytime to return here. Configure global groups (multi-tab) and individual
+      jobs below; more unified browsing ships in later epics.
     </p>
     <section style="margin-top: 1.25rem" aria-labelledby="prefs-heading">
       <h2 id="prefs-heading" style="font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem">Display</h2>
@@ -44,6 +44,80 @@
           Default on; you can turn it off here.</span
         >
       </label>
+    </section>
+
+    <section style="margin-top: 1.75rem" aria-labelledby="global-group-heading">
+      <h2 id="global-group-heading" style="font-size: 1rem; font-weight: 600; margin: 0 0 0.75rem">
+        Global group
+      </h2>
+      <p style="margin: 0 0 0.75rem; color: #9aa0a6; font-size: 0.9rem">
+        Browse windows and tabs, check which tabs belong to the group, set each tab’s refresh URL, then
+        Save. One shared schedule refreshes every included tab together (Epic 4.1).
+      </p>
+      <form
+        data-global-group-form
+        style="display: flex; flex-direction: column; gap: 0.75rem; max-width: 42rem"
+      >
+        <label style="display: flex; flex-direction: column; gap: 0.25rem">
+          <span>Group name</span>
+          <input
+            data-global-group-name
+            type="text"
+            required
+            placeholder="e.g. Morning dashboards"
+            autocomplete="off"
+            style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+          />
+        </label>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem">
+          <button
+            type="button"
+            data-global-refresh-tabs
+            style="padding: 0.4rem 0.75rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed; cursor: pointer"
+          >
+            Refresh tab list
+          </button>
+          <span style="color: #9aa0a6; font-size: 0.85rem">Uses all windows (<code>windows.getAll</code>).</span>
+        </div>
+        <div style="overflow-x: auto">
+          <ul
+            data-global-tab-browser
+            style="margin: 0; padding: 0; list-style: none; min-width: min(100%, 36rem)"
+          ></ul>
+        </div>
+        <label style="display: flex; flex-direction: column; gap: 0.25rem">
+          <span>Interval (seconds)</span>
+          <input
+            data-global-interval
+            type="number"
+            min="1"
+            step="1"
+            value="60"
+            required
+            style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+          />
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 0.25rem">
+          <span>Jitter (seconds)</span>
+          <input
+            data-global-jitter
+            type="number"
+            min="0"
+            step="1"
+            value="0"
+            required
+            style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+          />
+        </label>
+        <button
+          type="submit"
+          data-global-save
+          style="align-self: flex-start; padding: 0.4rem 1rem; border-radius: 6px; border: none; background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer"
+        >
+          Save group
+        </button>
+      </form>
+      <p data-global-form-error role="alert" style="margin: 0.5rem 0 0; color: #f28b82; min-height: 1.25rem"></p>
     </section>
 
     <section style="margin-top: 1.75rem" aria-labelledby="add-job-heading">
