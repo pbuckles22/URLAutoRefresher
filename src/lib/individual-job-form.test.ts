@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildIndividualJobFromForm } from './individual-job-form';
+import type { IndividualJob } from './types';
+import { buildIndividualJobFromForm, buildIndividualJobUpdateFromForm } from './individual-job-form';
 
 describe('buildIndividualJobFromForm (Epic 3.1)', () => {
   const newId = () => 'job-test-id';
@@ -51,6 +52,41 @@ describe('buildIndividualJobFromForm (Epic 3.1)', () => {
     ).toBe(false);
     expect(
       buildIndividualJobFromForm({ tabId: 1, windowId: 1, targetUrl: 'https://a.com', baseIntervalSec: 10, jitterSec: -1 }, newId).ok
+    ).toBe(false);
+  });
+});
+
+describe('buildIndividualJobUpdateFromForm (Epic 3.2)', () => {
+  const existing: IndividualJob = {
+    id: 'keep-id',
+    target: { tabId: 5, windowId: 2, targetUrl: 'https://old.com' },
+    baseIntervalSec: 60,
+    jitterSec: 1,
+    enabled: false,
+    nextFireAt: 123,
+  };
+
+  it('updates validated fields and preserves id, enabled, nextFireAt', () => {
+    const r = buildIndividualJobUpdateFromForm(
+      { targetUrl: 'https://new.com/', baseIntervalSec: 90, jitterSec: 2 },
+      existing
+    );
+    expect(r).toEqual({
+      ok: true,
+      value: {
+        id: 'keep-id',
+        target: { tabId: 5, windowId: 2, targetUrl: 'https://new.com/' },
+        baseIntervalSec: 90,
+        jitterSec: 2,
+        enabled: false,
+        nextFireAt: 123,
+      },
+    });
+  });
+
+  it('rejects invalid input like add form', () => {
+    expect(
+      buildIndividualJobUpdateFromForm({ targetUrl: 'ftp://x', baseIntervalSec: 10, jitterSec: 0 }, existing).ok
     ).toBe(false);
   });
 });

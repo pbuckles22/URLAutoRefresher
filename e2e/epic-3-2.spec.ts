@@ -3,11 +3,8 @@ import { dashboardUrl, FIXTURE_ORIGIN, launchExtensionContext } from './extensio
 
 const STORAGE_KEY = 'urlAutoRefresher_state_v1';
 
-/**
- * Epic 3.2 — Start/Stop, edit, delete, one countdown row per job.
- * Un-skip this describe when the dashboard exposes the hooks below.
- */
-test.describe.skip('Epic 3.2: individual job lifecycle on dashboard', () => {
+/** Epic 3.2 — Start/Stop, edit, delete, one countdown row per job. */
+test.describe('Epic 3.2: individual job lifecycle on dashboard', () => {
   test.describe.configure({ mode: 'serial' });
 
   let extensionId: string;
@@ -173,6 +170,65 @@ test.describe.skip('Epic 3.2: individual job lifecycle on dashboard', () => {
     await dash.reload();
 
     await expect(dash.locator('[data-individual-job-row] [data-job-countdown]')).toHaveCount(2);
+
+    await dash.close();
+    await fixturePage.close();
+  });
+
+  test('Edit saves updated URL to storage', async () => {
+    const fixturePage = await context.newPage();
+    await fixturePage.goto(`${FIXTURE_ORIGIN}/`);
+    const dash = await context.newPage();
+    await dash.goto(dashboardUrl(extensionId));
+
+    const fixtureTabId = await dash.evaluate(async () => {
+      const tabs = await chrome.tabs.query({ url: 'http://127.0.0.1:8765/*' });
+      const id = tabs[0]?.id;
+      if (id === undefined) {
+        throw new Error('fixture tab not found');
+      }
+      return id;
+    });
+
+    await dash.evaluate(
+      async ({ storageKey, tabId }) => {
+        await chrome.storage.local.set({
+          [storageKey]: {
+            schemaVersion: 1,
+            globalGroups: [],
+            individualJobs: [
+              {
+                id: 'edit-me',
+                target: {
+                  tabId,
+                  windowId: 0,
+                  targetUrl: 'https://example.com/before',
+                },
+                baseIntervalSec: 60,
+                jitterSec: 0,
+                enabled: true,
+              },
+            ],
+          },
+        });
+      },
+      { storageKey: STORAGE_KEY, tabId: fixtureTabId }
+    );
+
+    await dash.reload();
+
+    await dash.locator('[data-individual-job-row="edit-me"] summary').click();
+    await dash.locator('[data-individual-job-row="edit-me"] [data-job-edit-url]').fill('https://example.com/after-e2e');
+    await dash.locator('[data-individual-job-row="edit-me"] [data-job-edit-save]').click();
+
+    const targetUrl = await dash.evaluate(async (storageKey) => {
+      const data = await chrome.storage.local.get(storageKey);
+      const raw = data[storageKey as keyof typeof data] as
+        | { individualJobs?: { target: { targetUrl: string } }[] }
+        | undefined;
+      return raw?.individualJobs?.[0]?.target?.targetUrl;
+    }, STORAGE_KEY);
+    expect(targetUrl).toBe('https://example.com/after-e2e');
 
     await dash.close();
     await fixturePage.close();

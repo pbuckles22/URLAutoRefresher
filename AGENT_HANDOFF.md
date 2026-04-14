@@ -24,9 +24,9 @@ This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/Agenti
 - **Epic 0:** Done — MV3 shell, `manifest.json`, service worker build (`dist/background.js`), full-page `dashboard/`, `sidepanel/` stub, toolbar opens dashboard.
 - **Epic 1:** Done — `AppState` types (`src/lib/types.ts`), `loadAppState` / `saveAppState` (`src/lib/storage.ts`), URL/interval/jitter validation, unique ids, enabled enrollment + field validation (`src/lib/state.ts`). In-dashboard error messaging for conflicts ships with Epic 3+ UI.
 - **Epic 2:** Done — `src/background/scheduler.ts`: `chrome.alarms` (names `urlar:i:*` / `urlar:g:*`), `tabs.update` on fire, `nextFireAt` persisted, `tabs.onRemoved` + `applyTabRemoved`, storage debounce resync.
-- **Epic 3 (partial):** **3.0–3.1 done** — Page overlay + prefs; dashboard **Individual job** form (tab picker, target URL, interval, jitter, Save) via `buildIndividualJobFromForm` + `saveAppState`; list of saved jobs on the dashboard. **3.2** next — start/stop, edit, delete, countdown rows.
-- **Next:** Epic **3.2** — full individual lifecycle (start/stop, edit, delete; one countdown row per job) — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
-- **Latest handoff:** [doc/handoff/HANDOFF-2026-04-15-next-agent.md](doc/handoff/HANDOFF-2026-04-15-next-agent.md) (post–Epic 3.1, TDD + CI).
+- **Epic 3 (partial):** **3.0–3.2 done** — Overlay + prefs; add job form (`buildIndividualJobFromForm`); per-job rows with **Start/Stop**, **Delete**, **Edit** (`buildIndividualJobUpdateFromForm`, `individual-jobs` helpers), `[data-job-countdown]` + 1s tick + `storage.onChanged`; Playwright `e2e/epic-3-2.spec.ts`.
+- **Next:** Epic **3.3** — shared list row component (ahead of Global UI) — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
+- **Latest handoff:** [doc/handoff/HANDOFF-2026-04-15-next-agent.md](doc/handoff/HANDOFF-2026-04-15-next-agent.md) (update when you cut a new dated note).
 
 ## Run and test
 
