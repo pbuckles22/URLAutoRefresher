@@ -94,6 +94,7 @@ Implementation:
 - **`e2e/epic-4-1.spec.ts`** — global group from **window/tab browser** + per-tab URLs → storage.
 - **`e2e/epic-4-2.spec.ts`** — **Global (N)** header, saved row countdown, **Start/Stop**, **Edit**, **Delete**.
 - **`e2e/epic-4-3.spec.ts`** — mutual exclusion: add global vs individual, add individual vs global, **Start** on global row when individual is enabled on the same tab (`[data-global-form-error]`, `[data-add-job-error]`, `[data-global-group-row-error]`).
+- **`e2e/epic-5.spec.ts`** — unified UI: **Global (N)** / **Individual (M)** on dashboard and generated side panel; browse layout; cross-surface nav button visibility.
 
 **Headed Chromium:** MV3 extensions are exercised with **`headless: false`** (Playwright `channel: 'chromium'`). **CI (Linux)** runs under **xvfb** so no physical display is required.
 

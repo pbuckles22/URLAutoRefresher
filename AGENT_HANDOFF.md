@@ -21,13 +21,14 @@ This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/Agenti
 
 ## Current state
 
-- **Epic 0:** Done — MV3 shell, `manifest.json`, service worker build (`dist/background.js`), full-page `dashboard/`, `sidepanel/` stub, toolbar opens dashboard.
+- **Epic 0:** Done — MV3 shell, `manifest.json`, service worker build (`dist/background.js`), full-page `dashboard/`, `sidepanel/` (HTML generated in build from dashboard), toolbar opens dashboard.
 - **Epic 1:** Done — `AppState` types (`src/lib/types.ts`), `loadAppState` / `saveAppState` (`src/lib/storage.ts`), URL/interval/jitter validation, unique ids, enabled enrollment + field validation (`src/lib/state.ts`). Dashboard surfaces enrollment errors (Epic **4.3**).
 - **Epic 2:** Done — `src/background/scheduler.ts`: `chrome.alarms` (names `urlar:i:*` / `urlar:g:*`), `tabs.update` on fire, `nextFireAt` persisted, `tabs.onRemoved` + `applyTabRemoved`, storage debounce resync.
 - **Epic 3:** Done — **3.0–3.3** — Overlay; add individual job; start/stop, edit, delete; **shared list row** [`src/lib/individual-job-list-row.ts`](src/lib/individual-job-list-row.ts); Tier 2 `e2e/epic-3-3.spec.ts`.
 - **Epic 4:** **4.1–4.3 done** — Window/tab browser; **saved global groups** list with **Global (N)** header, `formatGlobalGroupCountdown`, start/stop, edit (name/interval/jitter/target URLs), delete; mutual exclusion UX (`validateEnabledEnrollment` messages + dashboard form/row/toggle errors); [`src/lib/global-groups.ts`](src/lib/global-groups.ts), [`src/lib/global-group-list-row.ts`](src/lib/global-group-list-row.ts), `buildGlobalGroupUpdateFromForm`; Tier 2 `e2e/epic-4-1.spec.ts`, `e2e/epic-4-2.spec.ts`, `e2e/epic-4-3.spec.ts`.
-- **Next:** Epic **5** — unified UI / side panel — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
-- **Latest handoff:** [doc/handoff/HANDOFF-2026-04-14-next-agent.md](doc/handoff/HANDOFF-2026-04-14-next-agent.md) (index). **Current baseline:** [doc/handoff/HANDOFF-2026-04-14-next-agent.7.md](doc/handoff/HANDOFF-2026-04-14-next-agent.7.md) (addendum on Tier 2 multi-window scope; full **4.3** detail in [`.6`](doc/handoff/HANDOFF-2026-04-14-next-agent.6.md)), **`Last updated:` 2026-04-14**. Older dot revisions and the separate **2026-04-15** snapshot remain in `doc/handoff/` without overwriting.
+- **Epic 5:** **5.1–5.4 done** — Shared UI [`src/dashboard/dashboard-app.ts`](src/dashboard/dashboard-app.ts) (dashboard + side panel); **Individual (M)** + browse grid; `Scripts/build.mjs` writes [`sidepanel/sidepanel.html`](sidepanel/sidepanel.html) from dashboard HTML; cross-surface buttons (`data-open-side-panel` / `data-open-dashboard-tab`); Tier 2 `e2e/epic-5.spec.ts`.
+- **Next:** Epic **6** — focus-aware toolbar badge — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
+- **Latest handoff:** [doc/handoff/HANDOFF-2026-04-14-next-agent.md](doc/handoff/HANDOFF-2026-04-14-next-agent.md) (index). **Current baseline:** [doc/handoff/HANDOFF-2026-04-14-next-agent.8.md](doc/handoff/HANDOFF-2026-04-14-next-agent.8.md) (Epic **5** shipped; next **Epic 6**), **`Last updated:` 2026-04-14**. Older dot revisions and the separate **2026-04-15** snapshot remain in `doc/handoff/` without overwriting.
 
 ## Run and test
 

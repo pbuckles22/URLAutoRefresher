@@ -17,7 +17,7 @@ Manifest V3 Edge extension: **global sync groups** vs **individual jobs**, jitte
 | [x] **2** | Scheduling (service worker) | 4 |
 | [x] **3** | Individual jobs (vertical slice) | 4 |
 | [x] **4** | Global groups | 3 |
-| [ ] **5** | Unified UI (choice C) | 4 |
+| [x] **5** | Unified UI (choice C) | 4 |
 | [ ] **6** | Toolbar badge (focus-aware) | 3 |
 | [ ] **7** | Ship notes for Edge | 2 |
 | [ ] **8** | Live-aware pause (Twitch-first) | 3 |
@@ -116,10 +116,10 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** **Global (N)** and **Individual (M)** everywhere; dashboard + side panel share modules.
 
-- [ ] **5.1** — Dashboard: both section headers with counts; browse-all layout. *Outcome: matches **1b** / overview mental model.*
-- [ ] **5.2** — Side Panel: same lists via shared JS/CSS. *Outcome: quick monitoring without full tab.*
-- [ ] **5.3** — Cross-links: dashboard ↔ side panel (“open in other surface”). *Outcome: coherent choice **C**.*
-- [ ] **5.4** — Live countdown in UI (`storage` + `runtime` messages or ~1s polling while visible). *Outcome: rows tick smoothly.*
+- [x] **5.1** — Dashboard: both section headers with counts; browse-all layout. *Outcome: matches **1b** / overview mental model.*
+- [x] **5.2** — Side Panel: same lists via shared JS/CSS. *Outcome: quick monitoring without full tab.*
+- [x] **5.3** — Cross-links: dashboard ↔ side panel (“open in other surface”). *Outcome: coherent choice **C**.*
+- [x] **5.4** — Live countdown in UI (`storage` + `runtime` messages or ~1s polling while visible). *Outcome: rows tick smoothly.*
 
 ---
 

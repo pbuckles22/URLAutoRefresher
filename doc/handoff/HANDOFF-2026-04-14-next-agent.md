@@ -1,10 +1,11 @@
 # Handoff index — 2026-04-14 (next agent)
 
-Handoffs for **2026-04-14** use **dot revisions** (`.1`, `.2`, …) so updates do not overwrite prior text. Add **`.8`** when **`.7`** is superseded.
+Handoffs for **2026-04-14** use **dot revisions** (`.1`, `.2`, …) so updates do not overwrite prior text. Add **`.9`** when **`.8`** is superseded.
 
 | Revision | File | Description |
 |----------|------|-------------|
-| **Latest** | [**HANDOFF-2026-04-14-next-agent.7.md**](./HANDOFF-2026-04-14-next-agent.7.md) | Addendum: **no multi-window Playwright E2E** by design (trust `windows.getAll`; manual QA if needed). Full **4.3** baseline in **`.6`**. **`Last updated:` 2026-04-14.** |
+| **Latest** | [**HANDOFF-2026-04-14-next-agent.8.md**](./HANDOFF-2026-04-14-next-agent.8.md) | **Epic 5 shipped** — shared `dashboard-app.ts`, browse grid, generated side panel HTML, cross-links, `e2e/epic-5.spec.ts`; next **Epic 6** (badge). **`Last updated:` 2026-04-14.** |
+| `.7` | [HANDOFF-2026-04-14-next-agent.7.md](./HANDOFF-2026-04-14-next-agent.7.md) | Addendum: **no multi-window Playwright E2E** by design (trust `windows.getAll`; manual QA if needed). Full **4.3** baseline in **`.6`**. |
 | `.6` | [HANDOFF-2026-04-14-next-agent.6.md](./HANDOFF-2026-04-14-next-agent.6.md) | Post–Epic **4.3** (mutual exclusion UX, **`e2e/epic-4-3.spec.ts`**); Epic **3.2** edit E2E hardening; CI; next **Epic 5**. |
 | `.5` | [HANDOFF-2026-04-14-next-agent.5.md](./HANDOFF-2026-04-14-next-agent.5.md) | Post–Epic **4.2** (globals list, **Global (N)**, countdown, start/stop, edit, delete). |
 | `.4` | [HANDOFF-2026-04-14-next-agent.4.md](./HANDOFF-2026-04-14-next-agent.4.md) | Post–Epic **4.1** (window/tab browser + global group form). |

@@ -2,7 +2,7 @@
  * Bundle MV3 service worker and dashboard page scripts with esbuild.
  */
 import * as esbuild from 'esbuild';
-import { mkdirSync } from 'fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -30,6 +30,12 @@ await esbuild.build({
   entryPoints: [join(root, 'src/dashboard/dashboard.ts')],
   outfile: join(root, 'dashboard/dashboard.js'),
 });
+
+const dashboardHtmlPath = join(root, 'dashboard/dashboard.html');
+const sidepanelHtml = readFileSync(dashboardHtmlPath, 'utf8')
+  .replace('class="dashboard-surface"', 'class="sidepanel-surface"')
+  .replace('<script src="dashboard.js"></script>', '<script src="../dashboard/dashboard.js"></script>');
+writeFileSync(join(root, 'sidepanel/sidepanel.html'), sidepanelHtml);
 
 await esbuild.build({
   ...common,

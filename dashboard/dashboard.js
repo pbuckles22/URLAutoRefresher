@@ -714,458 +714,486 @@
     await chrome.storage.local.set({ [STORAGE_KEY]: state });
   }
 
-  // src/dashboard/dashboard.ts
-  var title = document.querySelector("[data-app-title]");
-  if (title) {
-    title.textContent = chrome.runtime.getManifest().name;
-  }
-  var overlayPref = document.querySelector("[data-pref-overlay]");
-  if (overlayPref) {
-    void loadExtensionPrefs().then((p) => {
-      overlayPref.checked = p.showPageOverlayTimer;
-    });
-    overlayPref.addEventListener("change", () => {
-      void saveExtensionPrefs({ showPageOverlayTimer: overlayPref.checked });
-    });
-  }
-  var tabSelect = document.querySelector("[data-job-tab]");
-  var urlInput = document.querySelector("[data-job-target-url]");
-  var intervalInput = document.querySelector("[data-job-interval]");
-  var jitterInput = document.querySelector("[data-job-jitter]");
-  var addJobForm = document.querySelector("[data-add-individual-form]");
-  var addJobError = document.querySelector("[data-add-job-error]");
-  var jobsList = document.querySelector("[data-individual-jobs-list]");
-  var globalGroupForm = document.querySelector("[data-global-group-form]");
-  var globalGroupName = document.querySelector("[data-global-group-name]");
-  var globalTabBrowser = document.querySelector("[data-global-tab-browser]");
-  var globalRefreshTabs = document.querySelector("[data-global-refresh-tabs]");
-  var globalIntervalInput = document.querySelector("[data-global-interval]");
-  var globalJitterInput = document.querySelector("[data-global-jitter]");
-  var globalFormError = document.querySelector("[data-global-form-error]");
-  var globalSectionHeading = document.querySelector("[data-global-section-heading]");
-  var globalGroupsList = document.querySelector("[data-global-groups-list]");
-  async function renderGlobalGroupsList() {
-    const state = await loadAppState();
-    if (globalSectionHeading) {
-      globalSectionHeading.textContent = `Global (${state.globalGroups.length})`;
+  // src/dashboard/dashboard-app.ts
+  function wireCrossSurfaceLinks() {
+    const openSide = document.querySelector("[data-open-side-panel]");
+    if (openSide) {
+      openSide.addEventListener("click", () => {
+        void chrome.windows.getCurrent().then((w) => {
+          if (w.id !== void 0) {
+            void chrome.sidePanel.open({ windowId: w.id });
+          }
+        });
+      });
     }
-    if (!globalGroupsList) {
-      return;
-    }
-    const now = Date.now();
-    globalGroupsList.innerHTML = "";
-    for (const g of state.globalGroups) {
-      globalGroupsList.appendChild(createGlobalGroupListRow(g, now));
+    const openDash = document.querySelector("[data-open-dashboard-tab]");
+    if (openDash) {
+      openDash.addEventListener("click", () => {
+        void chrome.tabs.create({ url: chrome.runtime.getURL("dashboard/dashboard.html") });
+      });
     }
   }
-  async function renderGlobalTabBrowser() {
-    if (!globalTabBrowser) {
-      return;
+  function initDashboardApp() {
+    const title = document.querySelector("[data-app-title]");
+    if (title) {
+      title.textContent = chrome.runtime.getManifest().name;
     }
-    const windows = await chrome.windows.getAll({ populate: true });
-    const rows = tabRowsFromWindowsSnapshot(windows);
-    globalTabBrowser.innerHTML = "";
-    for (const row of rows) {
-      const li = document.createElement("li");
-      li.setAttribute("data-global-tab-row", String(row.tabId));
-      li.setAttribute("data-window-id", String(row.windowId));
-      li.style.display = "grid";
-      li.style.gridTemplateColumns = "auto minmax(6rem, 1fr) minmax(10rem, 2fr)";
-      li.style.gap = "0.5rem";
-      li.style.alignItems = "center";
-      li.style.marginBottom = "0.35rem";
-      const pick = document.createElement("label");
-      pick.style.display = "flex";
-      pick.style.alignItems = "center";
-      pick.style.gap = "0.35rem";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.setAttribute("data-global-tab-include", "");
-      pick.appendChild(cb);
-      pick.appendChild(document.createTextNode("Include"));
-      const titleEl = document.createElement("span");
-      titleEl.setAttribute("data-global-tab-title", "");
-      const tlabel = row.title.trim() || row.url || `Tab ${row.tabId}`;
-      titleEl.textContent = `${tlabel} (${row.tabId})`;
-      titleEl.style.overflow = "hidden";
-      titleEl.style.textOverflow = "ellipsis";
-      titleEl.style.whiteSpace = "nowrap";
-      titleEl.style.fontSize = "0.9rem";
-      const urlIn = document.createElement("input");
-      urlIn.type = "text";
-      urlIn.setAttribute("data-global-target-url", "");
-      urlIn.placeholder = "https://\u2026";
-      urlIn.value = defaultTargetUrlForTab(row.url);
-      urlIn.autocomplete = "off";
-      urlIn.style.padding = "0.35rem 0.5rem";
-      urlIn.style.borderRadius = "6px";
-      urlIn.style.border = "1px solid #5f6368";
-      urlIn.style.background = "#303134";
-      urlIn.style.color = "#e8eaed";
-      li.append(pick, titleEl, urlIn);
-      globalTabBrowser.appendChild(li);
+    const overlayPref = document.querySelector("[data-pref-overlay]");
+    if (overlayPref) {
+      void loadExtensionPrefs().then((p) => {
+        overlayPref.checked = p.showPageOverlayTimer;
+      });
+      overlayPref.addEventListener("change", () => {
+        void saveExtensionPrefs({ showPageOverlayTimer: overlayPref.checked });
+      });
     }
-  }
-  async function populateTabSelect() {
-    if (!tabSelect) {
-      return;
-    }
-    const tabs = await chrome.tabs.query({});
-    const withIds = tabs.filter(
-      (t) => typeof t.id === "number" && typeof t.windowId === "number"
-    );
-    withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
-    tabSelect.innerHTML = '<option value="">Select a tab\u2026</option>';
-    for (const t of withIds) {
-      const opt = document.createElement("option");
-      opt.value = String(t.id);
-      const label = t.title?.trim() || t.url || `Tab ${t.id}`;
-      opt.textContent = `${label} (${t.id})`;
-      tabSelect.appendChild(opt);
-    }
-  }
-  async function renderIndividualJobs() {
-    if (!jobsList) {
-      return;
-    }
-    const state = await loadAppState();
-    const now = Date.now();
-    jobsList.innerHTML = "";
-    for (const j of state.individualJobs) {
-      jobsList.appendChild(createIndividualJobListRow(j, now));
-    }
-  }
-  async function tickCountdowns() {
-    const state = await loadAppState();
-    const now = Date.now();
-    if (jobsList) {
-      for (const job of state.individualJobs) {
-        const row = jobsList.querySelector(`[data-individual-job-row="${CSS.escape(job.id)}"]`);
-        const el = row?.querySelector("[data-job-countdown]");
-        if (el) {
-          el.textContent = formatIndividualJobCountdown(now, job);
-        }
+    const tabSelect = document.querySelector("[data-job-tab]");
+    const urlInput = document.querySelector("[data-job-target-url]");
+    const intervalInput = document.querySelector("[data-job-interval]");
+    const jitterInput = document.querySelector("[data-job-jitter]");
+    const addJobForm = document.querySelector("[data-add-individual-form]");
+    const addJobError = document.querySelector("[data-add-job-error]");
+    const jobsList = document.querySelector("[data-individual-jobs-list]");
+    const globalGroupForm = document.querySelector("[data-global-group-form]");
+    const globalGroupName = document.querySelector("[data-global-group-name]");
+    const globalTabBrowser = document.querySelector("[data-global-tab-browser]");
+    const globalRefreshTabs = document.querySelector("[data-global-refresh-tabs]");
+    const globalIntervalInput = document.querySelector("[data-global-interval]");
+    const globalJitterInput = document.querySelector("[data-global-jitter]");
+    const globalFormError = document.querySelector("[data-global-form-error]");
+    const globalSectionHeading = document.querySelector("[data-global-section-heading]");
+    const individualSectionHeading = document.querySelector("[data-individual-section-heading]");
+    const globalGroupsList = document.querySelector("[data-global-groups-list]");
+    async function renderGlobalGroupsList() {
+      const state = await loadAppState();
+      if (globalSectionHeading) {
+        globalSectionHeading.textContent = `Global (${state.globalGroups.length})`;
       }
-    }
-    if (globalGroupsList) {
+      if (!globalGroupsList) {
+        return;
+      }
+      const now = Date.now();
+      globalGroupsList.innerHTML = "";
       for (const g of state.globalGroups) {
-        const row = globalGroupsList.querySelector(`[data-global-group-row="${CSS.escape(g.id)}"]`);
-        const el = row?.querySelector("[data-global-group-countdown]");
-        if (el) {
-          el.textContent = formatGlobalGroupCountdown(now, g);
+        globalGroupsList.appendChild(createGlobalGroupListRow(g, now));
+      }
+    }
+    async function renderGlobalTabBrowser() {
+      if (!globalTabBrowser) {
+        return;
+      }
+      const windows = await chrome.windows.getAll({ populate: true });
+      const rows = tabRowsFromWindowsSnapshot(windows);
+      globalTabBrowser.innerHTML = "";
+      for (const row of rows) {
+        const li = document.createElement("li");
+        li.setAttribute("data-global-tab-row", String(row.tabId));
+        li.setAttribute("data-window-id", String(row.windowId));
+        li.style.display = "grid";
+        li.style.gridTemplateColumns = "auto minmax(6rem, 1fr) minmax(10rem, 2fr)";
+        li.style.gap = "0.5rem";
+        li.style.alignItems = "center";
+        li.style.marginBottom = "0.35rem";
+        const pick = document.createElement("label");
+        pick.style.display = "flex";
+        pick.style.alignItems = "center";
+        pick.style.gap = "0.35rem";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.setAttribute("data-global-tab-include", "");
+        pick.appendChild(cb);
+        pick.appendChild(document.createTextNode("Include"));
+        const titleEl = document.createElement("span");
+        titleEl.setAttribute("data-global-tab-title", "");
+        const tlabel = row.title.trim() || row.url || `Tab ${row.tabId}`;
+        titleEl.textContent = `${tlabel} (${row.tabId})`;
+        titleEl.style.overflow = "hidden";
+        titleEl.style.textOverflow = "ellipsis";
+        titleEl.style.whiteSpace = "nowrap";
+        titleEl.style.fontSize = "0.9rem";
+        const urlIn = document.createElement("input");
+        urlIn.type = "text";
+        urlIn.setAttribute("data-global-target-url", "");
+        urlIn.placeholder = "https://\u2026";
+        urlIn.value = defaultTargetUrlForTab(row.url);
+        urlIn.autocomplete = "off";
+        urlIn.style.padding = "0.35rem 0.5rem";
+        urlIn.style.borderRadius = "6px";
+        urlIn.style.border = "1px solid #5f6368";
+        urlIn.style.background = "#303134";
+        urlIn.style.color = "#e8eaed";
+        li.append(pick, titleEl, urlIn);
+        globalTabBrowser.appendChild(li);
+      }
+    }
+    async function populateTabSelect() {
+      if (!tabSelect) {
+        return;
+      }
+      const tabs = await chrome.tabs.query({});
+      const withIds = tabs.filter(
+        (t) => typeof t.id === "number" && typeof t.windowId === "number"
+      );
+      withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
+      tabSelect.innerHTML = '<option value="">Select a tab\u2026</option>';
+      for (const t of withIds) {
+        const opt = document.createElement("option");
+        opt.value = String(t.id);
+        const label = t.title?.trim() || t.url || `Tab ${t.id}`;
+        opt.textContent = `${label} (${t.id})`;
+        tabSelect.appendChild(opt);
+      }
+    }
+    async function renderIndividualJobs() {
+      const state = await loadAppState();
+      if (individualSectionHeading) {
+        individualSectionHeading.textContent = `Individual (${state.individualJobs.length})`;
+      }
+      if (!jobsList) {
+        return;
+      }
+      const now = Date.now();
+      jobsList.innerHTML = "";
+      for (const j of state.individualJobs) {
+        jobsList.appendChild(createIndividualJobListRow(j, now));
+      }
+    }
+    async function tickCountdowns() {
+      const state = await loadAppState();
+      const now = Date.now();
+      if (jobsList) {
+        for (const job of state.individualJobs) {
+          const row = jobsList.querySelector(`[data-individual-job-row="${CSS.escape(job.id)}"]`);
+          const el = row?.querySelector("[data-job-countdown]");
+          if (el) {
+            el.textContent = formatIndividualJobCountdown(now, job);
+          }
+        }
+      }
+      if (globalGroupsList) {
+        for (const g of state.globalGroups) {
+          const row = globalGroupsList.querySelector(`[data-global-group-row="${CSS.escape(g.id)}"]`);
+          const el = row?.querySelector("[data-global-group-countdown]");
+          if (el) {
+            el.textContent = formatGlobalGroupCountdown(now, g);
+          }
         }
       }
     }
-  }
-  function bindJobsListEvents() {
-    if (!jobsList || jobsList.dataset.epic32Bound === "1") {
-      return;
-    }
-    jobsList.dataset.epic32Bound = "1";
-    jobsList.addEventListener("click", (e) => {
-      const t = e.target;
-      const row = t.closest("[data-individual-job-row]");
-      if (!row) {
+    function bindJobsListEvents() {
+      if (!jobsList || jobsList.dataset.epic32Bound === "1") {
         return;
       }
-      const id = row.getAttribute("data-individual-job-row");
-      if (!id) {
-        return;
-      }
-      if (t.closest("[data-job-delete]")) {
-        void (async () => {
-          const state = await loadAppState();
-          const next = removeIndividualJobById(state, id);
-          try {
-            await saveAppState(next);
-          } catch (err2) {
-            console.error(err2);
-          }
-          await renderIndividualJobs();
-        })();
-        return;
-      }
-      if (t.closest("[data-job-toggle]")) {
-        void (async () => {
-          const rowErr = row.querySelector("[data-job-row-error]");
-          if (rowErr) {
-            rowErr.textContent = "";
-          }
-          const state = await loadAppState();
-          const job = state.individualJobs.find((j) => j.id === id);
-          if (!job) {
-            return;
-          }
-          const next = setIndividualJobEnabled(state, id, !job.enabled);
-          try {
-            await saveAppState(next);
-          } catch (err2) {
-            if (rowErr) {
-              rowErr.textContent = err2 instanceof Error ? err2.message : String(err2);
-            } else {
+      jobsList.dataset.epic32Bound = "1";
+      jobsList.addEventListener("click", (e) => {
+        const t = e.target;
+        const row = t.closest("[data-individual-job-row]");
+        if (!row) {
+          return;
+        }
+        const id = row.getAttribute("data-individual-job-row");
+        if (!id) {
+          return;
+        }
+        if (t.closest("[data-job-delete]")) {
+          void (async () => {
+            const state = await loadAppState();
+            const next = removeIndividualJobById(state, id);
+            try {
+              await saveAppState(next);
+            } catch (err2) {
               console.error(err2);
             }
-            return;
-          }
-          await renderIndividualJobs();
-        })();
-        return;
-      }
-      if (t.closest("[data-job-edit-save]")) {
-        void (async () => {
-          const errEl = row.querySelector("[data-job-edit-error]");
-          if (errEl) {
-            errEl.textContent = "";
-          }
-          const state = await loadAppState();
-          const job = state.individualJobs.find((j) => j.id === id);
-          if (!job) {
-            return;
-          }
-          const url = row.querySelector("[data-job-edit-url]")?.value ?? "";
-          const interval = Number(row.querySelector("[data-job-edit-interval]")?.value);
-          const jitter = Number(row.querySelector("[data-job-edit-jitter]")?.value);
-          const built = buildIndividualJobUpdateFromForm(
-            { targetUrl: url, baseIntervalSec: interval, jitterSec: jitter },
-            job
-          );
-          if (!built.ok) {
-            if (errEl) {
-              errEl.textContent = built.error;
-            }
-            return;
-          }
-          const next = replaceIndividualJob(state, built.value);
-          try {
-            await saveAppState(next);
-          } catch (err2) {
-            if (errEl) {
-              errEl.textContent = err2 instanceof Error ? err2.message : String(err2);
-            }
-            return;
-          }
-          await renderIndividualJobs();
-        })();
-      }
-    });
-  }
-  function bindGlobalGroupsListEvents() {
-    if (!globalGroupsList || globalGroupsList.dataset.epic42Bound === "1") {
-      return;
-    }
-    globalGroupsList.dataset.epic42Bound = "1";
-    globalGroupsList.addEventListener("click", (e) => {
-      const t = e.target;
-      const row = t.closest("[data-global-group-row]");
-      if (!row) {
-        return;
-      }
-      const id = row.getAttribute("data-global-group-row");
-      if (!id) {
-        return;
-      }
-      if (t.closest("[data-global-group-delete]")) {
-        void (async () => {
-          const state = await loadAppState();
-          const next = removeGlobalGroupById(state, id);
-          try {
-            await saveAppState(next);
-          } catch (err2) {
-            console.error(err2);
-          }
-          await renderGlobalGroupsList();
-          await renderIndividualJobs();
-        })();
-        return;
-      }
-      if (t.closest("[data-global-group-toggle]")) {
-        void (async () => {
-          const rowErr = row.querySelector("[data-global-group-row-error]");
-          if (rowErr) {
-            rowErr.textContent = "";
-          }
-          const state = await loadAppState();
-          const g = state.globalGroups.find((x) => x.id === id);
-          if (!g) {
-            return;
-          }
-          const next = setGlobalGroupEnabled(state, id, !g.enabled);
-          try {
-            await saveAppState(next);
-          } catch (err2) {
+            await renderIndividualJobs();
+          })();
+          return;
+        }
+        if (t.closest("[data-job-toggle]")) {
+          void (async () => {
+            const rowErr = row.querySelector("[data-job-row-error]");
             if (rowErr) {
-              rowErr.textContent = err2 instanceof Error ? err2.message : String(err2);
-            } else {
-              console.error(err2);
+              rowErr.textContent = "";
             }
-            return;
-          }
-          await renderGlobalGroupsList();
-          await renderIndividualJobs();
-        })();
-        return;
-      }
-      if (t.closest("[data-global-edit-save]")) {
-        void (async () => {
-          const errEl = row.querySelector("[data-global-edit-error]");
-          if (errEl) {
-            errEl.textContent = "";
-          }
-          const state = await loadAppState();
-          const existing = state.globalGroups.find((x) => x.id === id);
-          if (!existing) {
-            return;
-          }
-          const name = row.querySelector("[data-global-edit-name]")?.value ?? "";
-          const interval = Number(row.querySelector("[data-global-edit-interval]")?.value);
-          const jitter = Number(row.querySelector("[data-global-edit-jitter]")?.value);
-          const targets = [];
-          for (const ex of existing.targets) {
-            const urlIn = row.querySelector(
-              `[data-global-edit-target-url][data-global-edit-target-tab="${ex.tabId}"]`
+            const state = await loadAppState();
+            const job = state.individualJobs.find((j) => j.id === id);
+            if (!job) {
+              return;
+            }
+            const next = setIndividualJobEnabled(state, id, !job.enabled);
+            try {
+              await saveAppState(next);
+            } catch (err2) {
+              if (rowErr) {
+                rowErr.textContent = err2 instanceof Error ? err2.message : String(err2);
+              } else {
+                console.error(err2);
+              }
+              return;
+            }
+            await renderIndividualJobs();
+          })();
+          return;
+        }
+        if (t.closest("[data-job-edit-save]")) {
+          void (async () => {
+            const errEl = row.querySelector("[data-job-edit-error]");
+            if (errEl) {
+              errEl.textContent = "";
+            }
+            const state = await loadAppState();
+            const job = state.individualJobs.find((j) => j.id === id);
+            if (!job) {
+              return;
+            }
+            const url = row.querySelector("[data-job-edit-url]")?.value ?? "";
+            const interval = Number(row.querySelector("[data-job-edit-interval]")?.value);
+            const jitter = Number(row.querySelector("[data-job-edit-jitter]")?.value);
+            const built = buildIndividualJobUpdateFromForm(
+              { targetUrl: url, baseIntervalSec: interval, jitterSec: jitter },
+              job
             );
+            if (!built.ok) {
+              if (errEl) {
+                errEl.textContent = built.error;
+              }
+              return;
+            }
+            const next = replaceIndividualJob(state, built.value);
+            try {
+              await saveAppState(next);
+            } catch (err2) {
+              if (errEl) {
+                errEl.textContent = err2 instanceof Error ? err2.message : String(err2);
+              }
+              return;
+            }
+            await renderIndividualJobs();
+          })();
+        }
+      });
+    }
+    function bindGlobalGroupsListEvents() {
+      if (!globalGroupsList || globalGroupsList.dataset.epic42Bound === "1") {
+        return;
+      }
+      globalGroupsList.dataset.epic42Bound = "1";
+      globalGroupsList.addEventListener("click", (e) => {
+        const t = e.target;
+        const row = t.closest("[data-global-group-row]");
+        if (!row) {
+          return;
+        }
+        const id = row.getAttribute("data-global-group-row");
+        if (!id) {
+          return;
+        }
+        if (t.closest("[data-global-group-delete]")) {
+          void (async () => {
+            const state = await loadAppState();
+            const next = removeGlobalGroupById(state, id);
+            try {
+              await saveAppState(next);
+            } catch (err2) {
+              console.error(err2);
+            }
+            await renderGlobalGroupsList();
+            await renderIndividualJobs();
+          })();
+          return;
+        }
+        if (t.closest("[data-global-group-toggle]")) {
+          void (async () => {
+            const rowErr = row.querySelector("[data-global-group-row-error]");
+            if (rowErr) {
+              rowErr.textContent = "";
+            }
+            const state = await loadAppState();
+            const g = state.globalGroups.find((x) => x.id === id);
+            if (!g) {
+              return;
+            }
+            const next = setGlobalGroupEnabled(state, id, !g.enabled);
+            try {
+              await saveAppState(next);
+            } catch (err2) {
+              if (rowErr) {
+                rowErr.textContent = err2 instanceof Error ? err2.message : String(err2);
+              } else {
+                console.error(err2);
+              }
+              return;
+            }
+            await renderGlobalGroupsList();
+            await renderIndividualJobs();
+          })();
+          return;
+        }
+        if (t.closest("[data-global-edit-save]")) {
+          void (async () => {
+            const errEl = row.querySelector("[data-global-edit-error]");
+            if (errEl) {
+              errEl.textContent = "";
+            }
+            const state = await loadAppState();
+            const existing = state.globalGroups.find((x) => x.id === id);
+            if (!existing) {
+              return;
+            }
+            const name = row.querySelector("[data-global-edit-name]")?.value ?? "";
+            const interval = Number(row.querySelector("[data-global-edit-interval]")?.value);
+            const jitter = Number(row.querySelector("[data-global-edit-jitter]")?.value);
+            const targets = [];
+            for (const ex of existing.targets) {
+              const urlIn = row.querySelector(
+                `[data-global-edit-target-url][data-global-edit-target-tab="${ex.tabId}"]`
+              );
+              targets.push({
+                tabId: ex.tabId,
+                windowId: ex.windowId,
+                targetUrl: urlIn?.value ?? ""
+              });
+            }
+            const built = buildGlobalGroupUpdateFromForm(
+              { name, baseIntervalSec: interval, jitterSec: jitter, targets },
+              existing
+            );
+            if (!built.ok) {
+              if (errEl) {
+                errEl.textContent = built.error;
+              }
+              return;
+            }
+            const next = replaceGlobalGroup(state, built.value);
+            try {
+              await saveAppState(next);
+            } catch (err2) {
+              if (errEl) {
+                errEl.textContent = err2 instanceof Error ? err2.message : String(err2);
+              }
+              return;
+            }
+            await renderGlobalGroupsList();
+            await renderIndividualJobs();
+          })();
+        }
+      });
+    }
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "local" || !(STORAGE_KEY in changes)) {
+        return;
+      }
+      void renderIndividualJobs();
+      void renderGlobalGroupsList();
+    });
+    bindJobsListEvents();
+    bindGlobalGroupsListEvents();
+    wireCrossSurfaceLinks();
+    window.setInterval(() => void tickCountdowns(), 1e3);
+    if (addJobForm && tabSelect && urlInput && intervalInput && jitterInput) {
+      addJobForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        void (async () => {
+          if (addJobError) {
+            addJobError.textContent = "";
+          }
+          const tabId = Number(tabSelect.value);
+          const tabs = await chrome.tabs.query({});
+          const tab = tabs.find((t) => t.id === tabId);
+          if (!tab?.id) {
+            if (addJobError) {
+              addJobError.textContent = "Pick a tab";
+            }
+            return;
+          }
+          const built = buildIndividualJobFromForm({
+            tabId: tab.id,
+            windowId: tab.windowId,
+            targetUrl: urlInput.value,
+            baseIntervalSec: Number(intervalInput.value),
+            jitterSec: Number(jitterInput.value)
+          });
+          if (!built.ok) {
+            if (addJobError) {
+              addJobError.textContent = built.error;
+            }
+            return;
+          }
+          const state = await loadAppState();
+          const next = { ...state, individualJobs: [...state.individualJobs, built.value] };
+          try {
+            await saveAppState(next);
+          } catch (err2) {
+            if (addJobError) {
+              addJobError.textContent = err2 instanceof Error ? err2.message : String(err2);
+            }
+            return;
+          }
+          await renderIndividualJobs();
+        })();
+      });
+    }
+    if (globalRefreshTabs) {
+      globalRefreshTabs.addEventListener("click", () => void renderGlobalTabBrowser());
+    }
+    if (globalGroupForm && globalGroupName && globalTabBrowser && globalIntervalInput && globalJitterInput) {
+      globalGroupForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        void (async () => {
+          if (globalFormError) {
+            globalFormError.textContent = "";
+          }
+          const targets = [];
+          for (const li of globalTabBrowser.querySelectorAll("[data-global-tab-row]")) {
+            const tabId = Number(li.getAttribute("data-global-tab-row"));
+            const windowId = Number(li.getAttribute("data-window-id"));
+            const checked = li.querySelector("[data-global-tab-include]")?.checked;
+            if (!checked) {
+              continue;
+            }
+            const targetUrl = li.querySelector("[data-global-target-url]")?.value ?? "";
+            const titleText = li.querySelector("[data-global-tab-title]")?.textContent ?? "";
+            const m = /^(.*) \((\d+)\)\s*$/.exec(titleText);
+            const label = m?.[1]?.trim();
             targets.push({
-              tabId: ex.tabId,
-              windowId: ex.windowId,
-              targetUrl: urlIn?.value ?? ""
+              tabId,
+              windowId,
+              targetUrl,
+              ...label ? { label } : {}
             });
           }
-          const built = buildGlobalGroupUpdateFromForm(
-            { name, baseIntervalSec: interval, jitterSec: jitter, targets },
-            existing
-          );
+          const built = buildGlobalGroupFromForm({
+            name: globalGroupName.value,
+            baseIntervalSec: Number(globalIntervalInput.value),
+            jitterSec: Number(globalJitterInput.value),
+            targets
+          });
           if (!built.ok) {
-            if (errEl) {
-              errEl.textContent = built.error;
+            if (globalFormError) {
+              globalFormError.textContent = built.error;
             }
             return;
           }
-          const next = replaceGlobalGroup(state, built.value);
+          const state = await loadAppState();
+          const next = { ...state, globalGroups: [...state.globalGroups, built.value] };
           try {
             await saveAppState(next);
           } catch (err2) {
-            if (errEl) {
-              errEl.textContent = err2 instanceof Error ? err2.message : String(err2);
+            if (globalFormError) {
+              globalFormError.textContent = err2 instanceof Error ? err2.message : String(err2);
             }
             return;
           }
+          globalGroupName.value = "";
           await renderGlobalGroupsList();
           await renderIndividualJobs();
         })();
-      }
-    });
-  }
-  chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== "local" || !(STORAGE_KEY in changes)) {
-      return;
+      });
     }
-    void renderIndividualJobs();
-    void renderGlobalGroupsList();
-  });
-  bindJobsListEvents();
-  bindGlobalGroupsListEvents();
-  window.setInterval(() => void tickCountdowns(), 1e3);
-  if (addJobForm && tabSelect && urlInput && intervalInput && jitterInput) {
-    addJobForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      void (async () => {
-        if (addJobError) {
-          addJobError.textContent = "";
-        }
-        const tabId = Number(tabSelect.value);
-        const tabs = await chrome.tabs.query({});
-        const tab = tabs.find((t) => t.id === tabId);
-        if (!tab?.id) {
-          if (addJobError) {
-            addJobError.textContent = "Pick a tab";
-          }
-          return;
-        }
-        const built = buildIndividualJobFromForm({
-          tabId: tab.id,
-          windowId: tab.windowId,
-          targetUrl: urlInput.value,
-          baseIntervalSec: Number(intervalInput.value),
-          jitterSec: Number(jitterInput.value)
-        });
-        if (!built.ok) {
-          if (addJobError) {
-            addJobError.textContent = built.error;
-          }
-          return;
-        }
-        const state = await loadAppState();
-        const next = { ...state, individualJobs: [...state.individualJobs, built.value] };
-        try {
-          await saveAppState(next);
-        } catch (err2) {
-          if (addJobError) {
-            addJobError.textContent = err2 instanceof Error ? err2.message : String(err2);
-          }
-          return;
-        }
-        await renderIndividualJobs();
-      })();
-    });
+    void Promise.all([populateTabSelect(), renderGlobalTabBrowser(), renderGlobalGroupsList()]).then(
+      () => renderIndividualJobs()
+    );
   }
-  if (globalRefreshTabs) {
-    globalRefreshTabs.addEventListener("click", () => void renderGlobalTabBrowser());
-  }
-  if (globalGroupForm && globalGroupName && globalTabBrowser && globalIntervalInput && globalJitterInput) {
-    globalGroupForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      void (async () => {
-        if (globalFormError) {
-          globalFormError.textContent = "";
-        }
-        const targets = [];
-        for (const li of globalTabBrowser.querySelectorAll("[data-global-tab-row]")) {
-          const tabId = Number(li.getAttribute("data-global-tab-row"));
-          const windowId = Number(li.getAttribute("data-window-id"));
-          const checked = li.querySelector("[data-global-tab-include]")?.checked;
-          if (!checked) {
-            continue;
-          }
-          const targetUrl = li.querySelector("[data-global-target-url]")?.value ?? "";
-          const titleText = li.querySelector("[data-global-tab-title]")?.textContent ?? "";
-          const m = /^(.*) \((\d+)\)\s*$/.exec(titleText);
-          const label = m?.[1]?.trim();
-          targets.push({
-            tabId,
-            windowId,
-            targetUrl,
-            ...label ? { label } : {}
-          });
-        }
-        const built = buildGlobalGroupFromForm({
-          name: globalGroupName.value,
-          baseIntervalSec: Number(globalIntervalInput.value),
-          jitterSec: Number(globalJitterInput.value),
-          targets
-        });
-        if (!built.ok) {
-          if (globalFormError) {
-            globalFormError.textContent = built.error;
-          }
-          return;
-        }
-        const state = await loadAppState();
-        const next = { ...state, globalGroups: [...state.globalGroups, built.value] };
-        try {
-          await saveAppState(next);
-        } catch (err2) {
-          if (globalFormError) {
-            globalFormError.textContent = err2 instanceof Error ? err2.message : String(err2);
-          }
-          return;
-        }
-        globalGroupName.value = "";
-        await renderGlobalGroupsList();
-        await renderIndividualJobs();
-      })();
-    });
-  }
-  void Promise.all([populateTabSelect(), renderGlobalTabBrowser(), renderGlobalGroupsList()]).then(
-    () => renderIndividualJobs()
-  );
+
+  // src/dashboard/dashboard.ts
+  initDashboardApp();
 })();

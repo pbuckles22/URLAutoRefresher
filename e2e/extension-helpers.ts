@@ -73,3 +73,7 @@ export async function launchExtensionContext(): Promise<{
 export function dashboardUrl(extensionId: string): string {
   return `chrome-extension://${extensionId}/dashboard/dashboard.html`;
 }
+
+export function sidepanelUrl(extensionId: string): string {
+  return `chrome-extension://${extensionId}/sidepanel/sidepanel.html`;
+}
