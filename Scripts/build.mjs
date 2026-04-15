@@ -35,7 +35,9 @@ const dashboardHtmlPath = join(root, 'dashboard/dashboard.html');
 const sidepanelHtml = readFileSync(dashboardHtmlPath, 'utf8')
   .replace('class="dashboard-surface"', 'class="sidepanel-surface"')
   .replace('<script src="dashboard.js"></script>', '<script src="../dashboard/dashboard.js"></script>');
-writeFileSync(join(root, 'sidepanel/sidepanel.html'), sidepanelHtml);
+const sidepanelDir = join(root, 'sidepanel');
+mkdirSync(sidepanelDir, { recursive: true });
+writeFileSync(join(sidepanelDir, 'sidepanel.html'), sidepanelHtml);
 
 await esbuild.build({
   ...common,

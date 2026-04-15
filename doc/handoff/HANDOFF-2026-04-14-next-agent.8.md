@@ -1,6 +1,6 @@
 # Handoff — next agent (URL Auto Refresher)
 
-**Revision:** `.8` — supersedes **[`.7`](./HANDOFF-2026-04-14-next-agent.7.md)**. Add **`.9`** when this content is superseded.
+**Revision:** `.8` — supersedes **[`.7`](./HANDOFF-2026-04-14-next-agent.7.md)**. Superseded by **[`.9`](./HANDOFF-2026-04-14-next-agent.9.md)** (build mkdir note).
 
 **Last updated:** 2026-04-14 — **Epic 5 shipped** (unified UI + side panel). Tier 2 multi-window note remains in **`.7`** if you need it.
 
