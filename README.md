@@ -97,7 +97,7 @@ git commit -m "Describe your change"
 
 ## Status
 
-Epics through **6** (focus-aware toolbar badge) are implemented per [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). The badge shows the countdown to the nearest refresh among jobs in the **last-focused** browser window (tabs resolved live via `chrome.tabs.query`). If that window has no enrolled tabs, the badge **falls back** to the nearest refresh among all jobs so you still see activity. **Platform limit:** `chrome.action` exposes **one** badge per profile — every window’s toolbar shows the same text; the value tracks the focused window’s jobs, not a separate number per tiled window.
+Epics through **7** (ship notes for Edge — install, permissions, limits, manual QA) are implemented per [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). The toolbar badge is **focus-aware:** it shows the countdown to the nearest refresh among jobs in the **last-focused** browser window (tabs resolved live via `chrome.tabs.query`). If that window has no enrolled tabs, the badge **falls back** to the nearest refresh among all jobs so you still see activity. **Platform limit:** `chrome.action` exposes **one** badge per profile — every window’s toolbar shows the same text; the value tracks the focused window’s jobs, not a separate number per tiled window.
 
 ## Permissions (Edge / Chromium)
 
@@ -105,4 +105,13 @@ The extension requests: **`storage`**, **`alarms`**, **`tabs`**, **`windows`**, 
 
 ## Manual QA (releases)
 
-Run through [Testing checklist (manual)](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#testing-checklist-manual) in the product plan after `npm run build`, with the folder loaded unpacked in Edge (or Chromium for parity with CI). Add **multi-window** checks: open a second window, confirm the badge follows focus and that globals/individuals behave as expected across windows. Automated Tier 2 tests use Chromium with Playwright; validate in **Edge** before publishing to Edge Add-ons if you rely on browser-specific behavior.
+After `npm run build`, load this repo **unpacked** in Edge: **Extensions** → **Developer mode** → **Load unpacked** → select the folder that contains `manifest.json` (same as [Development](#development) step 5). Then walk the **same** cases as [Testing checklist (manual)](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#testing-checklist-manual):
+
+- Two windows, two different `targetUrl`s in **one global group** → both refresh **together**; live URL may differ until refresh.
+- **Individual** in window A while **global** runs in B/C → independent timers.
+- Service worker restarts → alarms still fire; `nextFireAt` matches alarms.
+- Tab closed → job disabled or removed; no error on `tabs.update`.
+
+**Multi-window / badge:** Open a second window, switch focus between windows, and confirm the badge follows the **focused** window (and fallback when that window has no jobs), and that globals/individuals behave as expected across windows — see **Status** above.
+
+Automated Tier 2 tests use Chromium with Playwright (`npm run test:e2e`); validate in **Edge** before publishing to [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/Microsoft-Edge-Extensions-Home) if you rely on browser-specific behavior.

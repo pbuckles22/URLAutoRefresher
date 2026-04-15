@@ -30,7 +30,7 @@ This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/Agenti
 - **Epic 6:** **6.1–6.3 done** — [`src/lib/focused-window-badge.ts`](src/lib/focused-window-badge.ts) (nearest `nextFireAt` for tabs in the last-focused window; optional global fallback); [`src/background/badge.ts`](src/background/badge.ts) (`refreshActionBadge`, `windows`/`tabs` listeners, `urlar:badge:tick` ~1s alarm); [`src/background/scheduler.ts`](src/background/scheduler.ts) refreshes badge after schedule/storage/tab lifecycle; Tier 2 `e2e/epic-6.spec.ts`.
 - **Epic 7:** Done — README install, permissions, badge limits + manual QA pointer; plan checkboxes closed — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
 - **Next:** Epic **8** (live-aware pause) / **9** (blip refresh), per plan.
-- **Latest handoff:** [doc/handoff/HANDOFF-2026-04-14-next-agent.md](doc/handoff/HANDOFF-2026-04-14-next-agent.md) (index). **Current baseline:** [doc/handoff/HANDOFF-2026-04-14-next-agent.10.md](doc/handoff/HANDOFF-2026-04-14-next-agent.10.md) (**Epic 6** badge + E2E; **`Last updated:` 2026-04-14**). Older dot revisions and the separate **2026-04-15** snapshot remain in `doc/handoff/` without overwriting.
+- **Latest handoff:** [doc/handoff/HANDOFF-2026-04-14-next-agent.md](doc/handoff/HANDOFF-2026-04-14-next-agent.md) (index). **Current baseline:** [doc/handoff/HANDOFF-2026-04-14-next-agent.11.md](doc/handoff/HANDOFF-2026-04-14-next-agent.11.md) (**Epic 7** README alignment; **`Last updated:` 2026-04-14**). Older dot revisions and the separate **2026-04-15** snapshot remain in `doc/handoff/` without overwriting.
 
 ## Run and test
 

@@ -4,7 +4,8 @@ Handoffs for **2026-04-14** use **dot revisions** (`.1`, `.2`, …) so updates d
 
 | Revision | File | Description |
 |----------|------|-------------|
-| **Latest** | [**HANDOFF-2026-04-14-next-agent.10.md**](./HANDOFF-2026-04-14-next-agent.10.md) | **Epic 6 shipped** — focus-aware badge (`focused-window-badge.ts`, `badge.ts`, scheduler hooks); **`e2e/epic-6.spec.ts`**; Epic **5.4** E2E tick; extension E2E hardening; **`npm run ci`** green. Next **Epic 7**. **`Last updated:` 2026-04-14.** |
+| **Latest** | [**HANDOFF-2026-04-14-next-agent.11.md**](./HANDOFF-2026-04-14-next-agent.11.md) | **Epic 7 README** — Status + **Manual QA** aligned with plan checklist; next **Epic 8** / **9**. **`Last updated:` 2026-04-14.** |
+| `.10` | [HANDOFF-2026-04-14-next-agent.10.md](./HANDOFF-2026-04-14-next-agent.10.md) | **Epic 6 shipped** — focus-aware badge; E2E; **`npm run ci`** green. Next **Epic 7**. |
 | `.9` | [HANDOFF-2026-04-14-next-agent.9.md](./HANDOFF-2026-04-14-next-agent.9.md) | **Build:** `Scripts/build.mjs` ensures **`sidepanel/`** exists before writing generated HTML. Baseline still **`.8`** (Epic **5**); next **Epic 6**. |
 | `.8` | [HANDOFF-2026-04-14-next-agent.8.md](./HANDOFF-2026-04-14-next-agent.8.md) | **Epic 5 shipped** — shared `dashboard-app.ts`, browse grid, generated side panel HTML, cross-links, `e2e/epic-5.spec.ts`; next **Epic 6** (badge). |
 | `.7` | [HANDOFF-2026-04-14-next-agent.7.md](./HANDOFF-2026-04-14-next-agent.7.md) | Addendum: **no multi-window Playwright E2E** by design (trust `windows.getAll`; manual QA if needed). Full **4.3** baseline in **`.6`**. |
