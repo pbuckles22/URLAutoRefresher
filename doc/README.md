@@ -9,7 +9,7 @@ All project documentation lives under **`doc/`** (lowercase). The old top-level 
 | **[`plan/EDGE_URL_AUTO_REFRESHER_PLAN.md`](plan/EDGE_URL_AUTO_REFRESHER_PLAN.md)** | Product spec, epics, checkboxes, reference-UI scope — **source of truth** for roadmap work. |
 | **[`requirements/`](requirements/)** | Fine-grained requirements (`product.md`, `ui-ux.md`, …) when you add them; skills point here when present. |
 | **[`ui-reference/`](ui-reference/)** | Third-party UI inspiration screenshots (not our branding); see README there. |
-| **[`handoff/`](handoff/)** | Operational / historical notes (e.g. UNC → local move). |
+| **[`handoff/`](handoff/)** | On **`main`**, only **[`HANDOFF_MOVE_TO_LOCAL.md`](handoff/HANDOFF_MOVE_TO_LOCAL.md)** (generic UNC → local). Session **`HANDOFF-*.md`** files are **gitignored** (local agent notes). |
 
 ## History
 

@@ -19,4 +19,4 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 - **Epic 8** — Live-aware pause/resume (Twitch-first): pause refresh while live, resume when offline. Details: [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
 - **Epic 9** — Blip / error-text triggered refresh (user-defined phrases or regex). Same doc.
 
-Keep this file in sync with AGENT_HANDOFF "Current state" and `doc/requirements/` when you add them.
+Keep this file in sync with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) checkboxes when scope changes. Session handoff notes use `doc/handoff/HANDOFF-*.md` (gitignored — not on `main`). Add `doc/requirements/` when you use it.

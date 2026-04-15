@@ -40,3 +40,6 @@ playwright/.cache/
 
 # Local handoff notes (keep template _template.md and README in repo)
 .cursor/handoff/handoff-*.md
+
+# doc/handoff: only HANDOFF_MOVE_TO_LOCAL.md is tracked on main. Session narratives use HANDOFF-*.md (gitignored).
+doc/handoff/HANDOFF-*.md

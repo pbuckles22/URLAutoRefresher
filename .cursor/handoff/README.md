@@ -1,7 +1,11 @@
 # Handoff notes
 
-When ending a session, write a handoff note here so the next agent (or you later) knows what was done and what to do next.
+**In git (process only):** `_template.md` and this README — no secrets.
 
-- **Naming:** `handoff-YYYY-MM-DD_HHmm.md` (date and 24h time required). Example: `handoff-2025-03-13_1430.md`.
-- **Template:** Copy from `_template.md` and fill in Code review, Tech debt, Code coverage, Done this session, Next up.
-- **Mandatory:** Run the handoff checklist (`.cursor/rules/handoff-checklist.mdc`) before writing the note.
+**Tracked under `doc/handoff/` on `main`:** only [`HANDOFF_MOVE_TO_LOCAL.md`](../../doc/handoff/HANDOFF_MOVE_TO_LOCAL.md) (contributor guide).
+
+**Session narratives (local, gitignored):** `doc/handoff/HANDOFF-*.md` and `handoff-YYYY-MM-DD_HHmm.md` in this folder — see [`.gitignore`](../../.gitignore).
+
+**Product state on `main`:** [PM_PLAN.md](../../PM_PLAN.md), [EDGE plan](../../doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). **Process:** [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md).
+
+Run the handoff checklist (`.cursor/rules/handoff-checklist.mdc`) before writing a handoff note.

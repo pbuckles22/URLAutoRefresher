@@ -6,31 +6,25 @@
 
 This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/AgenticTemplate)** layer: Cursor rules, skills, handoff protocol, and testing discipline (stack-agnostic).
 
+## Scope of this file
+
+**AGENT_HANDOFF.md** is **generic process**: commands, conventions, where documentation lives, and how to hand off. It does **not** duplicate a full epic inventory — that lives in the **EDGE product plan** (checkboxes) and **[PM_PLAN.md](PM_PLAN.md)** (phase summary) on **`main`**.
+
+**Session handoff narratives** (reviews, CI, done / next) are **not** part of the published repo: use **`doc/handoff/HANDOFF-*.md`** (gitignored) or **`.cursor/handoff/handoff-*.md`** (gitignored). The **only** tracked file under `doc/handoff/` is **[HANDOFF_MOVE_TO_LOCAL.md](doc/handoff/HANDOFF_MOVE_TO_LOCAL.md)** (UNC → local disk, for contributors).
+
 ## Source of truth
 
 - **Relocating the repo (UNC → local):** [doc/handoff/HANDOFF_MOVE_TO_LOCAL.md](doc/handoff/HANDOFF_MOVE_TO_LOCAL.md)
-- **Product / epics:** [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md)
-- **Scope / phases:** [PM_PLAN.md](PM_PLAN.md)
+- **Product spec and epic checklist:** [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md)
+- **Phase summary (done / next):** [PM_PLAN.md](PM_PLAN.md)
+- **Session notes (local only):** `doc/handoff/HANDOFF-YYYY-MM-DD-next-agent.md` + dot revisions, or `.cursor/handoff/handoff-YYYY-MM-DD_HHmm.md` — see [.gitignore](.gitignore).
 - **Skills:** [.cursor/skills/](.cursor/skills/) — DEV_GUIDE.md, TEST_TDD.md, DESIGN_SYSTEM.md, techwriter, tester, code-reviewer, tech-debt-evaluator, pm-governance, ui-ux, visual-match
 
 ## Pod (agents always working)
 
 - **Techwriter:** Use when editing README, AGENT_HANDOFF, or internal docs.
 - **Tester:** Black-box tests; run your **documented** test command after changes; keep the suite green. See [TEST_PLAN.md](TEST_PLAN.md).
-- **Handoff (mandatory):** When the user wants a handoff, run code review (code-reviewer), tech debt (tech-debt-evaluator), and your **tests or coverage** as documented below; record in the handoff note. See [.cursor/rules/handoff-checklist.mdc](.cursor/rules/handoff-checklist.mdc).
-
-## Current state
-
-- **Epic 0:** Done — MV3 shell, `manifest.json`, service worker build (`dist/background.js`), full-page `dashboard/`, `sidepanel/` (HTML generated in build from dashboard), toolbar opens dashboard.
-- **Epic 1:** Done — `AppState` types (`src/lib/types.ts`), `loadAppState` / `saveAppState` (`src/lib/storage.ts`), URL/interval/jitter validation, unique ids, enabled enrollment + field validation (`src/lib/state.ts`). Dashboard surfaces enrollment errors (Epic **4.3**).
-- **Epic 2:** Done — `src/background/scheduler.ts`: `chrome.alarms` (names `urlar:i:*` / `urlar:g:*`), `tabs.update` on fire, `nextFireAt` persisted, `tabs.onRemoved` + `applyTabRemoved`, storage debounce resync.
-- **Epic 3:** Done — **3.0–3.3** — Overlay; add individual job; start/stop, edit, delete; **shared list row** [`src/lib/individual-job-list-row.ts`](src/lib/individual-job-list-row.ts); Tier 2 `e2e/epic-3-3.spec.ts`.
-- **Epic 4:** **4.1–4.3 done** — Window/tab browser; **saved global groups** list with **Global (N)** header, `formatGlobalGroupCountdown`, start/stop, edit (name/interval/jitter/target URLs), delete; mutual exclusion UX (`validateEnabledEnrollment` messages + dashboard form/row/toggle errors); [`src/lib/global-groups.ts`](src/lib/global-groups.ts), [`src/lib/global-group-list-row.ts`](src/lib/global-group-list-row.ts), `buildGlobalGroupUpdateFromForm`; Tier 2 `e2e/epic-4-1.spec.ts`, `e2e/epic-4-2.spec.ts`, `e2e/epic-4-3.spec.ts`.
-- **Epic 5:** **5.1–5.4 done** — Shared UI [`src/dashboard/dashboard-app.ts`](src/dashboard/dashboard-app.ts) (dashboard + side panel); **Individual (M)** + browse grid; `Scripts/build.mjs` writes [`sidepanel/sidepanel.html`](sidepanel/sidepanel.html) from dashboard HTML (**creates `sidepanel/`** if missing); cross-surface buttons (`data-open-side-panel` / `data-open-dashboard-tab`); ~1s countdown tick; Tier 2 `e2e/epic-5.spec.ts` (includes live countdown row update).
-- **Epic 6:** **6.1–6.3 done** — [`src/lib/focused-window-badge.ts`](src/lib/focused-window-badge.ts) (nearest `nextFireAt` for tabs in the last-focused window; optional global fallback); [`src/background/badge.ts`](src/background/badge.ts) (`refreshActionBadge`, `windows`/`tabs` listeners, `urlar:badge:tick` ~1s alarm); [`src/background/scheduler.ts`](src/background/scheduler.ts) refreshes badge after schedule/storage/tab lifecycle; Tier 2 `e2e/epic-6.spec.ts`.
-- **Epic 7:** Done — README install, permissions, badge limits + manual QA pointer; plan checkboxes closed — [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
-- **Next:** Epic **8** (live-aware pause) / **9** (blip refresh), per plan.
-- **Latest handoff:** [doc/handoff/HANDOFF-2026-04-14-next-agent.md](doc/handoff/HANDOFF-2026-04-14-next-agent.md) (index). **Current baseline:** [doc/handoff/HANDOFF-2026-04-14-next-agent.11.md](doc/handoff/HANDOFF-2026-04-14-next-agent.11.md) (**Epic 7** README alignment; **`Last updated:` 2026-04-14**). Older dot revisions and the separate **2026-04-15** snapshot remain in `doc/handoff/` without overwriting.
+- **Handoff (mandatory):** When the user wants a handoff, run code review (code-reviewer), tech debt (tech-debt-evaluator), and your **tests or coverage** as documented below; record results in a **local** handoff note (see above), not in this file. See [.cursor/rules/handoff-checklist.mdc](.cursor/rules/handoff-checklist.mdc).
 
 ## Run and test
 
@@ -55,4 +49,4 @@ Load unpacked in Edge from this repo root after a successful build (needs `dist/
 
 ## Handoff protocol
 
-When ending a session: (1) Run the handoff checklist (code review, tech debt, tests/coverage). (2) Update "Current state" above if needed. (3) Write a handoff note in `.cursor/handoff/` (filename: `handoff-YYYY-MM-DD_HHmm.md`). (4) Include Code review, Tech debt, Code coverage / tests, Done this session, Next up. Use `.cursor/handoff/_template.md` as a starting point.
+When ending a session: (1) Run the handoff checklist (code review, tech debt, tests/coverage). (2) Update **[PM_PLAN.md](PM_PLAN.md)** and epic checkboxes in the **EDGE plan** if shipped scope changed — that is what **`main`** carries for **product** state. (3) Write a **local** session note under **`doc/handoff/`** (`HANDOFF-*.md`) and/or **`.cursor/handoff/handoff-*.md`** (both gitignored). (4) Include Code review, Tech debt, Tests / CI, Done this session, Next up. Anything the team must see on GitHub should land in **PM_PLAN**, the **EDGE plan**, **README**, or the **PR** — not in tracked `doc/handoff/` session files.

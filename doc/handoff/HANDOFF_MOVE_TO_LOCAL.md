@@ -1,49 +1,58 @@
-# Handoff — move repo to local disk (2026-04-14)
+# Move the repo from a UNC path to a local disk (Windows)
 
-Use this note **after** you move the folder and **reopen** the project in Cursor. It replaces scattered UNC-path instructions for day-to-day work.
+Use this guide **after** you copy or move the folder and **reopen** the project in your editor. It helps when the repo lived on a **network (UNC)** path and **npm** / tooling failed with *UNC paths are not supported*.
+
+Substitute **your** UNC source and **your** local destination everywhere below.
 
 ## Why move
 
-The repo was on a **UNC path** (`\\chaosnas.local\...`). **npm** (and packages like **esbuild**) often fail on UNC because Windows `cmd` cannot use a UNC path as the current directory (`UNC paths are not supported`). A **local folder** under `C:\Users\pbuck\Dev` avoids that.
+**npm** and some native tooling (e.g. **esbuild** install scripts) invoke Windows **`cmd.exe`**, which often cannot use a **UNC** path (`\\server\share\...`) as the current directory. A folder on a **local drive** (e.g. `C:\...`) avoids that class of failure.
 
-## Target location
+## Pick a local target
 
-**`C:\Users\pbuck\Dev\URLAutoRefresher`**
+Example layout (change to match your machine):
 
-(Create `Dev` if it does not exist.)
+- **Local folder:** `C:\Dev\URLAutoRefresher` (must contain `manifest.json` at the repo root)
+- **UNC source (example only):** `\\YOUR-FILE-SERVER\share\path\URLAutoRefresher`
 
 ---
 
 ## 1. Before you move
 
-1. **Save / commit** anything you care about (this handoff file is safe to commit).
-2. **Close Cursor** (or at least close the workspace that points at the UNC folder) so files are not locked.
+1. **Save / commit** anything you care about.
+2. **Close** the editor workspace that points at the UNC folder so files are not locked.
 3. Close any **terminal** whose current directory is inside the old path.
 
 ---
 
-## 2. Move the folder (PowerShell)
+## 2. Move or clone (PowerShell)
 
-Run **on your PC** (adjust source if your UNC path differs):
+**Option A — Move** (adjust `-LiteralPath` and `-Destination`):
 
 ```powershell
-New-Item -ItemType Directory -Force -Path "C:\Users\pbuck\Dev" | Out-Null
+New-Item -ItemType Directory -Force -Path "C:\Dev" | Out-Null
 
-Move-Item -LiteralPath "\\chaosnas.local\buckles\My.Documents\Development\URLAutoRefresher" `
-  -Destination "C:\Users\pbuck\Dev\URLAutoRefresher"
+Move-Item -LiteralPath "\\YOUR-FILE-SERVER\share\path\URLAutoRefresher" `
+  -Destination "C:\Dev\URLAutoRefresher"
 ```
 
-If `Move-Item` says the destination exists, rename or remove `C:\Users\pbuck\Dev\URLAutoRefresher` first, or merge manually.
+If the destination already exists, rename or remove it first, or merge manually.
 
-**Optional:** If the move is huge or flaky, **clone from GitHub** into `C:\Users\pbuck\Dev\URLAutoRefresher` instead, then delete the old UNC copy once you are happy.
+**Option B — Clone** (if the move is large or unreliable):
+
+```powershell
+git clone https://github.com/YOUR_ORG/URLAutoRefresher.git "C:\Dev\URLAutoRefresher"
+```
+
+Then retire the UNC copy when you are satisfied.
 
 ---
 
-## 3. Reopen in Cursor
+## 3. Reopen in your editor
 
 1. **File → Open Folder…**
-2. Choose **`C:\Users\pbuck\Dev\URLAutoRefresher`**
-3. Confirm the title bar / explorer root shows the **local** path, not `\\chaosnas...`.
+2. Choose **`C:\Dev\URLAutoRefresher`** (your local path).
+3. Confirm the window shows the **local** path, not `\\server\...`.
 
 ---
 
@@ -51,57 +60,53 @@ If `Move-Item` says the destination exists, rename or remove `C:\Users\pbuck\Dev
 
 ### Git `safe.directory` (if Git complains about ownership)
 
-Use the **new** path (forward slashes are fine):
+Use your **local** path (forward slashes are fine):
 
 ```powershell
-git config --global --add safe.directory "C:/Users/pbuck/Dev/URLAutoRefresher"
+git config --global --add safe.directory "C:/Dev/URLAutoRefresher"
 ```
 
-Remove old `safe.directory` entries for the UNC path if you added them earlier (optional, avoids clutter).
+Remove obsolete `safe.directory` entries for the old UNC path if you like.
 
-### Node / npm (fresh install on local path)
+### Node / npm
 
 ```powershell
-Set-Location "C:\Users\pbuck\Dev\URLAutoRefresher"
+Set-Location "C:\Dev\URLAutoRefresher"
 Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
 npm install
 npm test
 npm run build
 ```
 
-If `node_modules` on the NAS copy was half-broken, deleting it before `npm install` on the local copy is recommended.
+### Edge — load unpacked
 
-### Edge — Load unpacked
-
-**edge://extensions** → **Load unpacked** → folder **`C:\Users\pbuck\Dev\URLAutoRefresher`** (the one that contains `manifest.json`).
+**edge://extensions** → **Load unpacked** → select the folder that contains **`manifest.json`** (your local clone).
 
 ---
 
-## 5. Where to look next (project state)
+## 5. Where to look next
+
+This file is **only** about relocating the repo. **Roadmap** lives elsewhere:
 
 | Doc | Purpose |
 |-----|---------|
-| [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) | Agent context, run/test commands, current epic |
 | [EDGE_URL_AUTO_REFRESHER_PLAN.md](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) | Epics, checkboxes, product spec |
 | [PM_PLAN.md](../../PM_PLAN.md) | Short phase summary |
-
-**Progress at handoff time:** Epics **0–2** are implemented (shell, storage/validation, alarms + `tabs.update` + tab lifecycle). **Next:** **Epic 3** — dashboard UI to add/edit/start/stop **individual** jobs (no more relying on devtools for state).
-
-**Key code:** `src/background/scheduler.ts` (alarms), `src/lib/storage.ts`, `src/lib/state.ts`, `manifest.json`, `dashboard/`.
+| [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) | Agent process, run/test commands |
 
 ---
 
 ## Open questions / blockers
 
-- None specific to the move. If `npm install` still fails, confirm you are in **`C:\Users\pbuck\Dev\URLAutoRefresher`** and not a UNC path.
+- If `npm install` still fails, confirm the shell’s current directory is **local**, not UNC.
 
 ---
 
-## Done when
+## Done when (move only)
 
-- [ ] Folder exists at `C:\Users\pbuck\Dev\URLAutoRefresher`
-- [ ] Cursor opened on that folder
+- [ ] Repo root exists at your chosen **local** path
+- [ ] Editor opened on that folder
 - [ ] `npm test` and `npm run build` succeed
 - [ ] Extension loads unpacked from the local path
 
-Then continue from **Epic 3** in the plan.
+Then follow the **EDGE plan** and **PM_PLAN** for product work — not this note.

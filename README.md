@@ -11,7 +11,7 @@ Chromium Manifest V3 extension for Edge: scheduled refreshes to a **configured t
 - [Documentation index (`doc/`)](doc/README.md)
 - [Project plan and epics](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md)
 - [Agent handoff & source of truth](AGENT_HANDOFF.md)
-- [Handoff: move repo to local disk (UNC → `C:\Users\pbuck\Dev`)](doc/handoff/HANDOFF_MOVE_TO_LOCAL.md)
+- [Handoff: move repo from UNC to a local disk (Windows)](doc/handoff/HANDOFF_MOVE_TO_LOCAL.md)
 
 ## What’s included (agentic)
 
@@ -20,7 +20,7 @@ Chromium Manifest V3 extension for Edge: scheduled refreshes to a **configured t
 | **.cursor/rules** | `always.mdc`, `handoff-checklist.mdc`, `testing.mdc` |
 | **.cursor/skills** | DEV_GUIDE, TEST_TDD, DESIGN_SYSTEM, techwriter, tester, code-reviewer, tech-debt-evaluator, pm-governance, ui-ux, visual-match |
 | **.cursor/handoff** | Handoff note template and README |
-| **doc/** | Plan, requirements, UI references, handoff notes ([index](doc/README.md)) |
+| **doc/** | Plan, requirements, UI references; **`doc/handoff/`** on `main` is only the [UNC → local move guide](doc/handoff/HANDOFF_MOVE_TO_LOCAL.md) — see [index](doc/README.md) |
 | **examples/** | Placeholder for reference UI/specs |
 | **script/** | README — add your own test runner scripts |
 
@@ -70,7 +70,7 @@ git push -u origin main
 ## What not to put in the repo
 
 - **No secrets** — API keys, tokens, credentials. Use environment variables or a local config that is gitignored.
-- **Handoff notes** — `.cursor/handoff/handoff-*.md` are gitignored so local handoff notes are not pushed. The template `_template.md` and `README.md` there are committed.
+- **Local agent session notes** — `.cursor/handoff/handoff-*.md` and **`doc/handoff/HANDOFF-*.md`** are gitignored (not on `main`). **`doc/handoff/HANDOFF_MOVE_TO_LOCAL.md`** is the **only** tracked file in that folder (generic UNC → local guide). **Committed:** `.cursor/handoff/_template.md` and `README.md` (process only). **No secrets** in docs.
 
 ## Git on a UNC / network path (dubious ownership)
 

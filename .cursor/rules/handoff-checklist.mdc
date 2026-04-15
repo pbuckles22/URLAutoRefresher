@@ -1,12 +1,12 @@
 ---
 description: Before any handoff — run code review, tech debt evaluation, tests/coverage, and optional project readiness; record in handoff note
-globs: "**/.cursor/handoff/*.md,AGENT_HANDOFF.md"
+globs: "**/.cursor/handoff/*.md,**/doc/handoff/*.md,AGENT_HANDOFF.md"
 alwaysApply: false
 ---
 
 # Handoff checklist (mandatory before handoff)
 
-When the user wants a handoff, or when you are writing or updating a handoff note (e.g. in `.cursor/handoff/`) or AGENT_HANDOFF "Current state":
+When the user wants a handoff, or when you are writing or updating a handoff note (e.g. **`doc/handoff/HANDOFF-*.md`** or **`.cursor/handoff/handoff-*.md`** — both **gitignored**, not on **`main`**):
 
 **You must run all four and record results in the handoff note. Do not skip any.**
 
@@ -19,4 +19,4 @@ When the user wants a handoff, or when you are writing or updating a handoff not
 
 6. **Git commit** — If the first four checks passed: stage the changes and run `git commit` with a short message. If any check failed or is blocking, report back and do not commit until fixed.
 
-Then complete the rest of the handoff (Current state, Done this session, Next up, etc.).
+Then complete the rest of the handoff (update **PM_PLAN** / **EDGE plan** if product scope changed; **Done this session**, **Next up**, etc. in your **`doc/handoff/`** or `.cursor/handoff/` note — see **AGENT_HANDOFF.md**).
