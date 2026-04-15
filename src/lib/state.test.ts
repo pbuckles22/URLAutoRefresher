@@ -230,7 +230,34 @@ describe('validateEnabledEnrollment', () => {
     });
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.error).toMatch(/tab/i);
+      expect(r.error).toContain('cannot be in an enabled global group and an enabled individual job');
+    }
+  });
+
+  it('fails when two enabled individual jobs target the same tab', () => {
+    const r = validateEnabledEnrollment({
+      schemaVersion: 1,
+      globalGroups: [],
+      individualJobs: [
+        {
+          id: 'i1',
+          target: sampleTarget(9),
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: true,
+        },
+        {
+          id: 'i2',
+          target: sampleTarget(9),
+          baseIntervalSec: 120,
+          jitterSec: 0,
+          enabled: true,
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toContain('another enabled individual');
     }
   });
 
@@ -258,6 +285,9 @@ describe('validateEnabledEnrollment', () => {
       individualJobs: [],
     });
     expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toContain('another enabled global group');
+    }
   });
 });
 

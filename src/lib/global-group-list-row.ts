@@ -1,8 +1,8 @@
 /**
- * DOM factory for one individual-job row (dashboard + future surfaces, Epic 3.3).
+ * DOM factory for one global-group row (dashboard — Epic 4.2).
  */
-import { formatIndividualJobCountdown } from './dashboard-countdown';
-import type { IndividualJob } from './types';
+import { formatGlobalGroupCountdown } from './dashboard-countdown';
+import type { GlobalGroup } from './types';
 
 function rowStyle(): string {
   return 'list-style: none; margin: 0.75rem 0; padding: 0.75rem; border: 1px solid #5f6368; border-radius: 8px; background: #303134;';
@@ -20,33 +20,36 @@ function primaryBtnStyle(): string {
   return 'padding: 0.35rem 0.75rem; border-radius: 6px; border: none; background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer; font-size: 0.85rem';
 }
 
-/** Builds the <li> for one job; callers attach list-level event delegation. */
-export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTMLLIElement {
+const inputStyle =
+  'padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #202124; color: #e8eaed';
+
+/** Builds the <li> for one global group; callers attach list-level event delegation. */
+export function createGlobalGroupListRow(g: GlobalGroup, nowMs: number): HTMLLIElement {
   const li = document.createElement('li');
-  li.setAttribute('data-individual-job-row', j.id);
+  li.setAttribute('data-global-group-row', g.id);
   li.style.cssText = rowStyle();
 
   const top = document.createElement('div');
   top.style.cssText = 'display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;';
 
   const summaryLine = document.createElement('span');
-  summaryLine.textContent = `Tab ${j.target.tabId} → ${j.target.targetUrl} · every ${j.baseIntervalSec}s ±${j.jitterSec}s`;
+  summaryLine.textContent = `${g.name} · ${g.targets.length} tabs · every ${g.baseIntervalSec}s ±${g.jitterSec}s`;
   summaryLine.style.flex = '1 1 12rem';
 
   const countdown = document.createElement('span');
-  countdown.setAttribute('data-job-countdown', '');
-  countdown.textContent = formatIndividualJobCountdown(nowMs, j);
+  countdown.setAttribute('data-global-group-countdown', '');
+  countdown.textContent = formatGlobalGroupCountdown(nowMs, g);
   countdown.style.cssText = 'font-variant-numeric: tabular-nums; min-width: 3.5rem; color: #9aa0a6';
 
   const toggle = document.createElement('button');
   toggle.type = 'button';
-  toggle.setAttribute('data-job-toggle', '');
-  toggle.textContent = j.enabled ? 'Stop' : 'Start';
+  toggle.setAttribute('data-global-group-toggle', '');
+  toggle.textContent = g.enabled ? 'Stop' : 'Start';
   toggle.style.cssText = btnStyle();
 
   const del = document.createElement('button');
   del.type = 'button';
-  del.setAttribute('data-job-delete', '');
+  del.setAttribute('data-global-group-delete', '');
   del.textContent = 'Delete';
   del.style.cssText = dangerBtnStyle();
 
@@ -54,7 +57,7 @@ export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTM
   li.appendChild(top);
 
   const rowErr = document.createElement('p');
-  rowErr.setAttribute('data-job-row-error', '');
+  rowErr.setAttribute('data-global-group-row-error', '');
   rowErr.setAttribute('role', 'alert');
   rowErr.style.cssText = 'color: #f28b82; margin: 0.35rem 0 0; min-height: 0; font-size: 0.8rem';
   li.appendChild(rowErr);
@@ -69,19 +72,19 @@ export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTM
   details.appendChild(sum);
 
   const editWrap = document.createElement('div');
-  editWrap.style.cssText = 'display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.35rem; max-width: 28rem';
+  editWrap.style.cssText =
+    'display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.35rem; max-width: 28rem';
 
-  const urlLab = document.createElement('label');
-  urlLab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem';
-  urlLab.innerHTML = '<span>Target URL</span>';
-  const urlEdit = document.createElement('input');
-  urlEdit.type = 'text';
-  urlEdit.setAttribute('data-job-edit-url', '');
-  urlEdit.value = j.target.targetUrl;
-  urlEdit.autocomplete = 'off';
-  urlEdit.style.cssText =
-    'padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #202124; color: #e8eaed';
-  urlLab.appendChild(urlEdit);
+  const nameLab = document.createElement('label');
+  nameLab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem';
+  nameLab.innerHTML = '<span>Group name</span>';
+  const nameIn = document.createElement('input');
+  nameIn.type = 'text';
+  nameIn.setAttribute('data-global-edit-name', '');
+  nameIn.value = g.name;
+  nameIn.autocomplete = 'off';
+  nameIn.style.cssText = inputStyle;
+  nameLab.appendChild(nameIn);
 
   const intLab = document.createElement('label');
   intLab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem';
@@ -90,9 +93,9 @@ export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTM
   intEdit.type = 'number';
   intEdit.min = '1';
   intEdit.step = '1';
-  intEdit.setAttribute('data-job-edit-interval', '');
-  intEdit.value = String(j.baseIntervalSec);
-  intEdit.style.cssText = urlEdit.style.cssText;
+  intEdit.setAttribute('data-global-edit-interval', '');
+  intEdit.value = String(g.baseIntervalSec);
+  intEdit.style.cssText = inputStyle;
   intLab.appendChild(intEdit);
 
   const jitLab = document.createElement('label');
@@ -102,22 +105,43 @@ export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTM
   jitEdit.type = 'number';
   jitEdit.min = '0';
   jitEdit.step = '1';
-  jitEdit.setAttribute('data-job-edit-jitter', '');
-  jitEdit.value = String(j.jitterSec);
-  jitEdit.style.cssText = urlEdit.style.cssText;
+  jitEdit.setAttribute('data-global-edit-jitter', '');
+  jitEdit.value = String(g.jitterSec);
+  jitEdit.style.cssText = inputStyle;
   jitLab.appendChild(jitEdit);
 
+  editWrap.append(nameLab, intLab, jitLab);
+
+  for (const t of g.targets) {
+    const lab = document.createElement('label');
+    lab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem';
+    const cap = document.createElement('span');
+    cap.textContent = t.label
+      ? `Tab ${t.tabId} — ${t.label} · target URL`
+      : `Tab ${t.tabId} — target URL`;
+    lab.appendChild(cap);
+    const urlIn = document.createElement('input');
+    urlIn.type = 'text';
+    urlIn.setAttribute('data-global-edit-target-url', '');
+    urlIn.setAttribute('data-global-edit-target-tab', String(t.tabId));
+    urlIn.value = t.targetUrl;
+    urlIn.autocomplete = 'off';
+    urlIn.style.cssText = inputStyle;
+    lab.appendChild(urlIn);
+    editWrap.appendChild(lab);
+  }
+
   const editErr = document.createElement('p');
-  editErr.setAttribute('data-job-edit-error', '');
+  editErr.setAttribute('data-global-edit-error', '');
   editErr.style.cssText = 'color: #f28b82; margin: 0; min-height: 1rem; font-size: 0.8rem';
 
   const saveBtn = document.createElement('button');
   saveBtn.type = 'button';
-  saveBtn.setAttribute('data-job-edit-save', '');
+  saveBtn.setAttribute('data-global-edit-save', '');
   saveBtn.textContent = 'Save changes';
   saveBtn.style.cssText = `${primaryBtnStyle()} align-self: flex-start`;
 
-  editWrap.append(urlLab, intLab, jitLab, editErr, saveBtn);
+  editWrap.append(editErr, saveBtn);
   details.appendChild(editWrap);
   li.appendChild(details);
 

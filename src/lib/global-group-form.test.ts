@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildGlobalGroupFromForm } from './global-group-form';
+import { buildGlobalGroupFromForm, buildGlobalGroupUpdateFromForm } from './global-group-form';
+import type { GlobalGroup } from './types';
 
 describe('buildGlobalGroupFromForm', () => {
   it('rejects empty name', () => {
@@ -75,6 +76,81 @@ describe('buildGlobalGroupFromForm', () => {
         baseIntervalSec: 90,
         jitterSec: 3,
         enabled: true,
+      });
+    }
+  });
+});
+
+describe('buildGlobalGroupUpdateFromForm', () => {
+  const existing = (): GlobalGroup => ({
+    id: 'gid',
+    name: 'Old',
+    targets: [
+      { tabId: 10, windowId: 2, targetUrl: 'https://example.com/a', label: 'A' },
+      { tabId: 11, windowId: 2, targetUrl: 'https://example.com/b' },
+    ],
+    baseIntervalSec: 60,
+    jitterSec: 0,
+    enabled: true,
+    nextFireAt: 12345,
+  });
+
+  it('rejects empty name', () => {
+    const r = buildGlobalGroupUpdateFromForm(
+      {
+        name: '  ',
+        baseIntervalSec: 60,
+        jitterSec: 0,
+        targets: [
+          { tabId: 10, windowId: 2, targetUrl: 'https://x/' },
+          { tabId: 11, windowId: 2, targetUrl: 'https://y/' },
+        ],
+      },
+      existing()
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it('rejects when tab set does not match existing', () => {
+    const r = buildGlobalGroupUpdateFromForm(
+      {
+        name: 'N',
+        baseIntervalSec: 60,
+        jitterSec: 0,
+        targets: [{ tabId: 10, windowId: 2, targetUrl: 'https://x/' }],
+      },
+      existing()
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it('preserves id, enabled, nextFireAt and updates fields', () => {
+    const ex = existing();
+    const r = buildGlobalGroupUpdateFromForm(
+      {
+        name: ' New ',
+        baseIntervalSec: 90,
+        jitterSec: 2,
+        targets: [
+          { tabId: 11, windowId: 2, targetUrl: 'https://example.com/b2' },
+          { tabId: 10, windowId: 2, targetUrl: 'https://example.com/a2', label: ' L1 ' },
+        ],
+      },
+      ex
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value).toEqual({
+        id: 'gid',
+        name: 'New',
+        enabled: true,
+        nextFireAt: 12345,
+        baseIntervalSec: 90,
+        jitterSec: 2,
+        targets: [
+          { tabId: 10, windowId: 2, targetUrl: 'https://example.com/a2', label: 'L1' },
+          { tabId: 11, windowId: 2, targetUrl: 'https://example.com/b2' },
+        ],
       });
     }
   });

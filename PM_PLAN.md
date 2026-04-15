@@ -8,8 +8,8 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 - **Epic 1:** Done — `AppState`, `chrome.storage.local` helpers, validation, mutual exclusion (Vitest).
 - **Epic 2:** Done — alarms, refresh + reschedule, `nextFireAt`, tab lifecycle (`scheduler.ts`).
 - **Epic 3:** Done — **3.0–3.3** — overlay; add individual job; full individual lifecycle; **shared list row** (`createIndividualJobListRow` in `src/lib/individual-job-list-row.ts`) for reuse (Epic 5+).
-- **Epic 4 (partial):** **4.1 done** — dashboard window/tab browser + per-tab target URLs + `buildGlobalGroupFromForm` (`src/lib/window-tab-browser.ts`, `src/lib/global-group-form.ts`).
-- **Next:** Epic **4.2–4.3** — globals CRUD, **Global (N)** + shared countdown + group start/stop; mutual exclusion when moving tabs between individual and global.
+- **Epic 4:** **4.1–4.3 done** — tab browser + globals list + mutual exclusion UX in dashboard (`e2e/epic-4-3.spec.ts`).
+- **Next:** Epic **5** — unified UI / side panel (see EDGE plan).
 
 ## Later (see EDGE plan)
 

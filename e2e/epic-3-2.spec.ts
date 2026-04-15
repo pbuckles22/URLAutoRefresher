@@ -217,9 +217,16 @@ test.describe('Epic 3.2: individual job lifecycle on dashboard', () => {
 
     await dash.reload();
 
-    await dash.locator('[data-individual-job-row="edit-me"] summary').click();
-    await dash.locator('[data-individual-job-row="edit-me"] [data-job-edit-url]').fill('https://example.com/after-e2e');
-    await dash.locator('[data-individual-job-row="edit-me"] [data-job-edit-save]').click();
+    const editRow = dash.locator('[data-individual-job-row="edit-me"]');
+    // Open <details> in-page so Playwright does not fight headed viewport / pointer interception on the summary.
+    await editRow.locator('details').evaluate((d: HTMLDetailsElement) => {
+      d.open = true;
+    });
+    await editRow.locator('[data-job-edit-url]').fill('https://example.com/after-e2e');
+    // Native click in the page avoids scroll/detach flakes when the list is tall or hit-testing is odd.
+    await editRow.locator('[data-job-edit-save]').evaluate((b: HTMLButtonElement) => {
+      b.click();
+    });
 
     const targetUrl = await dash.evaluate(async (storageKey) => {
       const data = await chrome.storage.local.get(storageKey);

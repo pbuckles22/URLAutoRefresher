@@ -47,8 +47,12 @@
     </section>
 
     <section style="margin-top: 1.75rem" aria-labelledby="global-group-heading">
-      <h2 id="global-group-heading" style="font-size: 1rem; font-weight: 600; margin: 0 0 0.75rem">
-        Global group
+      <h2
+        id="global-group-heading"
+        data-global-section-heading
+        style="font-size: 1rem; font-weight: 600; margin: 0 0 0.75rem"
+      >
+        Global (0)
       </h2>
       <p style="margin: 0 0 0.75rem; color: #9aa0a6; font-size: 0.9rem">
         Browse windows and tabs, check which tabs belong to the group, set each tab’s refresh URL, then
@@ -118,6 +122,10 @@
         </button>
       </form>
       <p data-global-form-error role="alert" style="margin: 0.5rem 0 0; color: #f28b82; min-height: 1.25rem"></p>
+      <ul
+        data-global-groups-list
+        style="margin: 1rem 0 0; padding: 0; list-style: none; color: #e8eaed; line-height: 1.5"
+      ></ul>
     </section>
 
     <section style="margin-top: 1.75rem" aria-labelledby="add-job-heading">

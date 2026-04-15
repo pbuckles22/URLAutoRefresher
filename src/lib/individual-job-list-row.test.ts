@@ -39,6 +39,7 @@ describe('createIndividualJobListRow', () => {
     expect(li.querySelector('[data-job-edit-url]')).toBeTruthy();
     expect(li.querySelector('[data-job-edit-interval]')).toBeTruthy();
     expect(li.querySelector('[data-job-edit-jitter]')).toBeTruthy();
+    expect(li.querySelector('[data-job-row-error]')).toBeTruthy();
     expect(li.querySelector('[data-job-edit-error]')).toBeTruthy();
     expect(li.querySelector('[data-job-edit-save]')).toBeTruthy();
 

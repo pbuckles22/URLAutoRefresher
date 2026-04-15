@@ -86,7 +86,7 @@ export function validateEnabledEnrollment(state: AppState): Result<void> {
       const prev = map.get(t.tabId);
       if (prev) {
         return err(
-          `Tab ${t.tabId} is enrolled twice (global "${g.id}" conflicts with ${prev})`
+          `Tab ${t.tabId} is already in another enabled global group. Disable or remove the other group, or remove this tab from one of the groups.`
         );
       }
       map.set(t.tabId, `global "${g.id}"`);
@@ -99,8 +99,13 @@ export function validateEnabledEnrollment(state: AppState): Result<void> {
     }
     const prev = map.get(j.target.tabId);
     if (prev) {
+      if (prev.startsWith('global')) {
+        return err(
+          `Tab ${j.target.tabId} cannot be in an enabled global group and an enabled individual job at the same time. Stop or delete one of them, or turn off one schedule, before enabling the other.`
+        );
+      }
       return err(
-        `Tab ${j.target.tabId} is enrolled as individual "${j.id}" but already in ${prev}`
+        `Tab ${j.target.tabId} already has another enabled individual refresh job. Stop or delete the other job first.`
       );
     }
     map.set(j.target.tabId, `individual "${j.id}"`);

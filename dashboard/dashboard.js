@@ -17,6 +17,22 @@
     const s = totalSec % 60;
     return `${m}:${String(s).padStart(2, "0")}`;
   }
+  function formatGlobalGroupCountdown(nowMs, group) {
+    if (!group.enabled) {
+      return "\u2014";
+    }
+    if (group.nextFireAt === void 0) {
+      return "\u2026";
+    }
+    const remain = group.nextFireAt - nowMs;
+    if (remain <= 0) {
+      return "0:00";
+    }
+    const totalSec = Math.ceil(remain / 1e3);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
 
   // src/lib/validation.ts
   function validateHttpUrl(input) {
@@ -104,8 +120,57 @@
       }
     };
   }
+  function buildGlobalGroupUpdateFromForm(input, existing) {
+    const name = input.name.trim();
+    if (!name) {
+      return { ok: false, error: "Enter a group name" };
+    }
+    const interval = validateIntervalSec(input.baseIntervalSec);
+    if (!interval.ok) {
+      return interval;
+    }
+    const jitter = validateJitterSec(input.jitterSec);
+    if (!jitter.ok) {
+      return jitter;
+    }
+    const inputByTab = new Map(input.targets.map((t) => [t.tabId, t]));
+    if (inputByTab.size !== input.targets.length) {
+      return { ok: false, error: "Duplicate tab in form" };
+    }
+    if (existing.targets.length !== input.targets.length) {
+      return { ok: false, error: "Each tab target must be provided once" };
+    }
+    const targets = [];
+    for (const ex of existing.targets) {
+      const row = inputByTab.get(ex.tabId);
+      if (!row) {
+        return { ok: false, error: "Each tab target must be provided once" };
+      }
+      const url = validateHttpUrl(row.targetUrl);
+      if (!url.ok) {
+        return url;
+      }
+      const label = row.label?.trim();
+      targets.push({
+        tabId: ex.tabId,
+        windowId: ex.windowId,
+        targetUrl: url.value,
+        ...label ? { label } : {}
+      });
+    }
+    return {
+      ok: true,
+      value: {
+        ...existing,
+        name,
+        targets,
+        baseIntervalSec: interval.value,
+        jitterSec: jitter.value
+      }
+    };
+  }
 
-  // src/lib/individual-job-list-row.ts
+  // src/lib/global-group-list-row.ts
   function rowStyle() {
     return "list-style: none; margin: 0.75rem 0; padding: 0.75rem; border: 1px solid #5f6368; border-radius: 8px; background: #303134;";
   }
@@ -118,10 +183,126 @@
   function primaryBtnStyle() {
     return "padding: 0.35rem 0.75rem; border-radius: 6px; border: none; background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer; font-size: 0.85rem";
   }
+  var inputStyle = "padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #202124; color: #e8eaed";
+  function createGlobalGroupListRow(g, nowMs) {
+    const li = document.createElement("li");
+    li.setAttribute("data-global-group-row", g.id);
+    li.style.cssText = rowStyle();
+    const top = document.createElement("div");
+    top.style.cssText = "display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;";
+    const summaryLine = document.createElement("span");
+    summaryLine.textContent = `${g.name} \xB7 ${g.targets.length} tabs \xB7 every ${g.baseIntervalSec}s \xB1${g.jitterSec}s`;
+    summaryLine.style.flex = "1 1 12rem";
+    const countdown = document.createElement("span");
+    countdown.setAttribute("data-global-group-countdown", "");
+    countdown.textContent = formatGlobalGroupCountdown(nowMs, g);
+    countdown.style.cssText = "font-variant-numeric: tabular-nums; min-width: 3.5rem; color: #9aa0a6";
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.setAttribute("data-global-group-toggle", "");
+    toggle.textContent = g.enabled ? "Stop" : "Start";
+    toggle.style.cssText = btnStyle();
+    const del = document.createElement("button");
+    del.type = "button";
+    del.setAttribute("data-global-group-delete", "");
+    del.textContent = "Delete";
+    del.style.cssText = dangerBtnStyle();
+    top.append(summaryLine, countdown, toggle, del);
+    li.appendChild(top);
+    const rowErr = document.createElement("p");
+    rowErr.setAttribute("data-global-group-row-error", "");
+    rowErr.setAttribute("role", "alert");
+    rowErr.style.cssText = "color: #f28b82; margin: 0.35rem 0 0; min-height: 0; font-size: 0.8rem";
+    li.appendChild(rowErr);
+    const details = document.createElement("details");
+    details.style.marginTop = "0.5rem";
+    const sum = document.createElement("summary");
+    sum.textContent = "Edit";
+    sum.style.cursor = "pointer";
+    sum.style.color = "#8ab4f8";
+    details.appendChild(sum);
+    const editWrap = document.createElement("div");
+    editWrap.style.cssText = "display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.35rem; max-width: 28rem";
+    const nameLab = document.createElement("label");
+    nameLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
+    nameLab.innerHTML = "<span>Group name</span>";
+    const nameIn = document.createElement("input");
+    nameIn.type = "text";
+    nameIn.setAttribute("data-global-edit-name", "");
+    nameIn.value = g.name;
+    nameIn.autocomplete = "off";
+    nameIn.style.cssText = inputStyle;
+    nameLab.appendChild(nameIn);
+    const intLab = document.createElement("label");
+    intLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
+    intLab.innerHTML = "<span>Interval (seconds)</span>";
+    const intEdit = document.createElement("input");
+    intEdit.type = "number";
+    intEdit.min = "1";
+    intEdit.step = "1";
+    intEdit.setAttribute("data-global-edit-interval", "");
+    intEdit.value = String(g.baseIntervalSec);
+    intEdit.style.cssText = inputStyle;
+    intLab.appendChild(intEdit);
+    const jitLab = document.createElement("label");
+    jitLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
+    jitLab.innerHTML = "<span>Jitter (seconds)</span>";
+    const jitEdit = document.createElement("input");
+    jitEdit.type = "number";
+    jitEdit.min = "0";
+    jitEdit.step = "1";
+    jitEdit.setAttribute("data-global-edit-jitter", "");
+    jitEdit.value = String(g.jitterSec);
+    jitEdit.style.cssText = inputStyle;
+    jitLab.appendChild(jitEdit);
+    editWrap.append(nameLab, intLab, jitLab);
+    for (const t of g.targets) {
+      const lab = document.createElement("label");
+      lab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
+      const cap = document.createElement("span");
+      cap.textContent = t.label ? `Tab ${t.tabId} \u2014 ${t.label} \xB7 target URL` : `Tab ${t.tabId} \u2014 target URL`;
+      lab.appendChild(cap);
+      const urlIn = document.createElement("input");
+      urlIn.type = "text";
+      urlIn.setAttribute("data-global-edit-target-url", "");
+      urlIn.setAttribute("data-global-edit-target-tab", String(t.tabId));
+      urlIn.value = t.targetUrl;
+      urlIn.autocomplete = "off";
+      urlIn.style.cssText = inputStyle;
+      lab.appendChild(urlIn);
+      editWrap.appendChild(lab);
+    }
+    const editErr = document.createElement("p");
+    editErr.setAttribute("data-global-edit-error", "");
+    editErr.style.cssText = "color: #f28b82; margin: 0; min-height: 1rem; font-size: 0.8rem";
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.setAttribute("data-global-edit-save", "");
+    saveBtn.textContent = "Save changes";
+    saveBtn.style.cssText = `${primaryBtnStyle()} align-self: flex-start`;
+    editWrap.append(editErr, saveBtn);
+    details.appendChild(editWrap);
+    li.appendChild(details);
+    return li;
+  }
+
+  // src/lib/individual-job-list-row.ts
+  function rowStyle2() {
+    return "list-style: none; margin: 0.75rem 0; padding: 0.75rem; border: 1px solid #5f6368; border-radius: 8px; background: #303134;";
+  }
+  function btnStyle2() {
+    return "padding: 0.3rem 0.65rem; border-radius: 6px; border: 1px solid #5f6368; background: #3c4043; color: #e8eaed; cursor: pointer; font-size: 0.85rem";
+  }
+  function dangerBtnStyle2() {
+    return `${btnStyle2()} border-color: #c5221f; color: #f28b82`;
+  }
+  function primaryBtnStyle2() {
+    return "padding: 0.35rem 0.75rem; border-radius: 6px; border: none; background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer; font-size: 0.85rem";
+  }
   function createIndividualJobListRow(j, nowMs) {
     const li = document.createElement("li");
     li.setAttribute("data-individual-job-row", j.id);
-    li.style.cssText = rowStyle();
+    li.style.cssText = rowStyle2();
     const top = document.createElement("div");
     top.style.cssText = "display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;";
     const summaryLine = document.createElement("span");
@@ -135,14 +316,19 @@
     toggle.type = "button";
     toggle.setAttribute("data-job-toggle", "");
     toggle.textContent = j.enabled ? "Stop" : "Start";
-    toggle.style.cssText = btnStyle();
+    toggle.style.cssText = btnStyle2();
     const del = document.createElement("button");
     del.type = "button";
     del.setAttribute("data-job-delete", "");
     del.textContent = "Delete";
-    del.style.cssText = dangerBtnStyle();
+    del.style.cssText = dangerBtnStyle2();
     top.append(summaryLine, countdown, toggle, del);
     li.appendChild(top);
+    const rowErr = document.createElement("p");
+    rowErr.setAttribute("data-job-row-error", "");
+    rowErr.setAttribute("role", "alert");
+    rowErr.style.cssText = "color: #f28b82; margin: 0.35rem 0 0; min-height: 0; font-size: 0.8rem";
+    li.appendChild(rowErr);
     const details = document.createElement("details");
     details.style.marginTop = "0.5rem";
     const sum = document.createElement("summary");
@@ -191,7 +377,7 @@
     saveBtn.type = "button";
     saveBtn.setAttribute("data-job-edit-save", "");
     saveBtn.textContent = "Save changes";
-    saveBtn.style.cssText = `${primaryBtnStyle()} align-self: flex-start`;
+    saveBtn.style.cssText = `${primaryBtnStyle2()} align-self: flex-start`;
     editWrap.append(urlLab, intLab, jitLab, editErr, saveBtn);
     details.appendChild(editWrap);
     li.appendChild(details);
@@ -286,6 +472,37 @@
     const next = [...state.individualJobs];
     next[idx] = updated;
     return { ...state, individualJobs: next };
+  }
+
+  // src/lib/global-groups.ts
+  function removeGlobalGroupById(state, groupId) {
+    return {
+      ...state,
+      globalGroups: state.globalGroups.filter((g) => g.id !== groupId)
+    };
+  }
+  function setGlobalGroupEnabled(state, groupId, enabled) {
+    return {
+      ...state,
+      globalGroups: state.globalGroups.map((g) => {
+        if (g.id !== groupId) {
+          return g;
+        }
+        if (!enabled) {
+          return { ...g, enabled: false, nextFireAt: void 0 };
+        }
+        return { ...g, enabled: true };
+      })
+    };
+  }
+  function replaceGlobalGroup(state, updated) {
+    const idx = state.globalGroups.findIndex((g) => g.id === updated.id);
+    if (idx === -1) {
+      return state;
+    }
+    const next = [...state.globalGroups];
+    next[idx] = updated;
+    return { ...state, globalGroups: next };
   }
 
   // src/lib/window-tab-browser.ts
@@ -415,7 +632,7 @@
         const prev = map.get(t.tabId);
         if (prev) {
           return err(
-            `Tab ${t.tabId} is enrolled twice (global "${g.id}" conflicts with ${prev})`
+            `Tab ${t.tabId} is already in another enabled global group. Disable or remove the other group, or remove this tab from one of the groups.`
           );
         }
         map.set(t.tabId, `global "${g.id}"`);
@@ -427,8 +644,13 @@
       }
       const prev = map.get(j.target.tabId);
       if (prev) {
+        if (prev.startsWith("global")) {
+          return err(
+            `Tab ${j.target.tabId} cannot be in an enabled global group and an enabled individual job at the same time. Stop or delete one of them, or turn off one schedule, before enabling the other.`
+          );
+        }
         return err(
-          `Tab ${j.target.tabId} is enrolled as individual "${j.id}" but already in ${prev}`
+          `Tab ${j.target.tabId} already has another enabled individual refresh job. Stop or delete the other job first.`
         );
       }
       map.set(j.target.tabId, `individual "${j.id}"`);
@@ -520,6 +742,22 @@
   var globalIntervalInput = document.querySelector("[data-global-interval]");
   var globalJitterInput = document.querySelector("[data-global-jitter]");
   var globalFormError = document.querySelector("[data-global-form-error]");
+  var globalSectionHeading = document.querySelector("[data-global-section-heading]");
+  var globalGroupsList = document.querySelector("[data-global-groups-list]");
+  async function renderGlobalGroupsList() {
+    const state = await loadAppState();
+    if (globalSectionHeading) {
+      globalSectionHeading.textContent = `Global (${state.globalGroups.length})`;
+    }
+    if (!globalGroupsList) {
+      return;
+    }
+    const now = Date.now();
+    globalGroupsList.innerHTML = "";
+    for (const g of state.globalGroups) {
+      globalGroupsList.appendChild(createGlobalGroupListRow(g, now));
+    }
+  }
   async function renderGlobalTabBrowser() {
     if (!globalTabBrowser) {
       return;
@@ -598,16 +836,24 @@
     }
   }
   async function tickCountdowns() {
-    if (!jobsList) {
-      return;
-    }
     const state = await loadAppState();
     const now = Date.now();
-    for (const job of state.individualJobs) {
-      const row = jobsList.querySelector(`[data-individual-job-row="${CSS.escape(job.id)}"]`);
-      const el = row?.querySelector("[data-job-countdown]");
-      if (el) {
-        el.textContent = formatIndividualJobCountdown(now, job);
+    if (jobsList) {
+      for (const job of state.individualJobs) {
+        const row = jobsList.querySelector(`[data-individual-job-row="${CSS.escape(job.id)}"]`);
+        const el = row?.querySelector("[data-job-countdown]");
+        if (el) {
+          el.textContent = formatIndividualJobCountdown(now, job);
+        }
+      }
+    }
+    if (globalGroupsList) {
+      for (const g of state.globalGroups) {
+        const row = globalGroupsList.querySelector(`[data-global-group-row="${CSS.escape(g.id)}"]`);
+        const el = row?.querySelector("[data-global-group-countdown]");
+        if (el) {
+          el.textContent = formatGlobalGroupCountdown(now, g);
+        }
       }
     }
   }
@@ -641,6 +887,10 @@
       }
       if (t.closest("[data-job-toggle]")) {
         void (async () => {
+          const rowErr = row.querySelector("[data-job-row-error]");
+          if (rowErr) {
+            rowErr.textContent = "";
+          }
           const state = await loadAppState();
           const job = state.individualJobs.find((j) => j.id === id);
           if (!job) {
@@ -650,7 +900,12 @@
           try {
             await saveAppState(next);
           } catch (err2) {
-            console.error(err2);
+            if (rowErr) {
+              rowErr.textContent = err2 instanceof Error ? err2.message : String(err2);
+            } else {
+              console.error(err2);
+            }
+            return;
           }
           await renderIndividualJobs();
         })();
@@ -694,13 +949,121 @@
       }
     });
   }
+  function bindGlobalGroupsListEvents() {
+    if (!globalGroupsList || globalGroupsList.dataset.epic42Bound === "1") {
+      return;
+    }
+    globalGroupsList.dataset.epic42Bound = "1";
+    globalGroupsList.addEventListener("click", (e) => {
+      const t = e.target;
+      const row = t.closest("[data-global-group-row]");
+      if (!row) {
+        return;
+      }
+      const id = row.getAttribute("data-global-group-row");
+      if (!id) {
+        return;
+      }
+      if (t.closest("[data-global-group-delete]")) {
+        void (async () => {
+          const state = await loadAppState();
+          const next = removeGlobalGroupById(state, id);
+          try {
+            await saveAppState(next);
+          } catch (err2) {
+            console.error(err2);
+          }
+          await renderGlobalGroupsList();
+          await renderIndividualJobs();
+        })();
+        return;
+      }
+      if (t.closest("[data-global-group-toggle]")) {
+        void (async () => {
+          const rowErr = row.querySelector("[data-global-group-row-error]");
+          if (rowErr) {
+            rowErr.textContent = "";
+          }
+          const state = await loadAppState();
+          const g = state.globalGroups.find((x) => x.id === id);
+          if (!g) {
+            return;
+          }
+          const next = setGlobalGroupEnabled(state, id, !g.enabled);
+          try {
+            await saveAppState(next);
+          } catch (err2) {
+            if (rowErr) {
+              rowErr.textContent = err2 instanceof Error ? err2.message : String(err2);
+            } else {
+              console.error(err2);
+            }
+            return;
+          }
+          await renderGlobalGroupsList();
+          await renderIndividualJobs();
+        })();
+        return;
+      }
+      if (t.closest("[data-global-edit-save]")) {
+        void (async () => {
+          const errEl = row.querySelector("[data-global-edit-error]");
+          if (errEl) {
+            errEl.textContent = "";
+          }
+          const state = await loadAppState();
+          const existing = state.globalGroups.find((x) => x.id === id);
+          if (!existing) {
+            return;
+          }
+          const name = row.querySelector("[data-global-edit-name]")?.value ?? "";
+          const interval = Number(row.querySelector("[data-global-edit-interval]")?.value);
+          const jitter = Number(row.querySelector("[data-global-edit-jitter]")?.value);
+          const targets = [];
+          for (const ex of existing.targets) {
+            const urlIn = row.querySelector(
+              `[data-global-edit-target-url][data-global-edit-target-tab="${ex.tabId}"]`
+            );
+            targets.push({
+              tabId: ex.tabId,
+              windowId: ex.windowId,
+              targetUrl: urlIn?.value ?? ""
+            });
+          }
+          const built = buildGlobalGroupUpdateFromForm(
+            { name, baseIntervalSec: interval, jitterSec: jitter, targets },
+            existing
+          );
+          if (!built.ok) {
+            if (errEl) {
+              errEl.textContent = built.error;
+            }
+            return;
+          }
+          const next = replaceGlobalGroup(state, built.value);
+          try {
+            await saveAppState(next);
+          } catch (err2) {
+            if (errEl) {
+              errEl.textContent = err2 instanceof Error ? err2.message : String(err2);
+            }
+            return;
+          }
+          await renderGlobalGroupsList();
+          await renderIndividualJobs();
+        })();
+      }
+    });
+  }
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local" || !(STORAGE_KEY in changes)) {
       return;
     }
     void renderIndividualJobs();
+    void renderGlobalGroupsList();
   });
   bindJobsListEvents();
+  bindGlobalGroupsListEvents();
   window.setInterval(() => void tickCountdowns(), 1e3);
   if (addJobForm && tabSelect && urlInput && intervalInput && jitterInput) {
     addJobForm.addEventListener("submit", (e) => {
@@ -797,9 +1160,12 @@
           return;
         }
         globalGroupName.value = "";
+        await renderGlobalGroupsList();
         await renderIndividualJobs();
       })();
     });
   }
-  void Promise.all([populateTabSelect(), renderGlobalTabBrowser()]).then(() => renderIndividualJobs());
+  void Promise.all([populateTabSelect(), renderGlobalTabBrowser(), renderGlobalGroupsList()]).then(
+    () => renderIndividualJobs()
+  );
 })();

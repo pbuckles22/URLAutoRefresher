@@ -91,6 +91,9 @@ Implementation:
 - **`e2e/epic-3-1.spec.ts`** — dashboard **Individual job** form: tab picker, URL, interval, jitter, Save → `individualJobs` persisted in storage.
 - **`e2e/epic-3-2.spec.ts`** — per-job **Start/Stop**, **Delete**, **Edit** (storage), two **countdown** rows; uses `[data-individual-job-row]`, `[data-job-toggle]`, `[data-job-delete]`, `[data-job-countdown]`, edit fields.
 - **`e2e/epic-3-3.spec.ts`** — shared row module contract: summary line text, visible countdown/toggle/delete, edit fields present (inside closed `<details>`).
+- **`e2e/epic-4-1.spec.ts`** — global group from **window/tab browser** + per-tab URLs → storage.
+- **`e2e/epic-4-2.spec.ts`** — **Global (N)** header, saved row countdown, **Start/Stop**, **Edit**, **Delete**.
+- **`e2e/epic-4-3.spec.ts`** — mutual exclusion: add global vs individual, add individual vs global, **Start** on global row when individual is enabled on the same tab (`[data-global-form-error]`, `[data-add-job-error]`, `[data-global-group-row-error]`).
 
 **Headed Chromium:** MV3 extensions are exercised with **`headless: false`** (Playwright `channel: 'chromium'`). **CI (Linux)** runs under **xvfb** so no physical display is required.
 

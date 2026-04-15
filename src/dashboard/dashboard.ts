@@ -1,11 +1,18 @@
 /**
- * Full-page dashboard: prefs (Epic 3.0), add individual job (Epic 3.1), lifecycle (Epic 3.2).
+ * Full-page dashboard: prefs (Epic 3.0), add individual job (Epic 3.1), lifecycle (Epic 3.2),
+ * global groups (Epic 4+).
  */
-import { formatIndividualJobCountdown } from '../lib/dashboard-countdown';
-import { buildGlobalGroupFromForm } from '../lib/global-group-form';
+import { formatGlobalGroupCountdown, formatIndividualJobCountdown } from '../lib/dashboard-countdown';
+import { buildGlobalGroupFromForm, buildGlobalGroupUpdateFromForm } from '../lib/global-group-form';
+import { createGlobalGroupListRow } from '../lib/global-group-list-row';
 import { createIndividualJobListRow } from '../lib/individual-job-list-row';
 import { buildIndividualJobFromForm, buildIndividualJobUpdateFromForm } from '../lib/individual-job-form';
 import { removeIndividualJobById, replaceIndividualJob, setIndividualJobEnabled } from '../lib/individual-jobs';
+import {
+  removeGlobalGroupById,
+  replaceGlobalGroup,
+  setGlobalGroupEnabled,
+} from '../lib/global-groups';
 import { defaultTargetUrlForTab, tabRowsFromWindowsSnapshot } from '../lib/window-tab-browser';
 import { loadExtensionPrefs, saveExtensionPrefs } from '../lib/prefs';
 import { loadAppState, saveAppState, STORAGE_KEY } from '../lib/storage';
@@ -40,6 +47,23 @@ const globalRefreshTabs = document.querySelector<HTMLButtonElement>('[data-globa
 const globalIntervalInput = document.querySelector<HTMLInputElement>('[data-global-interval]');
 const globalJitterInput = document.querySelector<HTMLInputElement>('[data-global-jitter]');
 const globalFormError = document.querySelector<HTMLElement>('[data-global-form-error]');
+const globalSectionHeading = document.querySelector<HTMLElement>('[data-global-section-heading]');
+const globalGroupsList = document.querySelector<HTMLUListElement>('[data-global-groups-list]');
+
+async function renderGlobalGroupsList(): Promise<void> {
+  const state = await loadAppState();
+  if (globalSectionHeading) {
+    globalSectionHeading.textContent = `Global (${state.globalGroups.length})`;
+  }
+  if (!globalGroupsList) {
+    return;
+  }
+  const now = Date.now();
+  globalGroupsList.innerHTML = '';
+  for (const g of state.globalGroups) {
+    globalGroupsList.appendChild(createGlobalGroupListRow(g, now));
+  }
+}
 
 async function renderGlobalTabBrowser(): Promise<void> {
   if (!globalTabBrowser) {
@@ -126,16 +150,24 @@ async function renderIndividualJobs(): Promise<void> {
 }
 
 async function tickCountdowns(): Promise<void> {
-  if (!jobsList) {
-    return;
-  }
   const state = await loadAppState();
   const now = Date.now();
-  for (const job of state.individualJobs) {
-    const row = jobsList.querySelector(`[data-individual-job-row="${CSS.escape(job.id)}"]`);
-    const el = row?.querySelector('[data-job-countdown]');
-    if (el) {
-      el.textContent = formatIndividualJobCountdown(now, job);
+  if (jobsList) {
+    for (const job of state.individualJobs) {
+      const row = jobsList.querySelector(`[data-individual-job-row="${CSS.escape(job.id)}"]`);
+      const el = row?.querySelector('[data-job-countdown]');
+      if (el) {
+        el.textContent = formatIndividualJobCountdown(now, job);
+      }
+    }
+  }
+  if (globalGroupsList) {
+    for (const g of state.globalGroups) {
+      const row = globalGroupsList.querySelector(`[data-global-group-row="${CSS.escape(g.id)}"]`);
+      const el = row?.querySelector('[data-global-group-countdown]');
+      if (el) {
+        el.textContent = formatGlobalGroupCountdown(now, g);
+      }
     }
   }
 }
@@ -173,6 +205,10 @@ function bindJobsListEvents(): void {
 
     if (t.closest('[data-job-toggle]')) {
       void (async () => {
+        const rowErr = row.querySelector('[data-job-row-error]');
+        if (rowErr) {
+          rowErr.textContent = '';
+        }
         const state = await loadAppState();
         const job = state.individualJobs.find((j) => j.id === id);
         if (!job) {
@@ -182,7 +218,12 @@ function bindJobsListEvents(): void {
         try {
           await saveAppState(next);
         } catch (err) {
-          console.error(err);
+          if (rowErr) {
+            rowErr.textContent = err instanceof Error ? err.message : String(err);
+          } else {
+            console.error(err);
+          }
+          return;
         }
         await renderIndividualJobs();
       })();
@@ -228,14 +269,134 @@ function bindJobsListEvents(): void {
   });
 }
 
+function bindGlobalGroupsListEvents(): void {
+  if (!globalGroupsList || globalGroupsList.dataset.epic42Bound === '1') {
+    return;
+  }
+  globalGroupsList.dataset.epic42Bound = '1';
+
+  globalGroupsList.addEventListener('click', (e) => {
+    const t = e.target as HTMLElement;
+    const row = t.closest('[data-global-group-row]');
+    if (!row) {
+      return;
+    }
+    const id = row.getAttribute('data-global-group-row');
+    if (!id) {
+      return;
+    }
+
+    if (t.closest('[data-global-group-delete]')) {
+      void (async () => {
+        const state = await loadAppState();
+        const next = removeGlobalGroupById(state, id);
+        try {
+          await saveAppState(next);
+        } catch (err) {
+          console.error(err);
+        }
+        await renderGlobalGroupsList();
+        await renderIndividualJobs();
+      })();
+      return;
+    }
+
+    if (t.closest('[data-global-group-toggle]')) {
+      void (async () => {
+        const rowErr = row.querySelector('[data-global-group-row-error]');
+        if (rowErr) {
+          rowErr.textContent = '';
+        }
+        const state = await loadAppState();
+        const g = state.globalGroups.find((x) => x.id === id);
+        if (!g) {
+          return;
+        }
+        const next = setGlobalGroupEnabled(state, id, !g.enabled);
+        try {
+          await saveAppState(next);
+        } catch (err) {
+          if (rowErr) {
+            rowErr.textContent = err instanceof Error ? err.message : String(err);
+          } else {
+            console.error(err);
+          }
+          return;
+        }
+        await renderGlobalGroupsList();
+        await renderIndividualJobs();
+      })();
+      return;
+    }
+
+    if (t.closest('[data-global-edit-save]')) {
+      void (async () => {
+        const errEl = row.querySelector('[data-global-edit-error]');
+        if (errEl) {
+          errEl.textContent = '';
+        }
+        const state = await loadAppState();
+        const existing = state.globalGroups.find((x) => x.id === id);
+        if (!existing) {
+          return;
+        }
+
+        const name = row.querySelector<HTMLInputElement>('[data-global-edit-name]')?.value ?? '';
+        const interval = Number(row.querySelector<HTMLInputElement>('[data-global-edit-interval]')?.value);
+        const jitter = Number(row.querySelector<HTMLInputElement>('[data-global-edit-jitter]')?.value);
+
+        const targets: Array<{
+          tabId: number;
+          windowId: number;
+          targetUrl: string;
+        }> = [];
+        for (const ex of existing.targets) {
+          const urlIn = row.querySelector<HTMLInputElement>(
+            `[data-global-edit-target-url][data-global-edit-target-tab="${ex.tabId}"]`
+          );
+          targets.push({
+            tabId: ex.tabId,
+            windowId: ex.windowId,
+            targetUrl: urlIn?.value ?? '',
+          });
+        }
+
+        const built = buildGlobalGroupUpdateFromForm(
+          { name, baseIntervalSec: interval, jitterSec: jitter, targets },
+          existing
+        );
+        if (!built.ok) {
+          if (errEl) {
+            errEl.textContent = built.error;
+          }
+          return;
+        }
+        const next = replaceGlobalGroup(state, built.value);
+        try {
+          await saveAppState(next);
+        } catch (err) {
+          if (errEl) {
+            errEl.textContent = err instanceof Error ? err.message : String(err);
+          }
+          return;
+        }
+        await renderGlobalGroupsList();
+        await renderIndividualJobs();
+      })();
+    }
+  });
+}
+
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'local' || !(STORAGE_KEY in changes)) {
     return;
   }
   void renderIndividualJobs();
+  void renderGlobalGroupsList();
 });
 
 bindJobsListEvents();
+bindGlobalGroupsListEvents();
 window.setInterval(() => void tickCountdowns(), 1000);
 
 if (addJobForm && tabSelect && urlInput && intervalInput && jitterInput) {
@@ -346,9 +507,12 @@ if (
         return;
       }
       globalGroupName.value = '';
+      await renderGlobalGroupsList();
       await renderIndividualJobs();
     })();
   });
 }
 
-void Promise.all([populateTabSelect(), renderGlobalTabBrowser()]).then(() => renderIndividualJobs());
+void Promise.all([populateTabSelect(), renderGlobalTabBrowser(), renderGlobalGroupsList()]).then(() =>
+  renderIndividualJobs()
+);
