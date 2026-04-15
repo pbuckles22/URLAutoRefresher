@@ -15,6 +15,7 @@ import {
 } from '../lib/global-groups';
 import { defaultTargetUrlForTab, tabRowsFromWindowsSnapshot } from '../lib/window-tab-browser';
 import { loadExtensionPrefs, saveExtensionPrefs } from '../lib/prefs';
+import { onlyNonLayoutAppStateDiff } from '../lib/app-state-list-layout';
 import { loadAppState, saveAppState, STORAGE_KEY } from '../lib/storage';
 
 function wireCrossSurfaceLinks(): void {
@@ -413,6 +414,11 @@ export function initDashboardApp(): void {
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== 'local' || !(STORAGE_KEY in changes)) {
+      return;
+    }
+    const ch = changes[STORAGE_KEY]!;
+    if (onlyNonLayoutAppStateDiff(ch.oldValue, ch.newValue)) {
+      void tickCountdowns();
       return;
     }
     void renderIndividualJobs();

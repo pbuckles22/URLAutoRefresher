@@ -228,14 +228,19 @@ test.describe('Epic 3.2: individual job lifecycle on dashboard', () => {
       b.click();
     });
 
-    const targetUrl = await dash.evaluate(async (storageKey) => {
-      const data = await chrome.storage.local.get(storageKey);
-      const raw = data[storageKey as keyof typeof data] as
-        | { individualJobs?: { target: { targetUrl: string } }[] }
-        | undefined;
-      return raw?.individualJobs?.[0]?.target?.targetUrl;
-    }, STORAGE_KEY);
-    expect(targetUrl).toBe('https://example.com/after-e2e');
+    await expect
+      .poll(
+        async () =>
+          dash.evaluate(async (storageKey) => {
+            const data = await chrome.storage.local.get(storageKey);
+            const raw = data[storageKey as keyof typeof data] as
+              | { individualJobs?: { target: { targetUrl: string } }[] }
+              | undefined;
+            return raw?.individualJobs?.[0]?.target?.targetUrl;
+          }, STORAGE_KEY),
+        { timeout: 15_000 }
+      )
+      .toBe('https://example.com/after-e2e');
 
     await dash.close();
     await fixturePage.close();

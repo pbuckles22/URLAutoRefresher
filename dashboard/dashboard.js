@@ -561,6 +561,48 @@
     await chrome.storage.local.set({ [PREFS_STORAGE_KEY]: prefs });
   }
 
+  // src/lib/app-state-list-layout.ts
+  function individualJobsLayoutSignature(s) {
+    return JSON.stringify(
+      s.individualJobs.map((j) => ({
+        id: j.id,
+        target: j.target,
+        baseIntervalSec: j.baseIntervalSec,
+        jitterSec: j.jitterSec,
+        enabled: j.enabled
+      }))
+    );
+  }
+  function globalGroupsLayoutSignature(s) {
+    return JSON.stringify(
+      s.globalGroups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        targets: g.targets,
+        baseIntervalSec: g.baseIntervalSec,
+        jitterSec: g.jitterSec,
+        enabled: g.enabled
+      }))
+    );
+  }
+  function appStateListLayoutEqual(a, b) {
+    if (a.schemaVersion !== b.schemaVersion) {
+      return false;
+    }
+    return individualJobsLayoutSignature(a) === individualJobsLayoutSignature(b) && globalGroupsLayoutSignature(a) === globalGroupsLayoutSignature(b);
+  }
+  function onlyNonLayoutAppStateDiff(oldVal, newVal) {
+    if (oldVal === void 0 || newVal === void 0) {
+      return false;
+    }
+    const a = oldVal;
+    const b = newVal;
+    if (typeof a !== "object" || typeof b !== "object" || !Array.isArray(a.individualJobs) || !Array.isArray(b.individualJobs) || !Array.isArray(a.globalGroups) || !Array.isArray(b.globalGroups)) {
+      return false;
+    }
+    return appStateListLayoutEqual(a, b);
+  }
+
   // src/lib/state.ts
   var CURRENT_SCHEMA = 1;
   var DEFAULT_STATE = {
@@ -1080,6 +1122,11 @@
     }
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== "local" || !(STORAGE_KEY in changes)) {
+        return;
+      }
+      const ch = changes[STORAGE_KEY];
+      if (onlyNonLayoutAppStateDiff(ch.oldValue, ch.newValue)) {
+        void tickCountdowns();
         return;
       }
       void renderIndividualJobs();
