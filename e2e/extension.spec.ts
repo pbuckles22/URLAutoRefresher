@@ -5,11 +5,13 @@ const STORAGE_KEY = 'urlAutoRefresher_state_v1';
 
 async function expectOverlayCardVisible(fixturePage: Page): Promise<void> {
   await expect
-    .poll(async () =>
-      fixturePage.evaluate(() => {
-        const host = document.getElementById('url-auto-refresher-overlay-root');
-        return !!(host?.shadowRoot?.querySelector('.card'));
-      })
+    .poll(
+      async () =>
+        fixturePage.evaluate(() => {
+          const host = document.getElementById('url-auto-refresher-overlay-root');
+          return !!(host?.shadowRoot?.querySelector('.card'));
+        }),
+      { timeout: 30_000 }
     )
     .toBe(true);
 }
@@ -75,6 +77,9 @@ test('content script shows overlay when tab has enabled job and pref is on', asy
     STORAGE_KEY
   );
 
+  // Let the service worker debounce + resync (storage listener) finish before the fixture tab reloads.
+  await dash.waitForTimeout(500);
+
   // Storage updates from another tab may race the content script listener; reload guarantees sync.
   await fixturePage.reload({ waitUntil: 'domcontentloaded' });
   await expectOverlayCardVisible(fixturePage);
@@ -118,6 +123,8 @@ test('turning off overlay pref removes overlay from fixture page', async () => {
     },
     STORAGE_KEY
   );
+
+  await dash.waitForTimeout(500);
 
   await fixturePage.reload({ waitUntil: 'domcontentloaded' });
   await expectOverlayCardVisible(fixturePage);

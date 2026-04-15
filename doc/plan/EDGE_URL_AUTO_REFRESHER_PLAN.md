@@ -1,6 +1,6 @@
 # URL Auto Refresher — product plan
 
-Manifest V3 Edge extension: **global sync groups** vs **individual jobs**, jittered intervals, **target URL per tab**, Side Panel + full-page **dashboard**, and a **focus-aware** toolbar badge. Unified browse/edit UI opens from the toolbar.
+Manifest V3 Edge extension: **global synchronized groups** (one shared refresh clock per group—not Chrome account sync) vs **individual jobs**, jittered intervals, **target URL per tab**, Side Panel + full-page **dashboard**, and a **focus-aware** toolbar badge. Unified browse/edit UI opens from the toolbar.
 
 **How to use this doc:** Check off stories (`[x]`) as you ship them. Epics build top-to-bottom (see dependency diagram at the bottom).
 
@@ -18,8 +18,8 @@ Manifest V3 Edge extension: **global sync groups** vs **individual jobs**, jitte
 | [x] **3** | Individual jobs (vertical slice) | 4 |
 | [x] **4** | Global groups | 3 |
 | [x] **5** | Unified UI (choice C) | 4 |
-| [ ] **6** | Toolbar badge (focus-aware) | 3 |
-| [ ] **7** | Ship notes for Edge | 2 |
+| [x] **6** | Toolbar badge (focus-aware) | 3 |
+| [x] **7** | Ship notes for Edge | 2 |
 | [ ] **8** | Live-aware pause (Twitch-first) | 3 |
 | [ ] **9** | Blip / error-text triggered refresh | 3 |
 
@@ -127,9 +127,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** Badge reflects **focused** window’s timers as far as the platform allows.
 
-- [ ] **6.1** — Build **focused-window** job set: `windowId` → relevant individuals + globals touching that window. *Outcome: correct subset for badge math.*
-- [ ] **6.2** — Badge = time to **nearest** `nextFireAt` in that subset; idle (e.g. `×`) when none; optional **fallback** when focused window has no jobs (product decision — document in README). *Outcome: best possible “per-window” feel.*
-- [ ] **6.3** — Subscribe to focus/tab events + alarm completions; avoid busy loops. *Outcome: badge stays current without draining CPU.*
+- [x] **6.1** — Build **focused-window** job set: `windowId` → relevant individuals + globals touching that window. *Outcome: correct subset for badge math.*
+- [x] **6.2** — Badge = time to **nearest** `nextFireAt` in that subset; idle (e.g. `×`) when none; optional **fallback** when focused window has no jobs (product decision — document in README). *Outcome: best possible “per-window” feel.*
+- [x] **6.3** — Subscribe to focus/tab events + alarm completions; avoid busy loops. *Outcome: badge stays current without draining CPU.*
 
 ---
 
@@ -137,8 +137,8 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** Someone can install, understand limits, and regress manually.
 
-- [ ] **7.1** — README: load unpacked, permissions, **focus-aware badge vs tiled windows** (one shared `chrome.action` badge). *Outcome: install + explain.*
-- [ ] **7.2** — Manual QA script from [Testing checklist (manual)](#testing-checklist-manual) + multi-window scenarios. *Outcome: regression path for releases.*
+- [x] **7.1** — README: load unpacked, permissions, **focus-aware badge vs tiled windows** (one shared `chrome.action` badge). *Outcome: install + explain.*
+- [x] **7.2** — Manual QA script from [Testing checklist (manual)](#testing-checklist-manual) + multi-window scenarios. *Outcome: regression path for releases.*
 
 ---
 
@@ -236,6 +236,7 @@ Shared: one module for list rendering + validation (URL, interval, jitter).
 ## Data sketch (illustrative)
 
 ```ts
+/** `label` is optional metadata for future UI (Epics 0–7 do not require showing or editing it). */
 type TargetRef = { tabId: number; windowId: number; targetUrl: string; label?: string };
 
 type GlobalGroup = {

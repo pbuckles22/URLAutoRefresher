@@ -2,10 +2,12 @@
  * MV3 service worker — dashboard + side panel + scheduling (Epic 2).
  */
 
+import { attachBadgeListeners } from './badge';
 import { attachPageOverlayMessageHandler } from './page-overlay-handler';
 import { attachSchedulingListeners, bootstrapScheduling } from './scheduler';
 
 attachSchedulingListeners();
+attachBadgeListeners();
 attachPageOverlayMessageHandler();
 void bootstrapScheduling();
 

@@ -2,6 +2,7 @@
  * Epic 2: chrome.alarms ↔ AppState, tabs.update on fire, nextFireAt, tab lifecycle.
  */
 
+import { BADGE_TICK_ALARM, refreshActionBadge } from './badge';
 import { alarmNameGlobal, alarmNameIndividual, parseAlarmName } from '../lib/alarm-names';
 import { computeAlarmWhen } from '../lib/alarm-schedule';
 import { computeNextDelayMs } from '../lib/schedule';
@@ -100,71 +101,80 @@ async function safeTabsUpdate(tabId: number, url: string): Promise<boolean> {
 }
 
 async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
+  if (alarm.name === BADGE_TICK_ALARM) {
+    await refreshActionBadge();
+    return;
+  }
+
   const parsed = parseAlarmName(alarm.name);
   if (!parsed) {
     return;
   }
 
-  let state = await loadAppState();
+  try {
+    let state = await loadAppState();
 
-  if (parsed.kind === 'individual') {
-    const idx = state.individualJobs.findIndex((j) => j.id === parsed.id);
-    if (idx < 0) {
-      return;
-    }
-    const job = state.individualJobs[idx];
-    if (!job.enabled) {
-      return;
-    }
+    if (parsed.kind === 'individual') {
+      const idx = state.individualJobs.findIndex((j) => j.id === parsed.id);
+      if (idx < 0) {
+        return;
+      }
+      const job = state.individualJobs[idx];
+      if (!job.enabled) {
+        return;
+      }
 
-    const ok = await safeTabsUpdate(job.target.tabId, job.target.targetUrl);
-    if (!ok) {
-      const nextJobs = replaceAt(state.individualJobs, idx, { ...job, enabled: false, nextFireAt: undefined });
+      const ok = await safeTabsUpdate(job.target.tabId, job.target.targetUrl);
+      if (!ok) {
+        const nextJobs = replaceAt(state.individualJobs, idx, { ...job, enabled: false, nextFireAt: undefined });
+        state = { ...state, individualJobs: nextJobs };
+        await saveAppState(state);
+        await syncAlarmsWithState(state);
+        return;
+      }
+
+      const { baseMs, jitterMs } = baseAndJitterMs(job);
+      const nextFireAt = Date.now() + computeNextDelayMs(baseMs, jitterMs);
+      const nextJobs = replaceAt(state.individualJobs, idx, { ...job, nextFireAt });
       state = { ...state, individualJobs: nextJobs };
       await saveAppState(state);
       await syncAlarmsWithState(state);
       return;
     }
 
-    const { baseMs, jitterMs } = baseAndJitterMs(job);
+    const gIdx = state.globalGroups.findIndex((g) => g.id === parsed.id);
+    if (gIdx < 0) {
+      return;
+    }
+    const group = state.globalGroups[gIdx];
+    if (!group.enabled || group.targets.length === 0) {
+      return;
+    }
+
+    const results = await Promise.all(
+      group.targets.map(async (t) => ({
+        tabId: t.tabId,
+        ok: await safeTabsUpdate(t.tabId, t.targetUrl),
+      }))
+    );
+    const failed = new Set(results.filter((r) => !r.ok).map((r) => r.tabId));
+    let targets = group.targets.filter((t) => !failed.has(t.tabId));
+    let enabled = group.enabled && targets.length > 0;
+
+    const { baseMs, jitterMs } = baseAndJitterMs(group);
     const nextFireAt = Date.now() + computeNextDelayMs(baseMs, jitterMs);
-    const nextJobs = replaceAt(state.individualJobs, idx, { ...job, nextFireAt });
-    state = { ...state, individualJobs: nextJobs };
+    const nextGroups = replaceAt(state.globalGroups, gIdx, {
+      ...group,
+      targets,
+      enabled,
+      nextFireAt: enabled ? nextFireAt : undefined,
+    });
+    state = { ...state, globalGroups: nextGroups };
     await saveAppState(state);
     await syncAlarmsWithState(state);
-    return;
+  } finally {
+    await refreshActionBadge();
   }
-
-  const gIdx = state.globalGroups.findIndex((g) => g.id === parsed.id);
-  if (gIdx < 0) {
-    return;
-  }
-  const group = state.globalGroups[gIdx];
-  if (!group.enabled || group.targets.length === 0) {
-    return;
-  }
-
-  const results = await Promise.all(
-    group.targets.map(async (t) => ({
-      tabId: t.tabId,
-      ok: await safeTabsUpdate(t.tabId, t.targetUrl),
-    }))
-  );
-  const failed = new Set(results.filter((r) => !r.ok).map((r) => r.tabId));
-  let targets = group.targets.filter((t) => !failed.has(t.tabId));
-  let enabled = group.enabled && targets.length > 0;
-
-  const { baseMs, jitterMs } = baseAndJitterMs(group);
-  const nextFireAt = Date.now() + computeNextDelayMs(baseMs, jitterMs);
-  const nextGroups = replaceAt(state.globalGroups, gIdx, {
-    ...group,
-    targets,
-    enabled,
-    nextFireAt: enabled ? nextFireAt : undefined,
-  });
-  state = { ...state, globalGroups: nextGroups };
-  await saveAppState(state);
-  await syncAlarmsWithState(state);
 }
 
 function replaceAt<T>(arr: T[], i: number, v: T): T[] {
@@ -178,11 +188,13 @@ export async function onTabRemoved(tabId: number): Promise<void> {
   state = applyTabRemoved(state, tabId);
   await saveAppState(state);
   await syncAlarmsWithState(state);
+  await refreshActionBadge();
 }
 
 export async function bootstrapScheduling(): Promise<void> {
   const state = await loadAppState();
   await syncAlarmsWithState(state);
+  await refreshActionBadge();
 }
 
 export function attachSchedulingListeners(): void {

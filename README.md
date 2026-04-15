@@ -97,4 +97,12 @@ git commit -m "Describe your change"
 
 ## Status
 
-Epics **0** (shell) and **1** (storage + validation) are in progress; alarms and UI flows follow [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). The toolbar badge uses one shared `chrome.action` state across windows (see plan — focus-aware countdown).
+Epics through **6** (focus-aware toolbar badge) are implemented per [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). The badge shows the countdown to the nearest refresh among jobs in the **last-focused** browser window (tabs resolved live via `chrome.tabs.query`). If that window has no enrolled tabs, the badge **falls back** to the nearest refresh among all jobs so you still see activity. **Platform limit:** `chrome.action` exposes **one** badge per profile — every window’s toolbar shows the same text; the value tracks the focused window’s jobs, not a separate number per tiled window.
+
+## Permissions (Edge / Chromium)
+
+The extension requests: **`storage`**, **`alarms`**, **`tabs`**, **`windows`**, **`sidePanel`**, and broad **`http*://*/*`** host access so scheduled refreshes can navigate tabs to your configured target URLs.
+
+## Manual QA (releases)
+
+Run through [Testing checklist (manual)](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#testing-checklist-manual) in the product plan after `npm run build`, with the folder loaded unpacked in Edge (or Chromium for parity with CI). Add **multi-window** checks: open a second window, confirm the badge follows focus and that globals/individuals behave as expected across windows. Automated Tier 2 tests use Chromium with Playwright; validate in **Edge** before publishing to Edge Add-ons if you rely on browser-specific behavior.

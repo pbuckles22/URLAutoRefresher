@@ -41,6 +41,8 @@ Vitest covers **pure logic** with mocked `chrome` where needed:
 | Prefs parsing | `src/lib/prefs.test.ts` |
 | Overlay **schedule** (which tab gets which `nextFireAt`) | `src/lib/page-overlay-schedule.test.ts` |
 | Add individual job form (validation → `IndividualJob`) | `src/lib/individual-job-form.test.ts` |
+| Dashboard / global countdown formatting | `src/lib/dashboard-countdown.test.ts` |
+| Focused-window badge math + formatting | `src/lib/focused-window-badge.test.ts` |
 
 ### Not covered by Tier 1 (by design)
 
@@ -49,7 +51,7 @@ Vitest does **not** execute the real browser or extension host:
 - **`src/content/page-overlay.ts`** — full DOM / shadow / messaging path is exercised by **Tier 2** Playwright (see below), not by Vitest.
 - **Service worker** scheduling side effects beyond what unit tests mock (`src/background/scheduler.ts` integration with real `chrome.alarms`) — still **manual or future E2E** (alarm fire + `tabs.update` timing).
 
-**Regression risk:** e.g. shadow mode (`open` vs `closed`) and double-`attachShadow` behavior: Tier 2 overlay checks complement `npm test`; deeper alarm timing remains a gap until automated.
+**Regression risk:** e.g. shadow mode (`open` vs `closed`) and double-`attachShadow` behavior: Tier 2 overlay checks complement `npm test`. **Real `chrome.alarms` → `tabs.update` refresh** is still not automated (timing/flake); badge and dashboard countdown are covered in Tier 2 as above.
 
 ### CI gate (Tier 1 + build + Tier 2 E2E)
 
@@ -94,7 +96,8 @@ Implementation:
 - **`e2e/epic-4-1.spec.ts`** — global group from **window/tab browser** + per-tab URLs → storage.
 - **`e2e/epic-4-2.spec.ts`** — **Global (N)** header, saved row countdown, **Start/Stop**, **Edit**, **Delete**.
 - **`e2e/epic-4-3.spec.ts`** — mutual exclusion: add global vs individual, add individual vs global, **Start** on global row when individual is enabled on the same tab (`[data-global-form-error]`, `[data-add-job-error]`, `[data-global-group-row-error]`).
-- **`e2e/epic-5.spec.ts`** — unified UI: **Global (N)** / **Individual (M)** on dashboard and generated side panel; browse layout; cross-surface nav button visibility.
+- **`e2e/epic-5.spec.ts`** — unified UI: **Global (N)** / **Individual (M)** on dashboard and generated side panel; browse layout; cross-surface nav button visibility; **Epic 5.4** countdown row text changes over ~2.5s (1s UI tick).
+- **`e2e/epic-6.spec.ts`** — **Epic 6** toolbar badge: after seeding storage, `chrome.action.getBadgeText` shows `m:ss` (not idle `×`).
 
 **Headed Chromium:** MV3 extensions are exercised with **`headless: false`** (Playwright `channel: 'chromium'`). **CI (Linux)** runs under **xvfb** so no physical display is required.
 

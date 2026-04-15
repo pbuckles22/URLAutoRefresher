@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { dashboardUrl, sidepanelUrl, launchExtensionContext } from './extension-helpers';
+import { dashboardUrl, sidepanelUrl, launchExtensionContext, FIXTURE_ORIGIN } from './extension-helpers';
+
+const STORAGE_KEY = 'urlAutoRefresher_state_v1';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -56,4 +58,64 @@ test('Epic 5.3: cross-surface — dashboard offers Open side panel; side panel o
   await expect(panel.locator('[data-open-dashboard-tab]')).toBeVisible();
   await expect(panel.locator('[data-open-side-panel]')).toBeHidden();
   await panel.close();
+});
+
+test('Epic 5.4: individual job countdown text updates over time (1s dashboard tick)', async () => {
+  const fixturePage = await context.newPage();
+  await fixturePage.goto(`${FIXTURE_ORIGIN}/`);
+
+  const dash = await context.newPage();
+  await dash.goto(dashboardUrl(extensionId));
+
+  const fixtureTabId = await dash.evaluate(async () => {
+    const tabs = await chrome.tabs.query({ url: 'http://127.0.0.1:8765/*' });
+    const id = tabs[0]?.id;
+    if (id === undefined) {
+      throw new Error('fixture tab not found');
+    }
+    return id;
+  });
+
+  const nextFireAt = Date.now() + 95_000;
+  await dash.evaluate(
+    async ({ storageKey, tabId, next }) => {
+      await chrome.storage.local.set({
+        [storageKey]: {
+          schemaVersion: 1,
+          globalGroups: [],
+          individualJobs: [
+            {
+              id: 'tick-e2e',
+              target: {
+                tabId,
+                windowId: 0,
+                targetUrl: 'https://example.com/tick-e2e',
+              },
+              baseIntervalSec: 60,
+              jitterSec: 0,
+              enabled: true,
+              nextFireAt: next,
+            },
+          ],
+        },
+      });
+    },
+    { storageKey: STORAGE_KEY, tabId: fixtureTabId, next: nextFireAt }
+  );
+
+  await dash.reload();
+
+  const loc = dash.locator('[data-individual-job-row="tick-e2e"] [data-job-countdown]');
+  await expect(loc).toBeVisible({ timeout: 10_000 });
+  const first = await loc.textContent();
+  expect(first).toMatch(/^\d+:\d{2}$/);
+
+  await dash.waitForTimeout(2500);
+
+  const second = await loc.textContent();
+  expect(second).toMatch(/^\d+:\d{2}$/);
+  expect(second).not.toBe(first);
+
+  await dash.close();
+  await fixturePage.close();
 });
