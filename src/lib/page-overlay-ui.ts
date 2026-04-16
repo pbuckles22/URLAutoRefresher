@@ -1,19 +1,30 @@
 import type { ExtensionPrefs } from './prefs';
-import { getNextFireAtForTab, tabHasActiveRefreshJob } from './page-overlay-schedule';
 import type { AppState } from './types';
+import { getPageOverlayVmForTab, type PageOverlayVm } from './page-overlay-state';
 
-/** Resolved overlay visibility + schedule for a tab (Epic 3.0 — prefs gate + active job). */
-export type PageOverlayUiState =
-  | { show: false }
-  | { show: true; nextFireAt: number | undefined };
+export type { PageOverlayVm };
 
-export function getPageOverlayUiState(
+/** @deprecated Use getPageOverlayVmForTab — kept for tests importing the name. */
+export async function getPageOverlayUiState(
   state: AppState,
   prefs: ExtensionPrefs,
   tabId: number
-): PageOverlayUiState {
-  if (!prefs.showPageOverlayTimer || !tabHasActiveRefreshJob(state, tabId)) {
+): Promise<
+  | { show: false }
+  | { show: true; nextFireAt: number | undefined; globalGroupId?: string; mode?: 'timer' }
+  | { show: true; mode: 'paused'; globalGroupId: string }
+> {
+  const vm = await getPageOverlayVmForTab(state, prefs, tabId);
+  if (!vm.show) {
     return { show: false };
   }
-  return { show: true, nextFireAt: getNextFireAtForTab(state, tabId) };
+  if (vm.mode === 'paused') {
+    return { show: true, mode: 'paused', globalGroupId: vm.globalGroupId };
+  }
+  return {
+    show: true,
+    mode: 'timer',
+    nextFireAt: vm.nextFireAt,
+    globalGroupId: vm.globalGroupId,
+  };
 }

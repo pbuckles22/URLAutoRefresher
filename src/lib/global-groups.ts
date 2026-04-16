@@ -18,7 +18,7 @@ export function setGlobalGroupEnabled(state: AppState, groupId: string, enabled:
         return g;
       }
       if (!enabled) {
-        return { ...g, enabled: false, nextFireAt: undefined };
+        return { ...g, enabled: false, nextFireAt: undefined, tabNextFireAt: undefined };
       }
       return { ...g, enabled: true };
     }),

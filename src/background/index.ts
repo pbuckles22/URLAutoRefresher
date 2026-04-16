@@ -3,12 +3,14 @@
  */
 
 import { attachBadgeListeners } from './badge';
+import { attachLiveAwareListeners } from './live-aware';
 import { attachPageOverlayMessageHandler } from './page-overlay-handler';
 import { attachSchedulingListeners, bootstrapScheduling } from './scheduler';
 
 attachSchedulingListeners();
 attachBadgeListeners();
 attachPageOverlayMessageHandler();
+attachLiveAwareListeners();
 void bootstrapScheduling();
 
 void chrome.sidePanel.setOptions({

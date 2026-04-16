@@ -13,6 +13,12 @@ function individualJobsLayoutSignature(s: AppState): string {
       baseIntervalSec: j.baseIntervalSec,
       jitterSec: j.jitterSec,
       enabled: j.enabled,
+      liveAwareRefresh: j.liveAwareRefresh === true,
+      blip: JSON.stringify({
+        p: j.blipWatchPhrases ?? [],
+        r: j.blipWatchRegex ?? '',
+        m: j.blipMaxPerMinute ?? null,
+      }),
     }))
   );
 }
@@ -23,6 +29,7 @@ function globalGroupsLayoutSignature(s: AppState): string {
       id: g.id,
       name: g.name,
       targets: g.targets,
+      urlPatterns: g.urlPatterns ?? [],
       baseIntervalSec: g.baseIntervalSec,
       jitterSec: g.jitterSec,
       enabled: g.enabled,

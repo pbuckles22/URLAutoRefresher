@@ -32,7 +32,7 @@ describe('createGlobalGroupListRow', () => {
     );
 
     const summaryLine = li.querySelector('span:not([data-global-group-countdown])');
-    expect(summaryLine?.textContent).toBe('Sync set · 2 tabs · every 55s ±4s');
+    expect(summaryLine?.textContent).toBe('Sync set · 2 explicit · every 55s ±4s');
 
     expect(li.querySelector<HTMLButtonElement>('[data-global-group-toggle]')?.textContent).toBe('Stop');
     expect(li.querySelector('[data-global-group-delete]')).toBeTruthy();
@@ -54,5 +54,14 @@ describe('createGlobalGroupListRow', () => {
   it('shows Start when group is disabled', () => {
     const li = createGlobalGroupListRow(sampleGroup({ enabled: false }), Date.now());
     expect(li.querySelector('[data-global-group-toggle]')?.textContent).toBe('Start');
+  });
+
+  it('mentions URL patterns in summary when set', () => {
+    const li = createGlobalGroupListRow(
+      sampleGroup({ urlPatterns: ['*twitch.tv*', 'https://a/*'] }),
+      Date.now()
+    );
+    const summaryLine = li.querySelector('span:not([data-global-group-countdown])');
+    expect(summaryLine?.textContent).toContain('2 URL patterns');
   });
 });

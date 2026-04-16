@@ -19,7 +19,7 @@ describe('buildGlobalGroupFromForm', () => {
     }
   });
 
-  it('rejects no targets', () => {
+  it('rejects no targets and no patterns', () => {
     const r = buildGlobalGroupFromForm(
       {
         name: 'G',
@@ -31,7 +31,25 @@ describe('buildGlobalGroupFromForm', () => {
     );
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.error).toMatch(/at least one tab/i);
+      expect(r.error).toMatch(/at least one tab or add at least one url pattern/i);
+    }
+  });
+
+  it('allows pattern-only group', () => {
+    const r = buildGlobalGroupFromForm(
+      {
+        name: 'Twitch',
+        baseIntervalSec: 60,
+        jitterSec: 0,
+        targets: [],
+        urlPatternsRaw: '*twitch.tv*',
+      },
+      () => 'pat-id'
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.targets).toEqual([]);
+      expect(r.value.urlPatterns).toEqual(['*twitch.tv*']);
     }
   });
 
@@ -105,6 +123,7 @@ describe('buildGlobalGroupUpdateFromForm', () => {
           { tabId: 10, windowId: 2, targetUrl: 'https://x/' },
           { tabId: 11, windowId: 2, targetUrl: 'https://y/' },
         ],
+        urlPatternsRaw: '',
       },
       existing()
     );
@@ -118,6 +137,7 @@ describe('buildGlobalGroupUpdateFromForm', () => {
         baseIntervalSec: 60,
         jitterSec: 0,
         targets: [{ tabId: 10, windowId: 2, targetUrl: 'https://x/' }],
+        urlPatternsRaw: '',
       },
       existing()
     );
@@ -135,6 +155,7 @@ describe('buildGlobalGroupUpdateFromForm', () => {
           { tabId: 11, windowId: 2, targetUrl: 'https://example.com/b2' },
           { tabId: 10, windowId: 2, targetUrl: 'https://example.com/a2', label: ' L1 ' },
         ],
+        urlPatternsRaw: '',
       },
       ex
     );

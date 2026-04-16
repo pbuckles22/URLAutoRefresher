@@ -15,10 +15,20 @@ export function collectNextFireTimesForTabSet(
     }
   }
   for (const g of state.globalGroups) {
-    if (!g.enabled || g.nextFireAt === undefined || g.targets.length === 0) {
+    if (!g.enabled) {
       continue;
     }
-    if (g.targets.some((t) => tabIds.has(t.tabId))) {
+    const tnf = g.tabNextFireAt;
+    if (tnf && Object.keys(tnf).length > 0) {
+      for (const tid of tabIds) {
+        const nf = tnf[String(tid)];
+        if (nf !== undefined) {
+          out.push(nf);
+        }
+      }
+      continue;
+    }
+    if (g.nextFireAt !== undefined && g.targets.some((t) => tabIds.has(t.tabId))) {
       out.push(g.nextFireAt);
     }
   }
@@ -34,10 +44,15 @@ export function collectAllScheduledNextFireTimes(state: AppState): number[] {
     out.push(job.nextFireAt);
   }
   for (const g of state.globalGroups) {
-    if (!g.enabled || g.nextFireAt === undefined || g.targets.length === 0) {
+    if (!g.enabled) {
       continue;
     }
-    out.push(g.nextFireAt);
+    const tnf = g.tabNextFireAt;
+    if (tnf && Object.keys(tnf).length > 0) {
+      out.push(...Object.values(tnf));
+    } else if (g.nextFireAt !== undefined) {
+      out.push(g.nextFireAt);
+    }
   }
   return out;
 }

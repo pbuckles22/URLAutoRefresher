@@ -61,9 +61,11 @@ Run before opening a PR and whenever you change logic, tests, or build scripts:
 npm run ci
 ```
 
-This runs **`npm test`** (Vitest), **`npm run build`** (service worker, dashboard, **page-overlay** content script, icons), then **`npm run test:e2e`** (Playwright: unpacked extension + HTTP fixture page). **GitHub Actions** runs the same on every push/PR to `main` / `master` (see `.github/workflows/ci.yml`; Linux uses **xvfb** so headed Chromium can load the extension).
+This runs **`npm test`** (Vitest), **`npm run build`** (service worker, dashboard, **page-overlay** content script, icons), then **`npm run test:e2e`** (Playwright: unpacked extension + HTTP fixture page). **GitHub Actions** runs the same on every push/PR to `main` / `master` (see `.github/workflows/ci.yml`) with **`PLAYWRIGHT_HEADLESS=1`** so Chromium does not require a virtual framebuffer.
 
-**Linux without a display:** run E2E under a virtual framebuffer, e.g. `xvfb-run -a npm run test:e2e` (CI does this automatically).
+**Linux without a display:** use **`npm run test:e2e:headless`** or set `PLAYWRIGHT_HEADLESS=1`. Alternatively, `xvfb-run -a npm run test:e2e` runs the default headed browser under a virtual framebuffer.
+
+**E2E seems to run forever / 30+ minutes:** Default **`npm run test:e2e`** uses **headed** Chromium (`e2e/extension-helpers.ts`). Without a usable display (some remote agents, broken GPU session), the browser can hang instead of failing quickly. Use **`npm run test:e2e:headless`** or **`PLAYWRIGHT_HEADLESS=1 npm run test:e2e`**. Playwright also sets a **suite `globalTimeout`** (see `playwright.config.ts`) so a stuck run aborts instead of running indefinitely. **GitHub Actions** sets `PLAYWRIGHT_HEADLESS=1` for `npm run ci`.
 
 ---
 

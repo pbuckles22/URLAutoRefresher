@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  alarmNameIndividual,
   alarmNameGlobal,
+  alarmNameGlobalTab,
+  alarmNameIndividual,
   parseAlarmName,
 } from './alarm-names';
 
@@ -11,9 +12,14 @@ describe('alarm names', () => {
     expect(parseAlarmName(name)).toEqual({ kind: 'individual', id: 'abc-123' });
   });
 
-  it('roundtrips global', () => {
+  it('roundtrips global (legacy)', () => {
     const name = alarmNameGlobal('g1');
     expect(parseAlarmName(name)).toEqual({ kind: 'global', id: 'g1' });
+  });
+
+  it('roundtrips global per-tab', () => {
+    const name = alarmNameGlobalTab('g1', 42);
+    expect(parseAlarmName(name)).toEqual({ kind: 'globalTab', groupId: 'g1', tabId: 42 });
   });
 
   it('returns null for unknown prefix', () => {

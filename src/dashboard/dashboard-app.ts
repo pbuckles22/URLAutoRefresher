@@ -16,6 +16,7 @@ import {
 import { defaultTargetUrlForTab, tabRowsFromWindowsSnapshot } from '../lib/window-tab-browser';
 import { loadExtensionPrefs, saveExtensionPrefs } from '../lib/prefs';
 import { onlyNonLayoutAppStateDiff } from '../lib/app-state-list-layout';
+import { validateGlobalGroupResolvedEnrollment } from '../lib/global-group-enrollment';
 import { loadAppState, saveAppState, STORAGE_KEY } from '../lib/storage';
 
 function wireCrossSurfaceLinks(): void {
@@ -54,9 +55,14 @@ export function initDashboardApp(): void {
   }
 
   const tabSelect = document.querySelector<HTMLSelectElement>('[data-job-tab]');
+  const jobTabSearch = document.querySelector<HTMLInputElement>('[data-job-tab-search]');
+  const jobTabRefresh = document.querySelector<HTMLButtonElement>('[data-job-tab-refresh]');
   const urlInput = document.querySelector<HTMLInputElement>('[data-job-target-url]');
   const intervalInput = document.querySelector<HTMLInputElement>('[data-job-interval]');
   const jitterInput = document.querySelector<HTMLInputElement>('[data-job-jitter]');
+  const liveAwareInput = document.querySelector<HTMLInputElement>('[data-job-live-aware]');
+  const blipPhrasesAdd = document.querySelector<HTMLTextAreaElement>('[data-job-blip-phrases]');
+  const blipRegexAdd = document.querySelector<HTMLInputElement>('[data-job-blip-regex]');
   const addJobForm = document.querySelector<HTMLFormElement>('[data-add-individual-form]');
   const addJobError = document.querySelector<HTMLElement>('[data-add-job-error]');
   const jobsList = document.querySelector<HTMLUListElement>('[data-individual-jobs-list]');
@@ -65,8 +71,10 @@ export function initDashboardApp(): void {
   const globalGroupName = document.querySelector<HTMLInputElement>('[data-global-group-name]');
   const globalTabBrowser = document.querySelector<HTMLUListElement>('[data-global-tab-browser]');
   const globalRefreshTabs = document.querySelector<HTMLButtonElement>('[data-global-refresh-tabs]');
+  const globalTabSearch = document.querySelector<HTMLInputElement>('[data-global-tab-search]');
   const globalIntervalInput = document.querySelector<HTMLInputElement>('[data-global-interval]');
   const globalJitterInput = document.querySelector<HTMLInputElement>('[data-global-jitter]');
+  const globalUrlPatterns = document.querySelector<HTMLTextAreaElement>('[data-global-url-patterns]');
   const globalFormError = document.querySelector<HTMLElement>('[data-global-form-error]');
   const globalSectionHeading = document.querySelector<HTMLElement>('[data-global-section-heading]');
   const individualSectionHeading = document.querySelector<HTMLElement>('[data-individual-section-heading]');
@@ -84,6 +92,25 @@ export function initDashboardApp(): void {
     globalGroupsList.innerHTML = '';
     for (const g of state.globalGroups) {
       globalGroupsList.appendChild(createGlobalGroupListRow(g, now));
+    }
+  }
+
+  function applyGlobalTabSearchFilter(): void {
+    if (!globalTabBrowser) {
+      return;
+    }
+    const q = (globalTabSearch?.value ?? '').trim().toLowerCase();
+    for (const li of globalTabBrowser.querySelectorAll<HTMLLIElement>('[data-global-tab-row]')) {
+      const title = li.querySelector('[data-global-tab-title]')?.textContent ?? '';
+      const url =
+        li.querySelector<HTMLInputElement>('[data-global-target-url]')?.value ??
+        '';
+      const hay = `${title} ${url}`.toLowerCase();
+      if (q === '' || hay.includes(q)) {
+        li.style.display = 'grid';
+      } else {
+        li.style.display = 'none';
+      }
     }
   }
 
@@ -138,6 +165,33 @@ export function initDashboardApp(): void {
       li.append(pick, titleEl, urlIn);
       globalTabBrowser.appendChild(li);
     }
+    applyGlobalTabSearchFilter();
+  }
+
+  type TabWithIds = chrome.tabs.Tab & { id: number; windowId: number };
+  let cachedIndividualTabs: TabWithIds[] = [];
+
+  function applyIndividualTabSelectFilter(): void {
+    if (!tabSelect) {
+      return;
+    }
+    const q = (jobTabSearch?.value ?? '').trim().toLowerCase();
+    const prev = tabSelect.value;
+    tabSelect.innerHTML = '<option value="">Select a tab…</option>';
+    for (const t of cachedIndividualTabs) {
+      const label = t.title?.trim() || t.url || `Tab ${t.id}`;
+      const url = t.url ?? '';
+      const hay = `${label} (${t.id}) ${url}`.toLowerCase();
+      if (q !== '' && !hay.includes(q)) {
+        continue;
+      }
+      const opt = document.createElement('option');
+      opt.value = String(t.id);
+      opt.textContent = `${label} (${t.id})`;
+      tabSelect.appendChild(opt);
+    }
+    const stillValid = prev !== '' && [...tabSelect.options].some((o) => o.value === prev);
+    tabSelect.value = stillValid ? prev : '';
   }
 
   async function populateTabSelect(): Promise<void> {
@@ -146,17 +200,40 @@ export function initDashboardApp(): void {
     }
     const tabs = await chrome.tabs.query({});
     const withIds = tabs.filter(
-      (t): t is chrome.tabs.Tab & { id: number } => typeof t.id === 'number' && typeof t.windowId === 'number'
+      (t): t is TabWithIds => typeof t.id === 'number' && typeof t.windowId === 'number'
     );
     withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
-    tabSelect.innerHTML = '<option value="">Select a tab…</option>';
-    for (const t of withIds) {
-      const opt = document.createElement('option');
-      opt.value = String(t.id);
-      const label = t.title?.trim() || t.url || `Tab ${t.id}`;
-      opt.textContent = `${label} (${t.id})`;
-      tabSelect.appendChild(opt);
+    cachedIndividualTabs = withIds;
+    applyIndividualTabSelectFilter();
+  }
+
+  /**
+   * When the user picks a tab, default Target URL to that tab’s current http(s) URL (from cache).
+   * Uses synchronous cache so we don’t race with user edits; use “Refresh tab list” if tabs moved.
+   */
+  function syncIndividualTargetUrlFromSelectedTab(): void {
+    if (!tabSelect || !urlInput) {
+      return;
     }
+    const raw = tabSelect.value;
+    if (raw === '') {
+      return;
+    }
+    const tabId = Number(raw);
+    if (!Number.isInteger(tabId) || tabId < 1) {
+      return;
+    }
+    const tab = cachedIndividualTabs.find((t) => t.id === tabId);
+    if (tab) {
+      urlInput.value = defaultTargetUrlForTab(tab.url ?? '');
+      return;
+    }
+    void chrome.tabs.get(tabId).then((t) => {
+      if (tabSelect?.value !== String(tabId) || !urlInput) {
+        return;
+      }
+      urlInput.value = defaultTargetUrlForTab(t.url ?? '');
+    });
   }
 
   async function renderIndividualJobs(): Promise<void> {
@@ -269,8 +346,18 @@ export function initDashboardApp(): void {
           const url = row.querySelector<HTMLInputElement>('[data-job-edit-url]')?.value ?? '';
           const interval = Number(row.querySelector<HTMLInputElement>('[data-job-edit-interval]')?.value);
           const jitter = Number(row.querySelector<HTMLInputElement>('[data-job-edit-jitter]')?.value);
+          const liveAware = row.querySelector<HTMLInputElement>('[data-job-edit-live-aware]')?.checked === true;
+          const blipPhrases = row.querySelector<HTMLTextAreaElement>('[data-job-edit-blip-phrases]')?.value;
+          const blipRegex = row.querySelector<HTMLInputElement>('[data-job-edit-blip-regex]')?.value;
           const built = buildIndividualJobUpdateFromForm(
-            { targetUrl: url, baseIntervalSec: interval, jitterSec: jitter },
+            {
+              targetUrl: url,
+              baseIntervalSec: interval,
+              jitterSec: jitter,
+              liveAwareRefresh: liveAware,
+              blipWatchPhrasesText: blipPhrases,
+              blipWatchRegex: blipRegex,
+            },
             job
           );
           if (!built.ok) {
@@ -386,13 +473,21 @@ export function initDashboardApp(): void {
             });
           }
 
+          const patternsRaw = row.querySelector<HTMLTextAreaElement>('[data-global-edit-url-patterns]')?.value;
           const built = buildGlobalGroupUpdateFromForm(
-            { name, baseIntervalSec: interval, jitterSec: jitter, targets },
+            { name, baseIntervalSec: interval, jitterSec: jitter, targets, urlPatternsRaw: patternsRaw },
             existing
           );
           if (!built.ok) {
             if (errEl) {
               errEl.textContent = built.error;
+            }
+            return;
+          }
+          const enroll = await validateGlobalGroupResolvedEnrollment(state, built.value, existing.id);
+          if (!enroll.ok) {
+            if (errEl) {
+              errEl.textContent = enroll.error;
             }
             return;
           }
@@ -452,6 +547,9 @@ export function initDashboardApp(): void {
           targetUrl: urlInput.value,
           baseIntervalSec: Number(intervalInput.value),
           jitterSec: Number(jitterInput.value),
+          liveAwareRefresh: liveAwareInput?.checked === true,
+          blipWatchPhrasesText: blipPhrasesAdd?.value,
+          blipWatchRegex: blipRegexAdd?.value,
         });
         if (!built.ok) {
           if (addJobError) {
@@ -478,13 +576,26 @@ export function initDashboardApp(): void {
     globalRefreshTabs.addEventListener('click', () => void renderGlobalTabBrowser());
   }
 
-  if (
-    globalGroupForm &&
-    globalGroupName &&
-    globalTabBrowser &&
-    globalIntervalInput &&
-    globalJitterInput
-  ) {
+  if (globalTabSearch && globalTabSearch.dataset.filterBound !== '1') {
+    globalTabSearch.dataset.filterBound = '1';
+    globalTabSearch.addEventListener('input', () => applyGlobalTabSearchFilter());
+  }
+
+  if (jobTabSearch && jobTabSearch.dataset.filterBound !== '1') {
+    jobTabSearch.dataset.filterBound = '1';
+    jobTabSearch.addEventListener('input', () => applyIndividualTabSelectFilter());
+  }
+
+  if (jobTabRefresh) {
+    jobTabRefresh.addEventListener('click', () => void populateTabSelect());
+  }
+
+  if (tabSelect && tabSelect.dataset.targetSyncBound !== '1') {
+    tabSelect.dataset.targetSyncBound = '1';
+    tabSelect.addEventListener('change', () => syncIndividualTargetUrlFromSelectedTab());
+  }
+
+  if (globalGroupForm && globalGroupName && globalTabBrowser && globalIntervalInput && globalJitterInput) {
     globalGroupForm.addEventListener('submit', (e) => {
       e.preventDefault();
       void (async () => {
@@ -520,6 +631,7 @@ export function initDashboardApp(): void {
           baseIntervalSec: Number(globalIntervalInput.value),
           jitterSec: Number(globalJitterInput.value),
           targets,
+          urlPatternsRaw: globalUrlPatterns?.value,
         });
         if (!built.ok) {
           if (globalFormError) {
@@ -528,6 +640,13 @@ export function initDashboardApp(): void {
           return;
         }
         const state = await loadAppState();
+        const enroll = await validateGlobalGroupResolvedEnrollment(state, built.value);
+        if (!enroll.ok) {
+          if (globalFormError) {
+            globalFormError.textContent = enroll.error;
+          }
+          return;
+        }
         const next = { ...state, globalGroups: [...state.globalGroups, built.value] };
         try {
           await saveAppState(next);
@@ -538,6 +657,9 @@ export function initDashboardApp(): void {
           return;
         }
         globalGroupName.value = '';
+        if (globalUrlPatterns) {
+          globalUrlPatterns.value = '';
+        }
         await renderGlobalGroupsList();
         await renderIndividualJobs();
       })();

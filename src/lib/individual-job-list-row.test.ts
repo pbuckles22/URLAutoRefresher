@@ -27,7 +27,7 @@ describe('createIndividualJobListRow', () => {
       formatIndividualJobCountdown(now, job)
     );
 
-    const summaryLine = li.querySelector('span:not([data-job-countdown])');
+    const summaryLine = li.querySelector(':scope > div > span');
     expect(summaryLine?.textContent).toBe(
       'Tab 42 → https://example.com/path · every 60s ±5s'
     );
@@ -48,6 +48,14 @@ describe('createIndividualJobListRow', () => {
     );
     expect((li.querySelector('[data-job-edit-interval]') as HTMLInputElement).value).toBe('60');
     expect((li.querySelector('[data-job-edit-jitter]') as HTMLInputElement).value).toBe('5');
+    expect(li.querySelector('[data-job-edit-live-aware]')).toBeTruthy();
+    expect((li.querySelector('[data-job-edit-live-aware]') as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('shows live-aware in summary and checked edit box when enabled', () => {
+    const li = createIndividualJobListRow(sampleJob({ liveAwareRefresh: true }), 0);
+    expect(li.querySelector(':scope > div > span')?.textContent).toContain('Twitch live-aware');
+    expect((li.querySelector('[data-job-edit-live-aware]') as HTMLInputElement).checked).toBe(true);
   });
 
   it('shows Start when job is disabled', () => {

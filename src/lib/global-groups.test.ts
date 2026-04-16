@@ -31,13 +31,14 @@ describe('global-groups (Epic 4.2)', () => {
     expect(next.globalGroups).toEqual([g1]);
   });
 
-  it('setGlobalGroupEnabled toggles enabled and clears nextFireAt when stopping', () => {
-    const g = sampleGroup();
+  it('setGlobalGroupEnabled toggles enabled and clears schedule when stopping', () => {
+    const g = sampleGroup({ tabNextFireAt: { '1': 100, '2': 200 } });
     const state: AppState = { ...emptyState(), globalGroups: [g] };
     const stopped = setGlobalGroupEnabled(state, 'g-a', false);
     expect(stopped.globalGroups[0]).toMatchObject({
       enabled: false,
       nextFireAt: undefined,
+      tabNextFireAt: undefined,
     });
     const started = setGlobalGroupEnabled(stopped, 'g-a', true);
     expect(started.globalGroups[0]).toMatchObject({ enabled: true });

@@ -32,12 +32,13 @@ describe('individual-jobs (Epic 3.2)', () => {
   });
 
   it('setIndividualJobEnabled toggles enabled and clears nextFireAt when stopping', () => {
-    const job = sampleJob();
+    const job = sampleJob({ liveAwareRefresh: true, streamLive: true });
     const state: AppState = { ...emptyState(), individualJobs: [job] };
     const stopped = setIndividualJobEnabled(state, 'job-a', false);
     expect(stopped.individualJobs[0]).toMatchObject({
       enabled: false,
       nextFireAt: undefined,
+      streamLive: undefined,
     });
     const started = setIndividualJobEnabled(stopped, 'job-a', true);
     expect(started.individualJobs[0]).toMatchObject({ enabled: true });

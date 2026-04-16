@@ -9,6 +9,8 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   fullyParallel: false,
   workers: 1,
+  /** Entire Playwright run (all files); prevents hung browser/process from running indefinitely. Keep under CI job cap. */
+  globalTimeout: 8 * 60 * 1000,
   timeout: 60_000,
   expect: { timeout: 20_000 },
   reporter: [['list']],
@@ -16,6 +18,7 @@ export default defineConfig({
     command: 'node e2e/fixture-server.mjs',
     url: 'http://127.0.0.1:8765',
     reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
   },
   use: {
     trace: 'on-first-retry',

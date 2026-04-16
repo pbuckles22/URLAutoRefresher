@@ -10,6 +10,7 @@
     "test:coverage:lib": "vitest run --coverage --coverage.include=src/lib/**/*.ts --coverage.exclude=**/*.test.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:headless": "node e2e/run-playwright-headless.mjs",
     "build": "node Scripts/build.mjs && node Scripts/gen-icons.mjs",
     "build:icons": "node Scripts/gen-icons.mjs",
     "ci": "npm test && npm run build && npm run test:e2e"

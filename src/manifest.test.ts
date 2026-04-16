@@ -59,4 +59,14 @@ describe('manifest.json', () => {
     expect(overlay?.matches).toEqual(['http://*/*', 'https://*/*']);
     expect(overlay?.run_at).toBe('document_idle');
   });
+
+  it('injects Twitch live bridge on twitch.tv only (Epic 8)', () => {
+    const scripts = manifest.content_scripts as Array<Record<string, unknown>>;
+    const twitch = scripts.find(
+      (e) => Array.isArray(e.js) && (e.js as string[]).includes('dist/twitch-live-bridge.js')
+    );
+    expect(twitch).toBeDefined();
+    expect(twitch?.matches).toEqual(['https://www.twitch.tv/*', 'https://twitch.tv/*']);
+    expect(twitch?.run_at).toBe('document_idle');
+  });
 });

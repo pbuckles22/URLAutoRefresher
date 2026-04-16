@@ -101,9 +101,22 @@
           Global (0)
         </h2>
         <p style="margin: 0 0 0.75rem; color: #9aa0a6; font-size: 0.9rem">
-          Browse windows and tabs, check which tabs belong to the group, set each tab’s refresh URL, then
-          Save. One shared schedule refreshes every included tab together (Epic 4.1).
+          Saved groups are listed first. To add a group, browse windows and tabs below, check which tabs belong
+          to it, set each tab’s refresh URL (defaults to that tab’s current address when you build the list),
+          then Save. One shared schedule refreshes every included tab together. On each tick the extension loads
+          the <strong>saved</strong> URL for that tab (e.g. after a raid, it returns to the channel you
+          configured—not the tab’s live URL unless you saved that).
         </p>
+        <ul
+          data-global-groups-list
+          style="margin: 0 0 1.25rem; padding: 0; list-style: none; color: #e8eaed; line-height: 1.5"
+        ></ul>
+        <h3
+          id="global-add-group-heading"
+          style="font-size: 0.95rem; font-weight: 600; margin: 0 0 0.75rem; color: #e8eaed"
+        >
+          Add a new group
+        </h3>
         <form
           data-global-group-form
           style="display: flex; flex-direction: column; gap: 0.75rem; max-width: 42rem"
@@ -129,12 +142,37 @@
             </button>
             <span style="color: #9aa0a6; font-size: 0.85rem">Uses all windows (<code>windows.getAll</code>).</span>
           </div>
+          <label style="display: flex; flex-direction: column; gap: 0.25rem">
+            <span>Filter tabs (title or URL)</span>
+            <input
+              type="search"
+              data-global-tab-search
+              placeholder="Type to filter, e.g. twitch"
+              autocomplete="off"
+              aria-label="Filter tabs by title or URL"
+              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+            />
+          </label>
           <div style="overflow-x: auto">
             <ul
               data-global-tab-browser
               style="margin: 0; padding: 0; list-style: none; min-width: min(100%, 36rem)"
             ></ul>
           </div>
+          <label style="display: flex; flex-direction: column; gap: 0.25rem">
+            <span>Auto-include URL patterns (optional, one per line, <code>*</code> wildcard)</span>
+            <textarea
+              data-global-url-patterns
+              rows="3"
+              autocomplete="off"
+              placeholder="e.g. *twitch.tv*&#10;https://www.twitch.tv/*"
+              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed; resize: vertical; min-height: 3.5rem"
+            ></textarea>
+            <span style="color: #9aa0a6; font-size: 0.8rem"
+              >Any open http(s) tab whose URL matches a line is included automatically, including tabs you open
+              later. Manual checkboxes above still add explicit tabs with fixed target URLs.</span
+            >
+          </label>
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
             <span>Interval (seconds)</span>
             <input
@@ -168,10 +206,6 @@
           </button>
         </form>
         <p data-global-form-error role="alert" style="margin: 0.5rem 0 0; color: #f28b82; min-height: 1.25rem"></p>
-        <ul
-          data-global-groups-list
-          style="margin: 1rem 0 0; padding: 0; list-style: none; color: #e8eaed; line-height: 1.5"
-        ></ul>
       </section>
 
       <section aria-labelledby="add-job-heading">
@@ -183,9 +217,32 @@
           Individual (0)
         </h2>
         <p style="margin: 0 0 0.75rem; color: #9aa0a6; font-size: 0.9rem">
-          Pick a tab, set the URL to load on each refresh, interval and jitter (seconds), then Save.
+          Pick a tab: <strong>Target URL</strong> defaults to that tab’s current address (refresh the tab list if
+          it moved). Then set interval and jitter (seconds) and Save. Scheduled refresh always loads the
+          <strong>saved</strong> target URL.
         </p>
         <form data-add-individual-form style="display: flex; flex-direction: column; gap: 0.5rem; max-width: 28rem">
+          <label style="display: flex; flex-direction: column; gap: 0.25rem">
+            <span>Filter tabs (title or URL)</span>
+            <input
+              type="search"
+              data-job-tab-search
+              placeholder="Type to narrow the tab list"
+              autocomplete="off"
+              aria-label="Filter tabs for individual job"
+              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+            />
+          </label>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem">
+            <button
+              type="button"
+              data-job-tab-refresh
+              style="padding: 0.4rem 0.75rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed; cursor: pointer"
+            >
+              Refresh tab list
+            </button>
+            <span style="color: #9aa0a6; font-size: 0.85rem">Reloads tabs from all windows.</span>
+          </div>
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
             <span>Tab</span>
             <select data-job-tab required style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
@@ -224,6 +281,33 @@
               step="1"
               value="0"
               required
+              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+            />
+          </label>
+          <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; color: #e8eaed">
+            <input type="checkbox" data-job-live-aware style="margin-top: 0.2rem" />
+            <span
+              >Twitch <strong>live-aware</strong> pause (channel page only): skip refresh while the stream is live; resume
+              when offline.</span
+            >
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 0.25rem">
+            <span>Blip phrases (optional, one per line)</span>
+            <textarea
+              data-job-blip-phrases
+              rows="3"
+              autocomplete="off"
+              placeholder="e.g. phrases that appear after a blip"
+              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed; resize: vertical; min-height: 3.5rem"
+            ></textarea>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 0.25rem">
+            <span>Blip regex (optional)</span>
+            <input
+              data-job-blip-regex
+              type="text"
+              autocomplete="off"
+              placeholder="JavaScript regex, case-insensitive flag applied"
               style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
             />
           </label>

@@ -1,3 +1,4 @@
+import { BLIP_MAX_PHRASE_LEN, BLIP_MAX_PHRASES, BLIP_MAX_REGEX_LEN, compileBlipRegex } from './blip-match';
 import type { AppState, GlobalGroup } from './types';
 import type { Err, Ok, Result } from './validation';
 import { validateHttpUrl, validateIntervalSec, validateJitterSec } from './validation';
@@ -131,6 +132,39 @@ export function validateStateFields(state: AppState): Result<void> {
         return err(ju.error);
       }
     }
+    const pats = g.urlPatterns;
+    if (pats !== undefined) {
+      if (!Array.isArray(pats) || pats.length > 20) {
+        return err('Invalid global group URL patterns');
+      }
+      for (const p of pats) {
+        if (typeof p !== 'string' || p.length === 0 || p.length > 200) {
+          return err('Invalid global group URL pattern');
+        }
+      }
+    }
+    const paused = g.pausedTabIds;
+    if (paused !== undefined) {
+      if (!Array.isArray(paused)) {
+        return err('Invalid paused tab list');
+      }
+      for (const id of paused) {
+        if (!Number.isInteger(id) || id < 1) {
+          return err('Invalid paused tab id');
+        }
+      }
+    }
+    const tnf = g.tabNextFireAt;
+    if (tnf !== undefined) {
+      if (typeof tnf !== 'object' || tnf === null || Array.isArray(tnf)) {
+        return err('Invalid global group tab schedule');
+      }
+      for (const [k, v] of Object.entries(tnf)) {
+        if (!/^\d+$/.test(k) || typeof v !== 'number' || !Number.isFinite(v)) {
+          return err('Invalid global group tab schedule entry');
+        }
+      }
+    }
   }
   for (const j of state.individualJobs) {
     const ji = validateIntervalSec(j.baseIntervalSec);
@@ -144,6 +178,30 @@ export function validateStateFields(state: AppState): Result<void> {
     const ju = validateHttpUrl(j.target.targetUrl);
     if (!ju.ok) {
       return err(ju.error);
+    }
+    const phrases = j.blipWatchPhrases;
+    if (phrases !== undefined) {
+      if (!Array.isArray(phrases) || phrases.length > BLIP_MAX_PHRASES) {
+        return err('Invalid blip phrases');
+      }
+      for (const p of phrases) {
+        if (typeof p !== 'string' || p.length === 0 || p.length > BLIP_MAX_PHRASE_LEN) {
+          return err('Invalid blip phrase');
+        }
+      }
+    }
+    const br = j.blipWatchRegex;
+    if (br !== undefined && br.trim()) {
+      if (typeof br !== 'string' || br.length > BLIP_MAX_REGEX_LEN) {
+        return err('Invalid blip regex length');
+      }
+      if (!compileBlipRegex(br)) {
+        return err('Invalid blip regex');
+      }
+    }
+    const bmp = j.blipMaxPerMinute;
+    if (bmp !== undefined && (!Number.isInteger(bmp) || bmp < 1 || bmp > 30)) {
+      return err('Blip max per minute must be 1–30');
     }
   }
   return ok(undefined);

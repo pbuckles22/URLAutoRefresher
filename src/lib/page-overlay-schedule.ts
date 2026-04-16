@@ -22,7 +22,7 @@ export function getNextFireAtForTab(state: AppState, tabId: number): number | un
       continue;
     }
     if (group.targets.some((t) => t.tabId === tabId)) {
-      return group.nextFireAt;
+      return group.tabNextFireAt?.[String(tabId)] ?? group.nextFireAt;
     }
   }
   return undefined;

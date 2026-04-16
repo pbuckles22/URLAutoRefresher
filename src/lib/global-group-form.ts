@@ -8,15 +8,40 @@ export type GlobalGroupFormInput = {
   jitterSec: number;
   /** One entry per selected tab; duplicate tabId rejected. */
   targets: Array<{ tabId: number; windowId: number; targetUrl: string; label?: string }>;
+  /** Newline-separated URL patterns with * wildcards (optional). */
+  urlPatternsRaw?: string;
 };
 
-/** Edit form: one row per existing tab; tab set must match the stored group. */
+/** Edit form: one row per existing explicit tab; patterns edited separately. */
 export type GlobalGroupUpdateFormInput = {
   name: string;
   baseIntervalSec: number;
   jitterSec: number;
   targets: Array<{ tabId: number; windowId: number; targetUrl: string; label?: string }>;
+  urlPatternsRaw?: string;
 };
+
+function parseUrlPatternsRaw(raw: string | undefined): Result<string[]> {
+  if (raw === undefined || !raw.trim()) {
+    return { ok: true, value: [] };
+  }
+  const lines = raw.split(/\r?\n/);
+  const out: string[] = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) {
+      continue;
+    }
+    if (t.length > 200) {
+      return { ok: false, error: 'Each URL pattern line must be at most 200 characters' };
+    }
+    out.push(t);
+    if (out.length > 20) {
+      return { ok: false, error: 'At most 20 URL patterns' };
+    }
+  }
+  return { ok: true, value: out };
+}
 
 /**
  * Validates dashboard “add global group” from the window/tab browser (Epic 4.1).
@@ -29,8 +54,15 @@ export function buildGlobalGroupFromForm(
   if (!name) {
     return { ok: false, error: 'Enter a group name' };
   }
-  if (input.targets.length < 1) {
-    return { ok: false, error: 'Select at least one tab' };
+
+  const patternsResult = parseUrlPatternsRaw(input.urlPatternsRaw);
+  if (!patternsResult.ok) {
+    return patternsResult;
+  }
+  const urlPatterns = patternsResult.value;
+
+  if (input.targets.length < 1 && urlPatterns.length < 1) {
+    return { ok: false, error: 'Select at least one tab or add at least one URL pattern' };
   }
 
   const seen = new Set<number>();
@@ -56,7 +88,7 @@ export function buildGlobalGroupFromForm(
     return jitter;
   }
 
-  const targets: GlobalGroup['targets'] = [];
+  const targets: TargetRef[] = [];
   for (const t of input.targets) {
     const url = validateHttpUrl(t.targetUrl);
     if (!url.ok) {
@@ -77,6 +109,7 @@ export function buildGlobalGroupFromForm(
       id: newId(),
       name,
       targets,
+      ...(urlPatterns.length > 0 ? { urlPatterns } : {}),
       baseIntervalSec: interval.value,
       jitterSec: jitter.value,
       enabled: true,
@@ -85,8 +118,7 @@ export function buildGlobalGroupFromForm(
 }
 
 /**
- * Re-validates fields for an existing group (Epic 4.2 edit). Preserves `id`, `enabled`, and `nextFireAt`.
- * Target rows use the same tab ids as `existing.targets` (order in storage is preserved).
+ * Re-validates fields for an existing group (Epic 4.2 edit). Preserves `id`, `enabled`, `nextFireAt`, `pausedTabIds`.
  */
 export function buildGlobalGroupUpdateFromForm(
   input: GlobalGroupUpdateFormInput,
@@ -96,6 +128,12 @@ export function buildGlobalGroupUpdateFromForm(
   if (!name) {
     return { ok: false, error: 'Enter a group name' };
   }
+
+  const patternsResult = parseUrlPatternsRaw(input.urlPatternsRaw);
+  if (!patternsResult.ok) {
+    return patternsResult;
+  }
+  const urlPatterns = patternsResult.value;
 
   const interval = validateIntervalSec(input.baseIntervalSec);
   if (!interval.ok) {
@@ -134,14 +172,23 @@ export function buildGlobalGroupUpdateFromForm(
     });
   }
 
-  return {
-    ok: true,
-    value: {
-      ...existing,
-      name,
-      targets,
-      baseIntervalSec: interval.value,
-      jitterSec: jitter.value,
-    },
+  if (targets.length < 1 && urlPatterns.length < 1) {
+    return { ok: false, error: 'Keep at least one tab or one URL pattern' };
+  }
+
+  const next: GlobalGroup = {
+    ...existing,
+    name,
+    targets,
+    baseIntervalSec: interval.value,
+    jitterSec: jitter.value,
   };
+
+  if (urlPatterns.length > 0) {
+    next.urlPatterns = urlPatterns;
+  } else {
+    delete next.urlPatterns;
+  }
+
+  return { ok: true, value: next };
 }

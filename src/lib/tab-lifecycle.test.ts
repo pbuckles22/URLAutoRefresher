@@ -39,6 +39,45 @@ describe('applyTabRemoved', () => {
     expect(next.globalGroups[0].enabled).toBe(false);
   });
 
+  it('keeps global enabled when URL patterns remain after last explicit tab closes', () => {
+    const state = {
+      ...DEFAULT_STATE,
+      globalGroups: [
+        {
+          id: 'g1',
+          name: 'G',
+          targets: [{ tabId: 9, windowId: 1, targetUrl: 'https://b.com' }],
+          urlPatterns: ['*twitch.tv*'],
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: true,
+        },
+      ],
+    };
+    const next = applyTabRemoved(state, 9);
+    expect(next.globalGroups[0].targets).toHaveLength(0);
+    expect(next.globalGroups[0].enabled).toBe(true);
+  });
+
+  it('removes closed tab from pausedTabIds', () => {
+    const state = {
+      ...DEFAULT_STATE,
+      globalGroups: [
+        {
+          id: 'g1',
+          name: 'G',
+          targets: [{ tabId: 9, windowId: 1, targetUrl: 'https://b.com' }],
+          pausedTabIds: [9, 10],
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: true,
+        },
+      ],
+    };
+    const next = applyTabRemoved(state, 9);
+    expect(next.globalGroups[0].pausedTabIds).toEqual([10]);
+  });
+
   it('removes one tab from multi-target global and keeps group enabled (Epic 2.3)', () => {
     const state = {
       ...DEFAULT_STATE,

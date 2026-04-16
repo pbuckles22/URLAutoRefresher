@@ -33,7 +33,7 @@ describe('collectNextFireTimesForTabSet', () => {
     expect(collectNextFireTimesForTabSet(state, new Set([9]))).toEqual([]);
   });
 
-  it('includes global group when any target tab is in set', () => {
+  it('includes global group per-tab next fire when tab is in set', () => {
     const state: AppState = {
       ...emptyState(),
       globalGroups: [
@@ -47,7 +47,7 @@ describe('collectNextFireTimesForTabSet', () => {
           baseIntervalSec: 10,
           jitterSec: 0,
           enabled: true,
-          nextFireAt: 500,
+          tabNextFireAt: { '1': 400, '2': 500 },
         },
       ],
     };

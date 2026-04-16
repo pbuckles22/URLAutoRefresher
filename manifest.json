@@ -28,6 +28,11 @@
       "matches": ["http://*/*", "https://*/*"],
       "js": ["dist/page-overlay.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.twitch.tv/*", "https://twitch.tv/*"],
+      "js": ["dist/twitch-live-bridge.js"],
+      "run_at": "document_idle"
     }
   ]
 }

@@ -15,18 +15,43 @@ function parseExtensionIdFromWorkerUrl(workerUrl: string): string | null {
   return match ? match[1]! : null;
 }
 
-/** Wait until this extension's MV3 service worker registers (unpacked load is the only extension). */
+function findOurExtensionWorker(context: BrowserContext): { url: string } | undefined {
+  for (const w of context.serviceWorkers()) {
+    const u = w.url();
+    if (u.startsWith('chrome-extension://') && parseExtensionIdFromWorkerUrl(u)) {
+      return { url: u };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Wait until this extension's MV3 service worker registers.
+ * Uses `serviceworker` event when possible (Playwright), then polls — see chrome-extensions docs.
+ */
 async function waitForExtensionServiceWorker(
   context: BrowserContext,
   timeoutMs: number
 ): Promise<{ url: string }> {
+  const immediate = findOurExtensionWorker(context);
+  if (immediate) {
+    return immediate;
+  }
   const deadline = Date.now() + timeoutMs;
+  const waitMs = Math.min(timeoutMs, 15_000);
+  try {
+    const sw = await context.waitForEvent('serviceworker', { timeout: waitMs });
+    const u = sw.url();
+    if (u.startsWith('chrome-extension://') && parseExtensionIdFromWorkerUrl(u)) {
+      return { url: u };
+    }
+  } catch {
+    // Worker may already be registered without firing again — fall through to poll.
+  }
   while (Date.now() < deadline) {
-    for (const w of context.serviceWorkers()) {
-      const u = w.url();
-      if (u.startsWith('chrome-extension://') && parseExtensionIdFromWorkerUrl(u)) {
-        return { url: u };
-      }
+    const found = findOurExtensionWorker(context);
+    if (found) {
+      return found;
     }
     await new Promise((r) => setTimeout(r, 100));
   }
@@ -38,6 +63,16 @@ async function waitForExtensionServiceWorker(
   );
 }
 
+/**
+ * Headed Chromium is best for local debugging. Headless works with bundled `chromium` + extensions
+ * (see Playwright “Chrome extensions” doc). Use headless in CI/agents without a display:
+ * `PLAYWRIGHT_HEADLESS=1 npm run test:e2e`
+ */
+function useHeadlessChromium(): boolean {
+  const v = process.env.PLAYWRIGHT_HEADLESS;
+  return v === '1' || v === 'true';
+}
+
 export async function launchExtensionContext(): Promise<{
   context: BrowserContext;
   extensionId: string;
@@ -46,9 +81,11 @@ export async function launchExtensionContext(): Promise<{
   const root = repoRoot;
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'urlar-playwright-'));
 
+  const headless = useHeadlessChromium();
+
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: 'chromium',
-    headless: false,
+    headless,
     args: [
       `--disable-extensions-except=${root}`,
       `--load-extension=${root}`,
@@ -56,7 +93,7 @@ export async function launchExtensionContext(): Promise<{
   });
 
   const wake = await context.newPage();
-  await wake.goto(`${FIXTURE_ORIGIN}/`, { waitUntil: 'domcontentloaded' });
+  await wake.goto(`${FIXTURE_ORIGIN}/`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
 
   const worker = await waitForExtensionServiceWorker(context, 45_000);
   const extensionId = parseExtensionIdFromWorkerUrl(worker.url);

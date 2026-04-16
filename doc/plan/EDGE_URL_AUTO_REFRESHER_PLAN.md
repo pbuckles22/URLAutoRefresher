@@ -20,8 +20,9 @@ Manifest V3 Edge extension: **global synchronized groups** (one shared refresh c
 | [x] **5** | Unified UI (choice C) | 4 |
 | [x] **6** | Toolbar badge (focus-aware) | 3 |
 | [x] **7** | Ship notes for Edge | 2 |
-| [ ] **8** | Live-aware pause (Twitch-first) | 3 |
-| [ ] **9** | Blip / error-text triggered refresh | 3 |
+| [x] **8** | Live-aware pause (Twitch-first) | 3 |
+| [x] **9** | Blip / error-text triggered refresh | 3 |
+| [x] **Post-9** | Incremental polish (see [Post–Epic 9](#postepic-9--incremental-enhancements-shipped)) | 6 |
 
 *(Optional: set an epic row to `[x]` when **all** its stories are done.)*
 
@@ -87,7 +88,7 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 - [x] **2.1** — One alarm per **individual** job: on fire → `tabs.update(tabId, { url: targetUrl })`, then reschedule with **base + uniform jitter**. *Outcome: one individual refresh loop works.*
 - [x] **2.2** — After each schedule, persist **`nextFireAt`** for UI countdowns. *Outcome: storage + alarms stay aligned.*
 - [x] **2.3** — `tabs.onRemoved` / invalid tab → disable or prune job; `tabs.update` must not throw. *Outcome: clean failure modes.*
-- [x] **2.4** — **Global group:** one alarm per group; on fire, `tabs.update` **all** targets together; one new jittered delay for the **group**. *Outcome: synchronized refresh.*
+- [x] **2.4** — **Global group:** ~~one alarm per group; synchronized refresh~~ — **superseded (Post–Epic 9):** one alarm **per tab** in the group with **per-tab jitter** and `tabNextFireAt`; each tab refreshes on its own schedule (see [Post–Epic 9](#postepic-9--incremental-enhancements-shipped)). *Outcome: global membership with staggered refreshes.*
 
 ---
 
@@ -148,9 +149,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Product intent:** **Twitch** is the supported use case. The same detection logic may run on other URLs, but **non-Twitch pages are not expected** to behave like Twitch’s live/offline model. If another site happens to align and it works, fine; if users want correct live/offline semantics on arbitrary hosts, treat that as **follow-up bugs or enhancements**, not Epic 8 v1 blockers.
 
-- [ ] **8.1** — Detect **live vs offline** on **twitch.tv** (DOM heuristics or documented signals; spike / adjust if Twitch changes markup). *Outcome: reliable signal for our primary use case.*
-- [ ] **8.2** — Integrate with scheduling: when live, **do not fire** the periodic refresh for that job; when offline again, **resume** the alarm loop (implementation detail: e.g. `enabled` vs explicit `pausedForLive`—decide in code; align with `src/background/scheduler.ts`). *Outcome: pause/resume matches stream state.*
-- [ ] **8.3** — Tab close, navigation away from target, and service worker lifecycle: no orphaned alarms; clear UX or logs if detection is unavailable. *Outcome: same robustness as Epic 2 tab lifecycle.*
+- [x] **8.1** — Detect **live vs offline** on **twitch.tv** (DOM heuristics or documented signals; spike / adjust if Twitch changes markup). *Outcome: reliable signal for our primary use case.*
+- [x] **8.2** — Integrate with scheduling: when live, **do not fire** the periodic refresh for that job; when offline again, **resume** the alarm loop (implementation detail: e.g. `enabled` vs explicit `pausedForLive`—decide in code; align with `src/background/scheduler.ts`). *Outcome: pause/resume matches stream state.*
+- [x] **8.3** — Tab close, navigation away from target, and service worker lifecycle: no orphaned alarms; clear UX or logs if detection is unavailable. *Outcome: same robustness as Epic 2 tab lifecycle.*
 
 **Technical notes:** Likely requires **content script(s)** on Twitch (and manifest matches); messaging to the service worker. Depends on solid **per-tab individual jobs** (Epic 3+).
 
@@ -160,13 +161,28 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** After small connectivity blips, specific **words or patterns** sometimes appear on the page; optionally **refresh immediately** when those appear (user-configured strings or regex).
 
-- [ ] **9.1** — Per-job (or per-tab) config: **watch phrases and/or regex** (user-defined only). *Outcome: user controls what counts as a “blip” signal.*
-- [ ] **9.2** — **Content script** observes page text (or DOM); on match, message background → **refresh** (`tabs.update` to stored `targetUrl` or reload—align with product rules and mutual exclusion). *Outcome: recovery refresh without waiting for the next alarm.*
-- [ ] **9.3** — **Rate limiting** and loop prevention (debounce, max triggers per minute). *Outcome: no runaway refresh storms.*
+- [x] **9.1** — Per-job (or per-tab) config: **watch phrases and/or regex** (user-defined only). *Outcome: user controls what counts as a “blip” signal.*
+- [x] **9.2** — **Content script** observes page text (or DOM); on match, message background → **refresh** (`tabs.update` to stored `targetUrl` or reload—align with product rules and mutual exclusion). *Outcome: recovery refresh without waiting for the next alarm.*
+- [x] **9.3** — **Rate limiting** and loop prevention (debounce, max triggers per minute). *Outcome: no runaway refresh storms.*
 
 **Privacy / security:** Only **user-supplied** patterns; no exfiltration. **Permissions:** content scripts + host access as needed.
 
 **Technical notes:** Builds on Epic 3+; similar UX lineage to the reference “Page Monitor” tab, scoped to **our** asks only.
+
+---
+
+## Post–Epic 9 — Incremental enhancements (shipped)
+
+**Goal:** Product polish and model refinements after Epics **8** and **9**; tracked here so requirements/planning stay aligned with `main`.
+
+- [x] **P9.1** — **Global URL patterns:** optional newline-separated patterns with `*` wildcards; open `http`/`https` tabs matching any pattern are included automatically (including tabs opened later). Explicit checkboxes still supported; enrollment validated on save. *Outcome: e.g. all Twitch tabs without manual include each time.*
+- [x] **P9.2** — **Per-tab pause (global groups):** pause scheduled refresh for one tab in a group (`pausedTabIds`); page overlay shows **Auto refresh paused** + **Play**; compact card when paused. *Outcome: watch one stream without stopping the whole group.*
+- [x] **P9.3** — **Per-tab jitter for globals:** `tabNextFireAt` + alarm name `urlar:gt:{groupId}:{tabId}`; each tab gets its own base±jitter delay after each refresh (not one shared fire time for the whole group). Dashboard row shows **range** (e.g. `1:00–3:00`) when times differ. *Outcome: staggered refreshes within a group.*
+- [x] **P9.4** — **Dashboard order:** saved **global group** rows listed **above** the “Add a new group” form. *Outcome: active groups visible without scrolling past the tab browser.*
+- [x] **P9.5** — **Page overlay polish:** Min/Sec label typography and alignment; timer card position; optional **Pause** for global-group tabs. *Outcome: closer to reference “large timer” UX.*
+- [x] **P9.6** — **Twitch live bridge robustness:** after extension reload, avoid uncaught **Extension context invalidated** (guard `chrome.runtime`, teardown observers/timers, `unhandledrejection`). *Outcome: clean DevTools when iterating on the extension.*
+
+**Requirements detail:** [doc/requirements/post-epic-9.md](../requirements/post-epic-9.md).
 
 ---
 
@@ -194,7 +210,7 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 ## Reference — Clarifications (1, 1a–1c)
 
 - **Global vs Individual:** From any window, choose **Global** (shared clock for included tabs) or **Individual** (separate timers). Same data via `chrome.storage`.
-- **1a:** One alarm + one `nextFireAt` per **global** group; tabs refresh together. **Individual** jobs have separate alarms/countdowns.
+- **1a:** **Global** groups use **per-tab** alarms and `tabNextFireAt` (Post–Epic 9); tabs in a group refresh on **staggered** schedules with shared interval/jitter **parameters**. **Individual** jobs have one alarm + `nextFireAt` each.
 - **1b:** UI always shows **Global (N)** and **Individual (M)** with counts.
 - **1c:** Every row shows a **next-refresh** countdown (one per global group; one per individual). Badge uses focus-aware rules above.
 
@@ -202,7 +218,7 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 ## Reference — Core product model (short)
 
-1. **Global groups** — Named targets; **one** schedule per group; on fire, refresh all targets **at once**, each with its own `targetUrl`.
+1. **Global groups** — Named targets + optional URL patterns; **one interval+jitter policy** per group; each tab has its **own** next-fire time (staggered); each refresh uses that tab’s stored `targetUrl`.
 2. **Individual jobs** — Own schedule; edits don’t affect globals.
 3. **Two lists everywhere** — Same structure in Side Panel and dashboard.
 4. **UI mode** — Clear Global vs Individual flow; **at most one** active enrollment per `tabId` (global or individual).
@@ -211,9 +227,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 ## Reference — Scheduling (MV3-safe)
 
-- **`chrome.alarms`:** one alarm per global group and one per individual (namespaced ids).
-- On fire: run refresh(es), compute new delay with jitter, recreate alarm.
-- **`nextFireAt`** in storage for UI; optional short-interval tick **only while** a surface is visible — alarms + stored times remain source of truth.
+- **`chrome.alarms`:** one alarm per **individual** job; **one alarm per (global group, tab)** for globals (`urlar:gt:` prefix). Legacy single-group alarms (`urlar:g:`) are cleared on sync.
+- On fire: run refresh for that tab, compute **per-tab** delay with jitter, recreate that tab’s alarm.
+- **`nextFireAt`** (individuals) and **`tabNextFireAt`** (globals) in storage for UI; optional short-interval tick **only while** a surface is visible — alarms + stored times remain source of truth.
 
 ---
 
@@ -243,10 +259,14 @@ type GlobalGroup = {
   id: string;
   name: string;
   targets: TargetRef[];
+  urlPatterns?: string[];
+  pausedTabIds?: number[];
   baseIntervalSec: number;
   jitterSec: number;
   enabled: boolean;
+  /** Legacy; prefer tabNextFireAt. */
   nextFireAt?: number;
+  tabNextFireAt?: Record<string, number>;
 };
 
 type IndividualJob = {
@@ -256,6 +276,11 @@ type IndividualJob = {
   jitterSec: number;
   enabled: boolean;
   nextFireAt?: number;
+  liveAwareRefresh?: boolean;
+  streamLive?: boolean;
+  blipWatchPhrases?: string[];
+  blipWatchRegex?: string;
+  blipMaxPerMinute?: number;
 };
 ```
 

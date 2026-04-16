@@ -30,7 +30,10 @@ export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTM
   top.style.cssText = 'display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;';
 
   const summaryLine = document.createElement('span');
-  summaryLine.textContent = `Tab ${j.target.tabId} → ${j.target.targetUrl} · every ${j.baseIntervalSec}s ±${j.jitterSec}s`;
+  const liveHint = j.liveAwareRefresh ? ' · Twitch live-aware' : '';
+  const blipHint =
+    (j.blipWatchPhrases?.length ?? 0) > 0 || j.blipWatchRegex?.trim() ? ' · blip watch' : '';
+  summaryLine.textContent = `Tab ${j.target.tabId} → ${j.target.targetUrl} · every ${j.baseIntervalSec}s ±${j.jitterSec}s${liveHint}${blipHint}`;
   summaryLine.style.flex = '1 1 12rem';
 
   const countdown = document.createElement('span');
@@ -107,6 +110,41 @@ export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTM
   jitEdit.style.cssText = urlEdit.style.cssText;
   jitLab.appendChild(jitEdit);
 
+  const liveLab = document.createElement('label');
+  liveLab.style.cssText = 'display: flex; align-items: flex-start; gap: 0.35rem; font-size: 0.85rem; cursor: pointer';
+  const liveCb = document.createElement('input');
+  liveCb.type = 'checkbox';
+  liveCb.setAttribute('data-job-edit-live-aware', '');
+  liveCb.checked = j.liveAwareRefresh === true;
+  liveLab.appendChild(liveCb);
+  const liveSpan = document.createElement('span');
+  liveSpan.innerHTML =
+    'Pause refresh while this channel is <strong>live</strong> on Twitch (channel page only; best-effort detection).';
+  liveLab.appendChild(liveSpan);
+
+  const blipLab = document.createElement('label');
+  blipLab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem';
+  blipLab.innerHTML = '<span>Blip phrases (optional, one per line)</span>';
+  const blipTa = document.createElement('textarea');
+  blipTa.setAttribute('data-job-edit-blip-phrases', '');
+  blipTa.rows = 3;
+  blipTa.autocomplete = 'off';
+  blipTa.value = (j.blipWatchPhrases ?? []).join('\n');
+  blipTa.style.cssText =
+    'padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #202124; color: #e8eaed; resize: vertical; min-height: 3.5rem';
+  blipLab.appendChild(blipTa);
+
+  const blipRxLab = document.createElement('label');
+  blipRxLab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem';
+  blipRxLab.innerHTML = '<span>Blip regex (optional, case-insensitive)</span>';
+  const blipRx = document.createElement('input');
+  blipRx.type = 'text';
+  blipRx.setAttribute('data-job-edit-blip-regex', '');
+  blipRx.value = j.blipWatchRegex ?? '';
+  blipRx.autocomplete = 'off';
+  blipRx.style.cssText = urlEdit.style.cssText;
+  blipRxLab.appendChild(blipRx);
+
   const editErr = document.createElement('p');
   editErr.setAttribute('data-job-edit-error', '');
   editErr.style.cssText = 'color: #f28b82; margin: 0; min-height: 1rem; font-size: 0.8rem';
@@ -117,7 +155,7 @@ export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTM
   saveBtn.textContent = 'Save changes';
   saveBtn.style.cssText = `${primaryBtnStyle()} align-self: flex-start`;
 
-  editWrap.append(urlLab, intLab, jitLab, editErr, saveBtn);
+  editWrap.append(urlLab, intLab, jitLab, liveLab, blipLab, blipRxLab, editErr, saveBtn);
   details.appendChild(editWrap);
   li.appendChild(details);
 

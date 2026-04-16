@@ -27,6 +27,19 @@ describe('app-state-list-layout', () => {
     expect(onlyNonLayoutAppStateDiff(base, next)).toBe(true);
   });
 
+  it('treats streamLive-only change as non-layout', () => {
+    const next: AppState = {
+      ...base,
+      individualJobs: [{ ...base.individualJobs[0]!, liveAwareRefresh: true, streamLive: true }],
+    };
+    const prev: AppState = {
+      ...base,
+      individualJobs: [{ ...base.individualJobs[0]!, liveAwareRefresh: true, streamLive: false }],
+    };
+    expect(appStateListLayoutEqual(prev, next)).toBe(true);
+    expect(onlyNonLayoutAppStateDiff(prev, next)).toBe(true);
+  });
+
   it('detects targetUrl change as layout change', () => {
     const next: AppState = {
       ...base,

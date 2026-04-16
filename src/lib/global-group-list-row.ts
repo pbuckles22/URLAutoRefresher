@@ -32,8 +32,11 @@ export function createGlobalGroupListRow(g: GlobalGroup, nowMs: number): HTMLLIE
   const top = document.createElement('div');
   top.style.cssText = 'display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;';
 
+  const patCount = g.urlPatterns?.filter((p) => p.trim()).length ?? 0;
+  const autoHint = patCount > 0 ? ` + ${patCount} URL pattern${patCount === 1 ? '' : 's'}` : '';
+
   const summaryLine = document.createElement('span');
-  summaryLine.textContent = `${g.name} · ${g.targets.length} tabs · every ${g.baseIntervalSec}s ±${g.jitterSec}s`;
+  summaryLine.textContent = `${g.name} · ${g.targets.length} explicit${autoHint} · every ${g.baseIntervalSec}s ±${g.jitterSec}s`;
   summaryLine.style.flex = '1 1 12rem';
 
   const countdown = document.createElement('span');
@@ -110,7 +113,18 @@ export function createGlobalGroupListRow(g: GlobalGroup, nowMs: number): HTMLLIE
   jitEdit.style.cssText = inputStyle;
   jitLab.appendChild(jitEdit);
 
-  editWrap.append(nameLab, intLab, jitLab);
+  const patLab = document.createElement('label');
+  patLab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem';
+  patLab.innerHTML = '<span>Auto-include URL patterns (optional)</span>';
+  const patTa = document.createElement('textarea');
+  patTa.rows = 3;
+  patTa.setAttribute('data-global-edit-url-patterns', '');
+  patTa.value = g.urlPatterns?.join('\n') ?? '';
+  patTa.autocomplete = 'off';
+  patTa.style.cssText = `${inputStyle}; resize: vertical; min-height: 3rem`;
+  patLab.appendChild(patTa);
+
+  editWrap.append(nameLab, intLab, jitLab, patLab);
 
   for (const t of g.targets) {
     const lab = document.createElement('label');

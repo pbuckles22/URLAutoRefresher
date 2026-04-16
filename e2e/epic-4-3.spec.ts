@@ -77,10 +77,9 @@ test('Epic 4.3: add global form shows mutual exclusion when tab has enabled indi
   await dash.locator('[data-global-jitter]').fill('0');
   await dash.locator('[data-global-group-form]').locator('[type="submit"]').click();
 
-  await expect(dash.locator('[data-global-form-error]')).toContainText(
-    'cannot be in an enabled global group and an enabled individual job',
-    { timeout: 10_000 }
-  );
+  await expect(dash.locator('[data-global-form-error]')).toContainText('has an enabled individual job', {
+    timeout: 10_000,
+  });
 });
 
 test('Epic 4.3: add individual form shows mutual exclusion when tab is in enabled global group', async () => {

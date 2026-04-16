@@ -54,6 +54,21 @@ describe('buildIndividualJobFromForm (Epic 3.1)', () => {
       buildIndividualJobFromForm({ tabId: 1, windowId: 1, targetUrl: 'https://a.com', baseIntervalSec: 10, jitterSec: -1 }, newId).ok
     ).toBe(false);
   });
+
+  it('sets liveAwareRefresh when requested', () => {
+    const r = buildIndividualJobFromForm(
+      {
+        tabId: 12,
+        windowId: 3,
+        targetUrl: 'https://www.twitch.tv/x',
+        baseIntervalSec: 60,
+        jitterSec: 0,
+        liveAwareRefresh: true,
+      },
+      newId
+    );
+    expect(r.ok && r.value).toMatchObject({ liveAwareRefresh: true });
+  });
 });
 
 describe('buildIndividualJobUpdateFromForm (Epic 3.2)', () => {
@@ -88,5 +103,35 @@ describe('buildIndividualJobUpdateFromForm (Epic 3.2)', () => {
     expect(
       buildIndividualJobUpdateFromForm({ targetUrl: 'ftp://x', baseIntervalSec: 10, jitterSec: 0 }, existing).ok
     ).toBe(false);
+  });
+
+  it('preserves streamLive when live-aware stays enabled', () => {
+    const withLive: IndividualJob = {
+      ...existing,
+      liveAwareRefresh: true,
+      streamLive: true,
+    };
+    const r = buildIndividualJobUpdateFromForm(
+      { targetUrl: 'https://new.com/', baseIntervalSec: 90, jitterSec: 2, liveAwareRefresh: true },
+      withLive
+    );
+    expect(r.ok && r.value).toMatchObject({ streamLive: true, liveAwareRefresh: true });
+  });
+
+  it('clears live-aware fields when turned off', () => {
+    const withLive: IndividualJob = {
+      ...existing,
+      liveAwareRefresh: true,
+      streamLive: true,
+    };
+    const r = buildIndividualJobUpdateFromForm(
+      { targetUrl: 'https://new.com/', baseIntervalSec: 90, jitterSec: 2, liveAwareRefresh: false },
+      withLive
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value).not.toHaveProperty('liveAwareRefresh');
+      expect(r.value).not.toHaveProperty('streamLive');
+    }
   });
 });
