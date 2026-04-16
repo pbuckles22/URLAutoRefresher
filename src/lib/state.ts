@@ -179,6 +179,9 @@ export function validateStateFields(state: AppState): Result<void> {
     if (!ju.ok) {
       return err(ju.error);
     }
+    if (j.overlayPaused !== undefined && typeof j.overlayPaused !== 'boolean') {
+      return err('Invalid individual job overlay pause flag');
+    }
     const phrases = j.blipWatchPhrases;
     if (phrases !== undefined) {
       if (!Array.isArray(phrases) || phrases.length > BLIP_MAX_PHRASES) {

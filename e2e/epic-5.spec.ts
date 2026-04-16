@@ -46,17 +46,42 @@ test('Epic 5.2: side panel lists mirror dashboard headings', async () => {
   await panel.close();
 });
 
-test('Epic 5.3: cross-surface — dashboard offers Open side panel; side panel offers Open full dashboard', async () => {
+test('Epic 5.3: cross-surface — dashboard offers Open side panel; side panel offers Open in a tab', async () => {
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
   await expect(dash.locator('[data-open-side-panel]')).toBeVisible();
-  await expect(dash.locator('[data-open-dashboard-tab]')).toBeHidden();
+  await expect(dash.locator('[data-open-in-tab]')).toBeHidden();
   await dash.close();
 
   const panel = await context.newPage();
   await panel.goto(sidepanelUrl(extensionId));
-  await expect(panel.locator('[data-open-dashboard-tab]')).toBeVisible();
+  await expect(panel.locator('[data-open-in-tab]')).toBeVisible();
   await expect(panel.locator('[data-open-side-panel]')).toBeHidden();
+  await panel.close();
+});
+
+test('Backlog 1: side panel Open in a tab is first in body and opens packaged dashboard', async () => {
+  const panel = await context.newPage();
+  await panel.goto(sidepanelUrl(extensionId));
+
+  const openBtn = panel.locator('[data-open-in-tab]');
+  await expect(openBtn).toBeVisible({ timeout: 10_000 });
+
+  const firstMeaningfulChildIsCta = await panel.evaluate(() => {
+    const body = document.body;
+    const first = body.firstElementChild;
+    return first?.matches('[data-sidepanel-open-dashboard-row]') === true;
+  });
+  expect(firstMeaningfulChildIsCta).toBe(true);
+
+  await openBtn.click();
+
+  const hasDashboardTab = await panel.evaluate(async () => {
+    const tabs = await chrome.tabs.query({});
+    return tabs.some((t) => (t.url ?? '').includes('dashboard/dashboard.html'));
+  });
+  expect(hasDashboardTab).toBe(true);
+
   await panel.close();
 });
 

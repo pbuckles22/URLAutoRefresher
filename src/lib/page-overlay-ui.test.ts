@@ -54,6 +54,7 @@ describe('getPageOverlayUiState (Epic 3.0)', () => {
       show: true,
       mode: 'timer',
       nextFireAt: 9_000_000,
+      individualJobId: 'j1',
     });
   });
 

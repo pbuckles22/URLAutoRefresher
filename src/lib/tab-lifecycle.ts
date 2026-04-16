@@ -6,7 +6,7 @@ import type { AppState } from './types';
  */
 export function applyTabRemoved(state: AppState, removedTabId: number): AppState {
   const individualJobs = state.individualJobs.map((j) =>
-    j.target.tabId === removedTabId ? { ...j, enabled: false } : j
+    j.target.tabId === removedTabId ? { ...j, enabled: false, nextFireAt: undefined, overlayPaused: undefined } : j
   );
 
   const globalGroups = state.globalGroups.map((g) => {

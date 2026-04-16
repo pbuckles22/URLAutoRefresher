@@ -39,6 +39,7 @@ describe('individual-jobs (Epic 3.2)', () => {
       enabled: false,
       nextFireAt: undefined,
       streamLive: undefined,
+      overlayPaused: undefined,
     });
     const started = setIndividualJobEnabled(stopped, 'job-a', true);
     expect(started.individualJobs[0]).toMatchObject({ enabled: true });

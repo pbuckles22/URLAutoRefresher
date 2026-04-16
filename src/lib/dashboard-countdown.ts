@@ -5,6 +5,9 @@ export function formatIndividualJobCountdown(nowMs: number, job: IndividualJob):
   if (!job.enabled) {
     return '—';
   }
+  if (job.overlayPaused) {
+    return 'paused';
+  }
   if (job.nextFireAt === undefined) {
     return '…';
   }

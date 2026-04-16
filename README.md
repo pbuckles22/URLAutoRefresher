@@ -97,7 +97,7 @@ git commit -m "Describe your change"
 
 ## Status
 
-Epics through **7** (ship notes for Edge — install, permissions, limits, manual QA) are implemented per [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). The toolbar badge is **focus-aware:** it shows the countdown to the nearest refresh among jobs in the **last-focused** browser window (tabs resolved live via `chrome.tabs.query`). If that window has no enrolled tabs, the badge **falls back** to the nearest refresh among all jobs so you still see activity. **Platform limit:** `chrome.action` exposes **one** badge per profile — every window’s toolbar shows the same text; the value tracks the focused window’s jobs, not a separate number per tiled window.
+Epics through **7** (ship notes for Edge — install, permissions, limits, manual QA) are implemented per [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). The toolbar action opens the **side panel**; use **Open in a tab** at the top of the side panel when you want the full-page dashboard in a normal tab (specified under **Epic 5.3** in the [product plan](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md)). The toolbar badge is **focus-aware:** it shows the countdown to the nearest refresh among jobs in the **last-focused** browser window (tabs resolved live via `chrome.tabs.query`). If that window has no enrolled tabs, the badge **falls back** to the nearest refresh among all jobs so you still see activity. **Platform limit:** `chrome.action` exposes **one** badge per profile — every window’s toolbar shows the same text; the value tracks the focused window’s jobs, not a separate number per tiled window.
 
 ## Permissions (Edge / Chromium)
 

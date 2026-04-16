@@ -42,6 +42,9 @@ function alignIndividualJobsState(state: AppState, now: number): AppState {
     if (!job.enabled) {
       return job.nextFireAt === undefined ? job : { ...job, nextFireAt: undefined };
     }
+    if (job.overlayPaused) {
+      return job.nextFireAt === undefined ? job : { ...job, nextFireAt: undefined };
+    }
     const { baseMs, jitterMs } = baseAndJitterMs(job);
     const when = computeAlarmWhen(now, job.nextFireAt, baseMs, jitterMs);
     return { ...job, nextFireAt: when };
@@ -111,7 +114,12 @@ async function alignAppState(state: AppState, now: number): Promise<AppState> {
 function stateSchedulingEqual(a: AppState, b: AppState): boolean {
   const pick = (s: AppState) =>
     JSON.stringify({
-      ij: s.individualJobs.map((j) => ({ id: j.id, enabled: j.enabled, nf: j.nextFireAt })),
+      ij: s.individualJobs.map((j) => ({
+        id: j.id,
+        enabled: j.enabled,
+        op: j.overlayPaused,
+        nf: j.nextFireAt,
+      })),
       gg: s.globalGroups.map((g) => ({
         id: g.id,
         enabled: g.enabled,
@@ -145,7 +153,7 @@ export async function syncAlarmsWithState(state: AppState): Promise<void> {
   await clearOurAlarms();
 
   for (const job of state.individualJobs) {
-    if (!job.enabled) {
+    if (!job.enabled || job.overlayPaused) {
       continue;
     }
     const { baseMs, jitterMs } = baseAndJitterMs(job);
@@ -201,7 +209,7 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
         return;
       }
       let job = state.individualJobs[idx];
-      if (!job.enabled) {
+      if (!job.enabled || job.overlayPaused) {
         return;
       }
 

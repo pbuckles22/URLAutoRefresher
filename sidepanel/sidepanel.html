@@ -51,8 +51,26 @@
       .sidepanel-surface [data-open-side-panel] {
         display: none !important;
       }
-      .dashboard-surface [data-open-dashboard-tab] {
+      .dashboard-surface [data-sidepanel-open-dashboard-row] {
         display: none !important;
+      }
+      .sidepanel-surface [data-surface-nav] {
+        display: none !important;
+      }
+      [data-sidepanel-open-dashboard-row] {
+        margin: 0 0 0.75rem;
+      }
+      [data-sidepanel-open-dashboard-row] button {
+        padding: 0.45rem 0.75rem;
+        border-radius: 6px;
+        border: 1px solid #5f6368;
+        background: #303134;
+        color: #e8eaed;
+        cursor: pointer;
+        font-size: 0.875rem;
+      }
+      [data-sidepanel-open-dashboard-row] button:hover {
+        background: #3c4043;
       }
       [data-browse-layout] {
         display: grid;
@@ -69,6 +87,9 @@
     </style>
   </head>
   <body class="sidepanel-surface">
+    <div data-sidepanel-open-dashboard-row>
+      <button type="button" data-open-in-tab>Open in a tab</button>
+    </div>
     <h1 data-app-title>URL Auto Refresher</h1>
     <p>
       Use the toolbar icon anytime to return here. The side panel shows the same lists for quick
@@ -76,7 +97,6 @@
     </p>
     <div data-surface-nav>
       <button type="button" data-open-side-panel>Open side panel</button>
-      <button type="button" data-open-dashboard-tab>Open full dashboard</button>
     </div>
     <section style="margin-top: 1.25rem" aria-labelledby="prefs-heading">
       <h2 id="prefs-heading" style="font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem">Display</h2>

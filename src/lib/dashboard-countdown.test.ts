@@ -18,6 +18,12 @@ describe('formatIndividualJobCountdown', () => {
     expect(formatIndividualJobCountdown(1_000, job({ enabled: false }))).toBe('—');
   });
 
+  it('shows paused when overlayPaused', () => {
+    expect(
+      formatIndividualJobCountdown(1_000, job({ overlayPaused: true, nextFireAt: 9_000_000 }))
+    ).toBe('paused');
+  });
+
   it('shows ellipsis when enabled but no next fire time yet', () => {
     expect(formatIndividualJobCountdown(1_000, job({ nextFireAt: undefined }))).toBe('…');
   });

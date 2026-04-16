@@ -15,11 +15,14 @@ export type PageOverlayStateResponse =
       show: true;
       mode: 'timer';
       nextFireAt: number | undefined;
-      /** Set when this tab is driven by a global group (shows pause control). */
+      /** Set when this tab is driven by a global group (overlay pause). */
       globalGroupId?: string;
+      /** Set when this tab is driven by an individual job (overlay pause). */
+      individualJobId?: string;
       blip?: PageOverlayBlipPack;
     }
-  | { ok: true; show: true; mode: 'paused'; globalGroupId: string; blip?: PageOverlayBlipPack };
+  | { ok: true; show: true; mode: 'paused'; globalGroupId: string; blip?: PageOverlayBlipPack }
+  | { ok: true; show: true; mode: 'paused'; individualJobId: string; blip?: PageOverlayBlipPack };
 
 /** Page → background: user-configured blip pattern matched; request target refresh (Epic 9). */
 export const BLIP_REFRESH_REQUEST = 'urlAutoRefresher:blipRefreshRequest' as const;
@@ -30,6 +33,15 @@ export const GLOBAL_GROUP_TAB_PAUSE = 'urlAutoRefresher:globalGroupTabPause' as 
 export type GlobalGroupTabPauseMessage = {
   type: typeof GLOBAL_GROUP_TAB_PAUSE;
   groupId: string;
+  paused: boolean;
+};
+
+/** Page → background: pause or resume this tab’s individual job from the overlay (same UX as global group pause). */
+export const INDIVIDUAL_JOB_OVERLAY_PAUSE = 'urlAutoRefresher:individualJobOverlayPause' as const;
+
+export type IndividualJobOverlayPauseMessage = {
+  type: typeof INDIVIDUAL_JOB_OVERLAY_PAUSE;
+  jobId: string;
   paused: boolean;
 };
 

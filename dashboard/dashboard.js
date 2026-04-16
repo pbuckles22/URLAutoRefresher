@@ -5,6 +5,9 @@
     if (!job.enabled) {
       return "\u2014";
     }
+    if (job.overlayPaused) {
+      return "paused";
+    }
     if (job.nextFireAt === void 0) {
       return "\u2026";
     }
@@ -648,7 +651,7 @@
           return j;
         }
         if (!enabled) {
-          return { ...j, enabled: false, nextFireAt: void 0, streamLive: void 0 };
+          return { ...j, enabled: false, nextFireAt: void 0, streamLive: void 0, overlayPaused: void 0 };
         }
         return { ...j, enabled: true };
       })
@@ -1052,6 +1055,9 @@
       if (!ju.ok) {
         return err2(ju.error);
       }
+      if (j.overlayPaused !== void 0 && typeof j.overlayPaused !== "boolean") {
+        return err2("Invalid individual job overlay pause flag");
+      }
       const phrases = j.blipWatchPhrases;
       if (phrases !== void 0) {
         if (!Array.isArray(phrases) || phrases.length > BLIP_MAX_PHRASES) {
@@ -1115,9 +1121,9 @@
         });
       });
     }
-    const openDash = document.querySelector("[data-open-dashboard-tab]");
-    if (openDash) {
-      openDash.addEventListener("click", () => {
+    const openDashInTab = document.querySelector("[data-open-in-tab]");
+    if (openDashInTab) {
+      openDashInTab.addEventListener("click", () => {
         void chrome.tabs.create({ url: chrome.runtime.getURL("dashboard/dashboard.html") });
       });
     }

@@ -1,10 +1,11 @@
 /**
  * Large Min/Sec countdown on pages that have an active refresh job (when enabled in prefs).
- * Global group tabs: optional pause → compact “paused” card with resume.
+ * Pause → compact “paused” card with resume (global group tabs and individual jobs).
  */
 import {
   BLIP_REFRESH_REQUEST,
   GLOBAL_GROUP_TAB_PAUSE,
+  INDIVIDUAL_JOB_OVERLAY_PAUSE,
   PAGE_OVERLAY_GET_STATE,
   type PageOverlayBlipPack,
   type PageOverlayStateResponse,
@@ -20,6 +21,7 @@ type UiKind = 'hidden' | 'timer' | 'paused';
 let uiKind: UiKind = 'hidden';
 let nextFireAt: number | undefined;
 let overlayGroupId: string | undefined;
+let overlayIndividualJobId: string | undefined;
 let shadowRoot: ShadowRoot | null = null;
 let tickHandle: ReturnType<typeof setInterval> | undefined;
 
@@ -37,6 +39,7 @@ function clearUi() {
   shadowRoot = null;
   uiKind = 'hidden';
   overlayGroupId = undefined;
+  overlayIndividualJobId = undefined;
 }
 
 function clearBlipWatcher(): void {
@@ -222,28 +225,47 @@ function ensureShadowClickDelegation(root: ShadowRoot): void {
   root.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
     const gid = overlayGroupId;
-    if (!gid) {
-      return;
-    }
+    const jid = overlayIndividualJobId;
     if (t.closest('[data-overlay-pause]')) {
       e.preventDefault();
-      void chrome.runtime
-        .sendMessage({
-          type: GLOBAL_GROUP_TAB_PAUSE,
-          groupId: gid,
-          paused: true,
-        })
-        .catch(() => {});
+      if (gid) {
+        void chrome.runtime
+          .sendMessage({
+            type: GLOBAL_GROUP_TAB_PAUSE,
+            groupId: gid,
+            paused: true,
+          })
+          .catch(() => {});
+      } else if (jid) {
+        void chrome.runtime
+          .sendMessage({
+            type: INDIVIDUAL_JOB_OVERLAY_PAUSE,
+            jobId: jid,
+            paused: true,
+          })
+          .catch(() => {});
+      }
+      return;
     }
     if (t.closest('[data-overlay-resume]')) {
       e.preventDefault();
-      void chrome.runtime
-        .sendMessage({
-          type: GLOBAL_GROUP_TAB_PAUSE,
-          groupId: gid,
-          paused: false,
-        })
-        .catch(() => {});
+      if (gid) {
+        void chrome.runtime
+          .sendMessage({
+            type: GLOBAL_GROUP_TAB_PAUSE,
+            groupId: gid,
+            paused: false,
+          })
+          .catch(() => {});
+      } else if (jid) {
+        void chrome.runtime
+          .sendMessage({
+            type: INDIVIDUAL_JOB_OVERLAY_PAUSE,
+            jobId: jid,
+            paused: false,
+          })
+          .catch(() => {});
+      }
     }
   });
 }
@@ -285,10 +307,11 @@ function ensureShadowHost(): HTMLDivElement {
   return host;
 }
 
-function mountTimerOverlay(globalGroupId: string | undefined): void {
-  overlayGroupId = globalGroupId;
+function mountTimerOverlay(opts: { globalGroupId?: string; individualJobId?: string }): void {
+  overlayGroupId = opts.globalGroupId;
+  overlayIndividualJobId = opts.individualJobId;
   const host = ensureShadowHost();
-  const showPause = globalGroupId !== undefined;
+  const showPause = opts.globalGroupId !== undefined || opts.individualJobId !== undefined;
   if (!shadowRoot) {
     shadowRoot = host.attachShadow({ mode: 'open' });
     ensureShadowClickDelegation(shadowRoot);
@@ -309,8 +332,16 @@ function mountTimerOverlay(globalGroupId: string | undefined): void {
   uiKind = 'timer';
 }
 
-function mountPausedOverlay(groupId: string): void {
-  overlayGroupId = groupId;
+function mountPausedOverlay(
+  scope: { type: 'global'; groupId: string } | { type: 'individual'; jobId: string }
+): void {
+  if (scope.type === 'global') {
+    overlayGroupId = scope.groupId;
+    overlayIndividualJobId = undefined;
+  } else {
+    overlayGroupId = undefined;
+    overlayIndividualJobId = scope.jobId;
+  }
   const host = ensureShadowHost();
   if (!shadowRoot) {
     shadowRoot = host.attachShadow({ mode: 'open' });
@@ -383,22 +414,31 @@ function escapeHtml(c: string): string {
   return c;
 }
 
-function showTimer(globalGroupIdFromState: string | undefined, fireAt: number | undefined) {
+function showTimer(
+  globalGroupIdFromState: string | undefined,
+  individualJobIdFromState: string | undefined,
+  fireAt: number | undefined
+) {
   clearInterval(tickHandle);
   tickHandle = undefined;
   nextFireAt = fireAt;
-  mountTimerOverlay(globalGroupIdFromState);
+  mountTimerOverlay({
+    globalGroupId: globalGroupIdFromState,
+    individualJobId: individualJobIdFromState,
+  });
   paintDigits();
   if (!tickHandle) {
     tickHandle = setInterval(() => paintDigits(), 500);
   }
 }
 
-function showPaused(groupId: string) {
+function showPaused(
+  scope: { type: 'global'; groupId: string } | { type: 'individual'; jobId: string }
+) {
   clearInterval(tickHandle);
   tickHandle = undefined;
   nextFireAt = undefined;
-  mountPausedOverlay(groupId);
+  mountPausedOverlay(scope);
 }
 
 async function syncFromBackground(): Promise<void> {
@@ -417,10 +457,14 @@ async function syncFromBackground(): Promise<void> {
       return;
     }
     if (res.mode === 'paused') {
-      showPaused(res.globalGroupId);
+      if ('individualJobId' in res) {
+        showPaused({ type: 'individual', jobId: res.individualJobId });
+      } else {
+        showPaused({ type: 'global', groupId: res.globalGroupId });
+      }
       return;
     }
-    showTimer(res.globalGroupId, res.nextFireAt);
+    showTimer(res.globalGroupId, res.individualJobId, res.nextFireAt);
   } catch {
     clearUi();
     clearBlipWatcher();

@@ -1,8 +1,10 @@
 import {
   BLIP_REFRESH_REQUEST,
   GLOBAL_GROUP_TAB_PAUSE,
+  INDIVIDUAL_JOB_OVERLAY_PAUSE,
   PAGE_OVERLAY_GET_STATE,
   type GlobalGroupTabPauseMessage,
+  type IndividualJobOverlayPauseMessage,
   type PageOverlayStateResponse,
 } from '../lib/messages';
 import { getBlipWatchForTab } from '../lib/blip-tab-state';
@@ -11,6 +13,7 @@ import { getPageOverlayVmForTab } from '../lib/page-overlay-state';
 import { loadExtensionPrefs } from '../lib/prefs';
 import { loadAppState, saveAppState } from '../lib/storage';
 import { refreshActionBadge } from './badge';
+import { syncAlarmsWithState } from './scheduler';
 
 const blipRefreshHits = new Map<number, number[]>();
 
@@ -56,6 +59,32 @@ async function handleBlipRefreshRequest(sender: chrome.runtime.MessageSender): P
   } catch {
     return false;
   }
+  await refreshActionBadge();
+  return true;
+}
+
+async function handleIndividualJobOverlayPause(
+  tabId: number,
+  jobId: string,
+  paused: boolean
+): Promise<boolean> {
+  let state = await loadAppState();
+  const idx = state.individualJobs.findIndex((j) => j.id === jobId);
+  if (idx < 0) {
+    return false;
+  }
+  const j = state.individualJobs[idx];
+  if (!j.enabled || j.target.tabId !== tabId) {
+    return false;
+  }
+  const nextJ = {
+    ...j,
+    overlayPaused: paused,
+    ...(paused ? { nextFireAt: undefined as number | undefined } : {}),
+  };
+  state = { ...state, individualJobs: replaceAt(state.individualJobs, idx, nextJ) };
+  await saveAppState(state);
+  await syncAlarmsWithState(state);
   await refreshActionBadge();
   return true;
 }
@@ -113,6 +142,19 @@ export function attachPageOverlayMessageHandler(): void {
       return true;
     }
 
+    if (message?.type === INDIVIDUAL_JOB_OVERLAY_PAUSE) {
+      const tabId = sender.tab?.id;
+      const { jobId, paused } = message as IndividualJobOverlayPauseMessage;
+      if (tabId === undefined || typeof jobId !== 'string' || typeof paused !== 'boolean') {
+        sendResponse({ ok: false });
+        return true;
+      }
+      void handleIndividualJobOverlayPause(tabId, jobId, paused)
+        .then((ok) => sendResponse({ ok }))
+        .catch(() => sendResponse({ ok: false }));
+      return true;
+    }
+
     if (message?.type !== PAGE_OVERLAY_GET_STATE) {
       return;
     }
@@ -130,13 +172,22 @@ export function attachPageOverlayMessageHandler(): void {
         if (!vm.show) {
           response = blip ? { ok: true, show: false, blip } : { ok: true, show: false };
         } else if (vm.mode === 'paused') {
-          response = {
-            ok: true,
-            show: true,
-            mode: 'paused',
-            globalGroupId: vm.globalGroupId,
-            ...(blip ? { blip } : {}),
-          };
+          response =
+            'individualJobId' in vm
+              ? {
+                  ok: true,
+                  show: true,
+                  mode: 'paused',
+                  individualJobId: vm.individualJobId,
+                  ...(blip ? { blip } : {}),
+                }
+              : {
+                  ok: true,
+                  show: true,
+                  mode: 'paused',
+                  globalGroupId: vm.globalGroupId,
+                  ...(blip ? { blip } : {}),
+                };
         } else {
           response = {
             ok: true,
@@ -144,6 +195,7 @@ export function attachPageOverlayMessageHandler(): void {
             mode: 'timer',
             nextFireAt: vm.nextFireAt,
             ...(vm.globalGroupId !== undefined ? { globalGroupId: vm.globalGroupId } : {}),
+            ...(vm.individualJobId !== undefined ? { individualJobId: vm.individualJobId } : {}),
             ...(blip ? { blip } : {}),
           };
         }

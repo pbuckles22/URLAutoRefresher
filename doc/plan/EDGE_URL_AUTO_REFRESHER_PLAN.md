@@ -4,7 +4,7 @@ Manifest V3 Edge extension: **global groups** (shared interval policy, **per-tab
 
 **How to use this doc:** Check off stories (`[x]`) as you ship them. Epics build top-to-bottom (see dependency diagram at the bottom).
 
-**Source of truth:** This file is the canonical checklist for product epics, reference-UI work, and agent-facing scope notes. Cursor (or other) task lists should stay aligned with the checkboxes here—update this doc when scope changes.
+**Source of truth:** This file is the canonical checklist for product epics, reference-UI work, and agent-facing scope notes. Cursor (or other) task lists should stay aligned with the checkboxes here—update this doc when scope changes. **Shipped behavior belongs in the epic/story lines** (below); the [Backlog](#backlog-ux--polish--bugs) section tracks follow-ups and may retain a bullet for traceability, but **if the same work is specified under an epic, the epic line is authoritative**—do not maintain a second, diverging spec in the backlog.
 
 ---
 
@@ -119,7 +119,7 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 - [x] **5.1** — Dashboard: both section headers with counts; browse-all layout. *Outcome: matches **1b** / overview mental model.*
 - [x] **5.2** — Side Panel: same lists via shared JS/CSS. *Outcome: quick monitoring without full tab.*
-- [x] **5.3** — Cross-links: dashboard ↔ side panel (“open in other surface”). *Outcome: coherent choice **C**.*
+- [x] **5.3** — Cross-links between surfaces (choice **C**): **Dashboard** shows **Open side panel** (`[data-open-side-panel]` → `chrome.sidePanel.open` for the current window). **Side panel** shows a top-of-body **Open in a tab** control (`[data-open-in-tab]` inside `[data-sidepanel-open-dashboard-row]`) so the full-page dashboard is obvious before scroll; click opens packaged **`dashboard/dashboard.html`** in a new tab (`chrome.tabs.create` via `wireCrossSurfaceLinks()` in [`src/dashboard/dashboard-app.ts`](../../src/dashboard/dashboard-app.ts)). Shared markup in [`dashboard/dashboard.html`](../../dashboard/dashboard.html); [`Scripts/build.mjs`](../../Scripts/build.mjs) generates [`sidepanel/sidepanel.html`](../../sidepanel/sidepanel.html). On the side panel, `[data-surface-nav]` is hidden so there is no duplicate “open dashboard” control. *Outcome: coherent choice **C**; toolbar-first side panel still reaches full-tab dashboard in one click.* **Tier 2:** [`e2e/epic-5.spec.ts`](../../e2e/epic-5.spec.ts) (Epic 5.3 visibility + “Backlog 1”: first body child + tab URL includes `dashboard/dashboard.html`).
 - [x] **5.4** — Live countdown in UI (`storage` + `runtime` messages or ~1s polling while visible). *Outcome: rows tick smoothly.*
 
 ---
@@ -307,6 +307,22 @@ Enforce **non-overlap:** same `tabId` cannot be enabled in two places.
 ## Out of scope / follow-ups
 
 - **Different badge text on two visible windows at once:** not supported by `chrome.action`; optional later: per-tab overlay (content script).
+
+---
+
+## Backlog (UX / polish / bugs)
+
+Tracked here until scheduled into an epic or story. **Normative shipped scope** for a capability also listed under an epic lives in that **epic checklist** (see **Source of truth** at the top)—backlog lines here stay for traceability or work not yet folded into an epic.
+
+1. **Side panel — open full dashboard in a tab** — *(Shipped; see **Epic 5.3** for acceptance, files, and tests.)* Originally a UX polish follow-up (toolbar opens side panel first); implementation is part of unified UI / cross-links.
+
+2. **Overlay timer — compact layout** — (Shipped incrementally; see `src/content/page-overlay.ts`.) Reduce visual weight: drop separate Min/Sec labels, smaller digit tiles (~75% scale), **Pause** at top-left, time readout beside it to minimize card height.
+
+3. **Overlay paused state — compact** — (Shipped incrementally.) Smaller **Play** (~75%), inline **to the right** of “Auto refresh paused” instead of stacked below.
+
+4. **Play (resume) sometimes no-ops after long idle** — After several minutes paused, **Play** may do nothing when clicked. **Investigate:** MV3 service worker sleep / message delivery to background; whether `chrome.runtime.sendMessage` from content script needs retry, `chrome.runtime.connect` keep-alive, or explicit SW wake before handling `GLOBAL_GROUP_TAB_PAUSE` / `INDIVIDUAL_JOB_OVERLAY_PAUSE`. Add logging or user-visible error only after root cause is clear.
+
+5. **Page overlay — uncaught “Extension context invalidated” on pause** — After **extension reload** (or update) while a host page (e.g. Twitch) stays open, user actions that call `chrome.runtime.sendMessage` from the content script (e.g. **Pause** → `INDIVIDUAL_JOB_OVERLAY_PAUSE` / `GLOBAL_GROUP_TAB_PAUSE` in [`src/content/page-overlay.ts`](../../src/content/page-overlay.ts) → bundled `dist/page-overlay.js`) can throw **Uncaught Error: Extension context invalidated.** DevTools reports the error at the `sendMessage` site; `.catch(() => {})` may not prevent **uncaught** if the throw happens synchronously or outside the handled promise path. **Related:** [Post–Epic 9 **P9.6**](#postepic-9--incremental-enhancements-shipped) addressed similar noise for the **Twitch live bridge** — overlay pause/resume paths may need the same class of guards (test `chrome.runtime?.id`, teardown listeners, soft-fail without throwing, optional full page reload prompt).
 
 ---
 

@@ -30,9 +30,9 @@ function wireCrossSurfaceLinks(): void {
       });
     });
   }
-  const openDash = document.querySelector<HTMLElement>('[data-open-dashboard-tab]');
-  if (openDash) {
-    openDash.addEventListener('click', () => {
+  const openDashInTab = document.querySelector<HTMLElement>('[data-open-in-tab]');
+  if (openDashInTab) {
+    openDashInTab.addEventListener('click', () => {
       void chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
     });
   }

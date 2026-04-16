@@ -30,6 +30,8 @@ export type IndividualJob = {
   baseIntervalSec: number;
   jitterSec: number;
   enabled: boolean;
+  /** User paused from page overlay; no scheduled refresh until resumed (like global group tab pause). */
+  overlayPaused?: boolean;
   nextFireAt?: number;
   /** Epic 8: pause periodic refresh while Twitch reports the channel as live (content script). */
   liveAwareRefresh?: boolean;

@@ -2,7 +2,11 @@ import type { AppState } from './types';
 
 /** Tab has at least one enabled individual or global refresh targeting it. */
 export function tabHasActiveRefreshJob(state: AppState, tabId: number): boolean {
-  if (state.individualJobs.some((j) => j.enabled && j.target.tabId === tabId)) {
+  if (
+    state.individualJobs.some(
+      (j) => j.enabled && !j.overlayPaused && j.target.tabId === tabId
+    )
+  ) {
     return true;
   }
   return state.globalGroups.some(
@@ -13,7 +17,7 @@ export function tabHasActiveRefreshJob(state: AppState, tabId: number): boolean 
 /** Next fire time for this tab's active job (individual wins if ever both; mutual exclusion should prevent both). */
 export function getNextFireAtForTab(state: AppState, tabId: number): number | undefined {
   for (const job of state.individualJobs) {
-    if (job.enabled && job.target.tabId === tabId) {
+    if (job.enabled && !job.overlayPaused && job.target.tabId === tabId) {
       return job.nextFireAt;
     }
   }

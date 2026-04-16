@@ -98,7 +98,7 @@ Implementation:
 - **`e2e/epic-4-1.spec.ts`** — global group from **window/tab browser** + per-tab URLs → storage.
 - **`e2e/epic-4-2.spec.ts`** — **Global (N)** header, saved row countdown, **Start/Stop**, **Edit**, **Delete**.
 - **`e2e/epic-4-3.spec.ts`** — mutual exclusion: add global vs individual, add individual vs global, **Start** on global row when individual is enabled on the same tab (`[data-global-form-error]`, `[data-add-job-error]`, `[data-global-group-row-error]`).
-- **`e2e/epic-5.spec.ts`** — unified UI: **Global (N)** / **Individual (M)** on dashboard and generated side panel; browse layout; cross-surface nav button visibility; **Epic 5.4** countdown row text changes over ~2.5s (1s UI tick).
+- **`e2e/epic-5.spec.ts`** — unified UI per EDGE **Epic 5**: **Global (N)** / **Individual (M)** on dashboard and generated side panel; browse layout; **Epic 5.3** cross-surface nav (side panel **Open in a tab** `[data-open-in-tab]` vs dashboard **Open side panel**); **Epic 5.4** countdown row text changes over ~2.5s (1s UI tick); extra assertions (“Backlog 1”) for top CTA DOM order + new tab opens packaged dashboard.
 - **`e2e/epic-6.spec.ts`** — **Epic 6** toolbar badge: after seeding storage, `chrome.action.getBadgeText` shows `m:ss` (not idle `×`).
 
 **Headed Chromium:** MV3 extensions are exercised with **`headless: false`** (Playwright `channel: 'chromium'`). **CI (Linux)** runs under **xvfb** so no physical display is required.

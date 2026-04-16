@@ -4,8 +4,15 @@ import type { AppState } from './types';
 
 export type PageOverlayVm =
   | { show: false }
-  | { show: true; mode: 'timer'; nextFireAt: number | undefined; globalGroupId?: string }
-  | { show: true; mode: 'paused'; globalGroupId: string };
+  | {
+      show: true;
+      mode: 'timer';
+      nextFireAt: number | undefined;
+      globalGroupId?: string;
+      individualJobId?: string;
+    }
+  | { show: true; mode: 'paused'; globalGroupId: string }
+  | { show: true; mode: 'paused'; individualJobId: string };
 
 /**
  * Overlay visibility + mode for a tab (individual job wins over global groups).
@@ -20,9 +27,13 @@ export async function getPageOverlayVmForTab(
   }
 
   for (const j of state.individualJobs) {
-    if (j.enabled && j.target.tabId === tabId) {
-      return { show: true, mode: 'timer', nextFireAt: j.nextFireAt };
+    if (!j.enabled || j.target.tabId !== tabId) {
+      continue;
     }
+    if (j.overlayPaused) {
+      return { show: true, mode: 'paused', individualJobId: j.id };
+    }
+    return { show: true, mode: 'timer', nextFireAt: j.nextFireAt, individualJobId: j.id };
   }
 
   for (const g of state.globalGroups) {

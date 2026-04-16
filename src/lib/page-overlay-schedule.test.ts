@@ -42,6 +42,25 @@ describe('page-overlay-schedule', () => {
     expect(tabHasActiveRefreshJob(state, 7)).toBe(false);
   });
 
+  it('treats overlay-paused individual as inactive for tabHasActiveRefreshJob', () => {
+    const state = {
+      ...DEFAULT_STATE,
+      individualJobs: [
+        {
+          id: 'j1',
+          target: { tabId: 7, windowId: 1, targetUrl: 'https://a.test' },
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: true,
+          overlayPaused: true,
+          nextFireAt: 1_700_000_000_000,
+        },
+      ],
+    };
+    expect(tabHasActiveRefreshJob(state, 7)).toBe(false);
+    expect(getNextFireAtForTab(state, 7)).toBe(undefined);
+  });
+
   it('detects enabled global member tab', () => {
     const state = {
       ...DEFAULT_STATE,

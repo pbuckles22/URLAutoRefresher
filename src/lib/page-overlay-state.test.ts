@@ -32,4 +32,45 @@ describe('getPageOverlayVmForTab', () => {
     const vm = await getPageOverlayVmForTab(state, DEFAULT_PREFS, 4);
     expect(vm).toEqual({ show: true, mode: 'paused', globalGroupId: 'g1' });
   });
+
+  it('returns paused for individual job when overlayPaused', async () => {
+    const state = {
+      ...DEFAULT_STATE,
+      individualJobs: [
+        {
+          id: 'i1',
+          target: { tabId: 4, windowId: 1, targetUrl: 'https://twitch.tv/x' },
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: true,
+          overlayPaused: true,
+        },
+      ],
+    };
+    const vm = await getPageOverlayVmForTab(state, DEFAULT_PREFS, 4);
+    expect(vm).toEqual({ show: true, mode: 'paused', individualJobId: 'i1' });
+  });
+
+  it('timer mode includes individualJobId for enabled individual job', async () => {
+    const state = {
+      ...DEFAULT_STATE,
+      individualJobs: [
+        {
+          id: 'i1',
+          target: { tabId: 4, windowId: 1, targetUrl: 'https://twitch.tv/x' },
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: true,
+          nextFireAt: 99,
+        },
+      ],
+    };
+    const vm = await getPageOverlayVmForTab(state, DEFAULT_PREFS, 4);
+    expect(vm).toEqual({
+      show: true,
+      mode: 'timer',
+      nextFireAt: 99,
+      individualJobId: 'i1',
+    });
+  });
 });

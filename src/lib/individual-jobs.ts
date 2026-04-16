@@ -18,7 +18,7 @@ export function setIndividualJobEnabled(state: AppState, jobId: string, enabled:
         return j;
       }
       if (!enabled) {
-        return { ...j, enabled: false, nextFireAt: undefined, streamLive: undefined };
+        return { ...j, enabled: false, nextFireAt: undefined, streamLive: undefined, overlayPaused: undefined };
       }
       return { ...j, enabled: true };
     }),
