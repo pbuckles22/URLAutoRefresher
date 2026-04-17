@@ -1,5 +1,5 @@
 /**
- * Large Min/Sec countdown on pages that have an active refresh job (when enabled in prefs).
+ * Compact mm:ss countdown on pages that have an active refresh job (when enabled in prefs).
  * Pause → compact “paused” card with resume (global group tabs and individual jobs).
  */
 import {
@@ -11,6 +11,10 @@ import {
   type PageOverlayStateResponse,
 } from '../lib/messages';
 import { compileBlipRegex, sampleDocumentText, textMatchesBlip } from '../lib/blip-match';
+import {
+  sendExtensionMessageAsync,
+  sendExtensionMessageFireAndForget,
+} from '../lib/extension-runtime-send';
 import { PREFS_STORAGE_KEY } from '../lib/prefs';
 import { STORAGE_KEY } from '../lib/storage';
 
@@ -66,7 +70,7 @@ function runBlipScan(): void {
   const text = sampleDocumentText(document);
   if (textMatchesBlip(blipPack.phrases, blipRegex, text)) {
     blipHits.push(now);
-    void chrome.runtime.sendMessage({ type: BLIP_REFRESH_REQUEST }).catch(() => {});
+    void sendExtensionMessageFireAndForget({ type: BLIP_REFRESH_REQUEST });
   }
 }
 
@@ -115,18 +119,38 @@ function shadowCss(): string {
       box-sizing: border-box;
     }
     .card--timer {
-      padding: 12px 14px 14px;
-      min-width: 132px;
+      padding: 8px 10px 10px;
+      min-width: 0;
     }
     .card--paused {
-      padding: 10px 12px 12px;
+      padding: 8px 10px 10px;
       min-width: 0;
-      max-width: 14rem;
+      max-width: min(22rem, calc(100vw - 32px));
     }
-    .toolbar {
+    .paused-compact-row {
       display: flex;
-      justify-content: flex-end;
-      margin-bottom: 6px;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+    .timer-compact-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .timer-compact-row--with-pause {
+      min-width: 168px;
+    }
+    .timer-compact-row:not(.timer-compact-row--with-pause) {
+      justify-content: center;
+      padding: 2px 4px;
+    }
+    .timer-readout {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
     }
     .pause-btn {
       font-size: 11px;
@@ -145,14 +169,17 @@ function shadowCss(): string {
       font-size: 13px;
       font-weight: 600;
       color: #111;
-      line-height: 1.35;
-      margin: 0 0 8px;
+      line-height: 1.25;
+      margin: 0;
+      flex: 0 1 auto;
+      min-width: 0;
     }
     .resume-btn {
-      font-size: 12px;
+      flex-shrink: 0;
+      font-size: 9px;
       font-weight: 600;
-      padding: 6px 12px;
-      border-radius: 8px;
+      padding: 4px 9px;
+      border-radius: 6px;
       border: none;
       background: #8ab4f8;
       color: #202124;
@@ -161,54 +188,32 @@ function shadowCss(): string {
     .resume-btn:hover {
       filter: brightness(1.05);
     }
-    .timer {
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      gap: 4px;
-    }
-    .stack {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-    .lab {
-      font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      font-weight: 800;
-      font-size: 13px;
-      letter-spacing: 0.02em;
-      color: #111;
-      text-align: center;
-      line-height: 1.1;
-      user-select: none;
-    }
     .digits-row {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      gap: 3px;
     }
     .digit {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 28px;
-      height: 36px;
-      padding: 0 6px;
-      border-radius: 8px;
+      min-width: 21px;
+      height: 27px;
+      padding: 0 4px;
+      border-radius: 6px;
       background: #2a2a2a;
       color: #f5f5f5;
-      font-size: 20px;
+      font-size: 15px;
       font-weight: 600;
       font-variant-numeric: tabular-nums;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
     }
     .colon {
-      font-size: 22px;
+      font-size: 17px;
       font-weight: 700;
       color: #111;
-      padding: 0 2px 4px;
+      padding: 0 1px 2px;
       user-select: none;
       line-height: 1;
     }
@@ -226,64 +231,67 @@ function ensureShadowClickDelegation(root: ShadowRoot): void {
     const t = e.target as HTMLElement;
     const gid = overlayGroupId;
     const jid = overlayIndividualJobId;
+    const teardownIfDead = (sent: boolean) => {
+      if (!sent) {
+        clearUi();
+        clearBlipWatcher();
+      }
+    };
     if (t.closest('[data-overlay-pause]')) {
       e.preventDefault();
       if (gid) {
-        void chrome.runtime
-          .sendMessage({
+        teardownIfDead(
+          sendExtensionMessageFireAndForget({
             type: GLOBAL_GROUP_TAB_PAUSE,
             groupId: gid,
             paused: true,
           })
-          .catch(() => {});
+        );
       } else if (jid) {
-        void chrome.runtime
-          .sendMessage({
+        teardownIfDead(
+          sendExtensionMessageFireAndForget({
             type: INDIVIDUAL_JOB_OVERLAY_PAUSE,
             jobId: jid,
             paused: true,
           })
-          .catch(() => {});
+        );
       }
       return;
     }
     if (t.closest('[data-overlay-resume]')) {
       e.preventDefault();
       if (gid) {
-        void chrome.runtime
-          .sendMessage({
+        teardownIfDead(
+          sendExtensionMessageFireAndForget({
             type: GLOBAL_GROUP_TAB_PAUSE,
             groupId: gid,
             paused: false,
           })
-          .catch(() => {});
+        );
       } else if (jid) {
-        void chrome.runtime
-          .sendMessage({
+        teardownIfDead(
+          sendExtensionMessageFireAndForget({
             type: INDIVIDUAL_JOB_OVERLAY_PAUSE,
             jobId: jid,
             paused: false,
           })
-          .catch(() => {});
+        );
       }
     }
   });
 }
 
 function buildTimerHtml(showPause: boolean): string {
-  const toolbar = showPause
-    ? `<div class="toolbar"><button type="button" class="pause-btn" data-overlay-pause title="Pause auto-refresh for this tab">Pause</button></div>`
+  const pauseBtn = showPause
+    ? `<button type="button" class="pause-btn" data-overlay-pause title="Pause auto-refresh for this tab">Pause</button>`
     : '';
+  const rowClass = showPause ? 'timer-compact-row timer-compact-row--with-pause' : 'timer-compact-row';
   return `
-    ${toolbar}
-    <div class="timer">
-      <div class="stack">
-        <span class="lab">Min</span>
+    <div class="${rowClass}">
+      ${pauseBtn}
+      <div class="timer-readout">
         <div class="digits-row" data-min-digits></div>
-      </div>
-      <span class="colon">:</span>
-      <div class="stack">
-        <span class="lab">Sec</span>
+        <span class="colon">:</span>
         <div class="digits-row" data-sec-digits></div>
       </div>
     </div>
@@ -292,8 +300,10 @@ function buildTimerHtml(showPause: boolean): string {
 
 function buildPausedHtml(): string {
   return `
-    <p class="paused-text">Auto refresh paused</p>
-    <button type="button" class="resume-btn" data-overlay-resume title="Resume auto-refresh">Play</button>
+    <div class="paused-compact-row">
+      <p class="paused-text">Auto refresh paused</p>
+      <button type="button" class="resume-btn" data-overlay-resume title="Resume auto-refresh">Play</button>
+    </div>
   `;
 }
 
@@ -442,33 +452,26 @@ function showPaused(
 }
 
 async function syncFromBackground(): Promise<void> {
-  try {
-    const res = (await chrome.runtime.sendMessage({ type: PAGE_OVERLAY_GET_STATE })) as
-      | PageOverlayStateResponse
-      | undefined;
-    if (!res?.ok) {
-      clearUi();
-      clearBlipWatcher();
-      return;
-    }
-    setBlipWatcher(res.blip);
-    if (!res.show) {
-      clearUi();
-      return;
-    }
-    if (res.mode === 'paused') {
-      if ('individualJobId' in res) {
-        showPaused({ type: 'individual', jobId: res.individualJobId });
-      } else {
-        showPaused({ type: 'global', groupId: res.globalGroupId });
-      }
-      return;
-    }
-    showTimer(res.globalGroupId, res.individualJobId, res.nextFireAt);
-  } catch {
+  const res = await sendExtensionMessageAsync<PageOverlayStateResponse>({ type: PAGE_OVERLAY_GET_STATE });
+  if (!res?.ok) {
     clearUi();
     clearBlipWatcher();
+    return;
   }
+  setBlipWatcher(res.blip);
+  if (!res.show) {
+    clearUi();
+    return;
+  }
+  if (res.mode === 'paused') {
+    if ('individualJobId' in res) {
+      showPaused({ type: 'individual', jobId: res.individualJobId });
+    } else {
+      showPaused({ type: 'global', groupId: res.globalGroupId });
+    }
+    return;
+  }
+  showTimer(res.globalGroupId, res.individualJobId, res.nextFireAt);
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {

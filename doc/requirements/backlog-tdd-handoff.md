@@ -9,7 +9,7 @@ This note is for an agent (or developer) picking up work from **[Backlog (UX / p
 - **Tier 1:** Vitest — `npm test` — for pure logic, parsers, and helpers.
 - **Tier 2:** Playwright — `npm run build && npm run test:e2e` — for extension pages, content scripts, shadow DOM, and `chrome.*` flows. See [TEST_PLAN.md](../../TEST_PLAN.md).
 
-Suggested order: **5** (context invalidated) can pair with **4** (idle messaging); **4 → 5 → (verify 2–3)**. Item **1** is shipped (see below). Items 2–3 may already be partially implemented in `src/content/page-overlay.ts`; treat the EDGE plan as the acceptance checklist and close gaps with tests first.
+Suggested order: **4** (idle resume) when reproducible; **6** / **7** (global groups); **8** (overlay position) as UX allows. Items **1–3** and **#5** are shipped (see below). Treat the EDGE plan as the acceptance checklist.
 
 ---
 
@@ -21,41 +21,19 @@ Suggested order: **5** (context invalidated) can pair with **4** (idle messaging
 
 ---
 
-## 2) Overlay timer — compact layout
+## 2) Overlay timer — compact layout — **shipped**
 
-### Goal
+**Implementation:** [`src/content/page-overlay.ts`](../../src/content/page-overlay.ts) — single `.timer-compact-row` (Pause + `.timer-readout`), no Min/Sec labels, smaller digit tiles.
 
-Reduce height and visual noise of the in-page countdown: **no separate “Min” / “Sec” labels**, **~75% scale** for digit tiles, **Pause** at **top-left**, time readout **beside** it. See [`src/content/page-overlay.ts`](../../src/content/page-overlay.ts) (shadow DOM + inline `shadowCss()`).
-
-### TDD / tests
-
-- **Tier 1:** Only if you extract layout constants (sizes, class names) into `src/lib/` with unit tests — optional.
-- **Tier 2 (recommended):** Extend [`e2e/extension.spec.ts`](../../e2e/extension.spec.ts) (or a focused spec) to:
-  - Seed storage with an enabled individual job for the fixture tab (existing pattern).
-  - Evaluate in the page: shadow root contains **no** “Min”/“Sec” label text (or whatever you remove).
-  - Assert **Pause** exists and timer digits/colon exist (selectors via `page.evaluate` into shadow root — see existing `#url-auto-refresher-overlay-root` checks).
-
-### Acceptance
-
-- Card is noticeably shorter; labels removed; pause + digits on one compact row (or equivalent minimal height).
-- Pause/resume messaging still works (regression: run overlay-related tests).
+**Tests:** [`e2e/extension.spec.ts`](../../e2e/extension.spec.ts) — same seed as overlay visibility test; shadow assertions (no `Min`/`Sec` tokens, Pause, digits, colon, row class).
 
 ---
 
-## 3) Overlay paused state — compact
+## 3) Overlay paused state — compact — **shipped**
 
-### Goal
+**Implementation:** [`src/content/page-overlay.ts`](../../src/content/page-overlay.ts) — `.paused-compact-row` with copy + smaller **Play** (~75% padding/font vs prior).
 
-When paused, **smaller Play (~75%)**, **inline to the right** of “Auto refresh paused”, not stacked below. Same file as item 2: `buildPausedHtml()` + CSS in `page-overlay.ts`.
-
-### TDD / tests
-
-- **Tier 2:** With global or individual paused state, assert paused card layout: **Play** is not below the only text line (e.g. single row flex, or snapshot of computed structure via `evaluate`).
-- Regression: resume still clears paused state (existing message types in [`src/lib/messages.ts`](../../src/lib/messages.ts)).
-
-### Acceptance
-
-- One compact row (or equivalent): copy + small Play; white card height reduced.
+**Tests:** [`e2e/extension.spec.ts`](../../e2e/extension.spec.ts) — seeds `overlayPaused: true` on fixture-tab individual job; shadow asserts `.card--paused`, row DOM, and **Play** to the right of the label with vertical overlap (same row).
 
 ---
 
@@ -86,24 +64,62 @@ When paused, **smaller Play (~75%)**, **inline to the right** of “Auto refresh
 
 ---
 
-## 5) Page overlay — “Extension context invalidated” on pause (after reload)
+## 5) Page overlay — “Extension context invalidated” — **shipped**
+
+**Implementation:** [`src/lib/extension-runtime-send.ts`](../../src/lib/extension-runtime-send.ts) + [`src/content/page-overlay.ts`](../../src/content/page-overlay.ts) — guard `chrome.runtime?.id`, **try/catch** around `sendMessage` (sync throw), async helper for `PAGE_OVERLAY_GET_STATE`; overlay + blip watcher cleared when pause/resume cannot send.
+
+**Tests:** [`src/lib/extension-runtime-send.test.ts`](../../src/lib/extension-runtime-send.test.ts) (Tier 1).
+
+**Manual:** Reload extension at `edge://extensions`, return to a tab with overlay, **Pause** / **Play** — no uncaught at `page-overlay.js`; overlay may disappear until page reload (expected).
+
+---
+
+## 6) Global group — edit: add / remove member tabs
 
 ### Goal
 
-Avoid **uncaught** `Extension context invalidated` when the overlay calls `chrome.runtime.sendMessage` (e.g. **Pause** → `INDIVIDUAL_JOB_OVERLAY_PAUSE` / `GLOBAL_GROUP_TAB_PAUSE`) after the **extension** was reloaded or updated but the **page** was not. See [`src/content/page-overlay.ts`](../../src/content/page-overlay.ts) (`dist/page-overlay.js` in traces).
-
-### Relation to Post–Epic 9
-
-[EDGE plan — **P9.6**](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#postepic-9--incremental-enhancements-shipped) (Twitch **live bridge**) already targeted similar **context invalidated** noise; this backlog item covers the **overlay** pause path specifically.
+After initial **create**, **Edit** on a global group must allow **adding** tabs (same window/tab browser + per-tab URLs as create) and **removing** members, then **Save** — not only inline fields on the row today.
 
 ### TDD / tests
 
-- **Tier 1:** Pure helpers (e.g. safe send wrapper that checks `chrome.runtime?.id` before messaging) if extracted.
-- **Tier 2 / manual:** Repro = reload extension at `edge://extensions`, return to an open tab with overlay, click **Pause** — should not surface an uncaught error in DevTools.
+- **Tier 2:** Playwright on dashboard — open edit for a saved group, add a tab / remove a tab, assert `chrome.storage.local` targets array (or drive UI hooks `[data-…]`).
 
 ### Acceptance
 
-- No uncaught exception from overlay messaging when the extension context is gone; user-visible behavior degrades gracefully (e.g. inactive overlay or prompt to refresh the page).
+- User can change group membership from **Edit** without deleting and recreating the group.
+
+---
+
+## 7) Global group — rebind `tabId` when same URL opens in a new tab
+
+### Goal
+
+Stored targets use **`tabId`**. If the user **closes** a grouped tab and **opens the same URL** again, the new tab must be **adopted** so alarms/refresh apply to the visible tab.
+
+### TDD / tests
+
+- **Tier 1:** Pure helpers for URL equality / pattern match + “orphan old tab id” rules if extracted.
+- **Tier 2 / manual:** Close fixture tab, open same URL, confirm group still refreshes the new tab (may need harness tab IDs).
+
+### Acceptance
+
+- Closing and reopening the same URL does not strand the group on a dead `tabId`; document edge cases (multiple tabs same URL, etc.).
+
+---
+
+## 8) Page overlay — position (left/right vs drag)
+
+### Goal
+
+Avoid blocking underlying page controls: **snap** card left/right and/or **drag** to reposition; decide **persistence** (remember vs reset on refresh).
+
+### TDD / tests
+
+- **Tier 2** if behavior is DOM-heavy; **Tier 1** for pure position/prefs helpers if extracted.
+
+### Acceptance
+
+- Document chosen UX in EDGE backlog / PR; no regression on overlay pause/resume.
 
 ---
 
@@ -114,6 +130,7 @@ Avoid **uncaught** `Extension context invalidated` when the overlay calls `chrom
 | Overlay UI | `src/content/page-overlay.ts` |
 | Overlay messages + handlers | `src/lib/messages.ts`, `src/background/page-overlay-handler.ts` |
 | Scheduler / pause state | `src/background/scheduler.ts`, `src/lib/types.ts` |
+| Global groups (targets, lifecycle) | `src/lib/global-group-targets.ts`, `src/lib/tab-lifecycle.ts`, `src/lib/global-groups.ts`, dashboard global forms / rows |
 | Side panel + dashboard UI | `sidepanel/sidepanel.html`, `dashboard/dashboard.html`, `src/dashboard/dashboard-app.ts`, `Scripts/build.mjs` |
 | E2E | `e2e/*.spec.ts`, `e2e/extension-helpers.ts` |
 
@@ -121,6 +138,6 @@ Avoid **uncaught** `Extension context invalidated` when the overlay calls `chrom
 
 ## Done when
 
-- EDGE plan backlog items are updated (checked off, reworded as shipped, or split into new stories). Item **1** is documented as shipped in the EDGE plan and [PM_PLAN.md](../../PM_PLAN.md).
+- EDGE plan backlog items are updated (checked off, reworded as shipped, or split into new stories). Items **1–3** and overlay **#5** are documented as shipped in the EDGE plan and [PM_PLAN.md](../../PM_PLAN.md).
 - `npm run ci` passes.
 - [PM_PLAN.md](../../PM_PLAN.md) “Later” section reflects backlog status when items ship or scope changes.

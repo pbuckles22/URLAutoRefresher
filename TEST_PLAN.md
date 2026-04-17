@@ -39,6 +39,7 @@ Vitest covers **pure logic** with mocked `chrome` where needed:
 | Storage round-trip | `src/lib/storage.test.ts` |
 | Alarm names / `when` / tab lifecycle | `src/lib/alarm-*.test.ts`, `tab-lifecycle.test.ts` |
 | Prefs parsing | `src/lib/prefs.test.ts` |
+| Extension `sendMessage` guards (invalidated context) | `src/lib/extension-runtime-send.test.ts` |
 | Overlay **schedule** (which tab gets which `nextFireAt`) | `src/lib/page-overlay-schedule.test.ts` |
 | Add individual job form (validation → `IndividualJob`) | `src/lib/individual-job-form.test.ts` |
 | Dashboard / global countdown formatting | `src/lib/dashboard-countdown.test.ts` |
@@ -91,7 +92,7 @@ Implementation:
 
 - **`playwright.config.ts`** — starts **`e2e/fixture-server.mjs`** (HTTP fixture so content scripts match `http://*/*`).
 - **`e2e/extension-helpers.ts`** — `chromium.launchPersistentContext` with `--load-extension=<repo root>` (see Playwright docs: *Chrome extensions*).
-- **`e2e/extension.spec.ts`** — dashboard loads; seeds `chrome.storage.local` from an extension page; asserts overlay **shadow** `.card` after reload; toggles **Display** pref and asserts overlay removed.
+- **`e2e/extension.spec.ts`** — dashboard loads; seeds `chrome.storage.local` from an extension page; asserts overlay **shadow** `.card` after reload; **Backlog 2** compact timer (no Min/Sec labels, Pause + readout row, digits + colon); **Backlog 3** paused card (`.paused-compact-row`, Play to the right of copy); toggles **Display** pref and asserts overlay removed.
 - **`e2e/epic-3-1.spec.ts`** — dashboard **Individual job** form: tab picker, URL, interval, jitter, Save → `individualJobs` persisted in storage.
 - **`e2e/epic-3-2.spec.ts`** — per-job **Start/Stop**, **Delete**, **Edit** (storage), two **countdown** rows; uses `[data-individual-job-row]`, `[data-job-toggle]`, `[data-job-delete]`, `[data-job-countdown]`, edit fields.
 - **`e2e/epic-3-3.spec.ts`** — shared row module contract: summary line text, visible countdown/toggle/delete, edit fields present (inside closed `<details>`).

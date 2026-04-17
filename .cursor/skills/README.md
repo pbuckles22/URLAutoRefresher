@@ -14,5 +14,6 @@ All agent skills and source-of-truth docs live here.
 | **pm-governance** | [pm-governance/SKILL.md](pm-governance/SKILL.md) | Sprint planning, scope, quality gates. |
 | **ui-ux** | [ui-ux/SKILL.md](ui-ux/SKILL.md) | Screens, animations, layout, design tokens. |
 | **visual-match** | [visual-match/SKILL.md](visual-match/SKILL.md) | Matching UI to reference examples (screenshots, specs). |
+| **chromium-mv3-extension** | [chromium-mv3-extension/SKILL.md](chromium-mv3-extension/SKILL.md) | MV3 service worker, messaging, context invalidation; background and content scripts. |
 
 Scope/sprints stay in root: [PM_PLAN.md](../../PM_PLAN.md). Product epics: [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](../../doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). Rules in `.cursor/rules/` reference this directory.

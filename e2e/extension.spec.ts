@@ -83,6 +83,118 @@ test('content script shows overlay when tab has enabled job and pref is on', asy
   // Storage updates from another tab may race the content script listener; reload guarantees sync.
   await fixturePage.reload({ waitUntil: 'domcontentloaded' });
   await expectOverlayCardVisible(fixturePage);
+
+  const compact = await fixturePage.evaluate(() => {
+    const host = document.getElementById('url-auto-refresher-overlay-root');
+    const root = host?.shadowRoot;
+    if (!root) {
+      return { ok: false as const, reason: 'no shadow root' };
+    }
+    const text = root.textContent ?? '';
+    if (/\bMin\b/.test(text) || /\bSec\b/.test(text)) {
+      return { ok: false as const, reason: 'Min/Sec labels still present' };
+    }
+    const pause = root.querySelector('[data-overlay-pause]');
+    if (!pause || pause.textContent?.trim() !== 'Pause') {
+      return { ok: false as const, reason: 'pause control' };
+    }
+    const row = root.querySelector('.timer-compact-row');
+    if (!row?.classList.contains('timer-compact-row--with-pause')) {
+      return { ok: false as const, reason: 'compact row + pause modifier' };
+    }
+    if (!row.querySelector('.timer-readout')) {
+      return { ok: false as const, reason: 'timer readout' };
+    }
+    const digits = root.querySelectorAll('.digit');
+    if (digits.length < 4) {
+      return { ok: false as const, reason: `expected ≥4 digit tiles, got ${digits.length}` };
+    }
+    const colon = root.querySelector('.colon');
+    if (!colon || colon.textContent !== ':') {
+      return { ok: false as const, reason: 'colon' };
+    }
+    return { ok: true as const };
+  });
+  expect(compact).toEqual({ ok: true });
+
+  await dash.close();
+  await fixturePage.close();
+});
+
+test('Backlog 3: paused overlay is compact row — Play beside copy, not stacked', async () => {
+  const fixturePage = await context.newPage();
+  await fixturePage.goto(`${FIXTURE_ORIGIN}/`);
+
+  const dash = await context.newPage();
+  await dash.goto(dashboardUrl(extensionId));
+  await dash.evaluate(
+    async (storageKey) => {
+      const tabs = await chrome.tabs.query({ url: 'http://127.0.0.1:8765/*' });
+      const tab = tabs[0];
+      if (!tab?.id) {
+        throw new Error(`fixture tab not found, got ${tabs.length} tab(s)`);
+      }
+      await chrome.storage.local.set({
+        [storageKey]: {
+          schemaVersion: 1,
+          globalGroups: [],
+          individualJobs: [
+            {
+              id: 'e2e-individual-paused',
+              target: {
+                tabId: tab.id,
+                windowId: tab.windowId,
+                targetUrl: 'https://example.com/',
+              },
+              baseIntervalSec: 60,
+              jitterSec: 0,
+              enabled: true,
+              overlayPaused: true,
+              nextFireAt: Date.now() + 120_000,
+            },
+          ],
+        },
+      });
+    },
+    STORAGE_KEY
+  );
+
+  await dash.waitForTimeout(500);
+  await fixturePage.reload({ waitUntil: 'domcontentloaded' });
+  await expectOverlayCardVisible(fixturePage);
+
+  const layout = await fixturePage.evaluate(() => {
+    const host = document.getElementById('url-auto-refresher-overlay-root');
+    const root = host?.shadowRoot;
+    if (!root) {
+      return { ok: false as const, reason: 'no shadow root' };
+    }
+    const card = root.querySelector('.card--paused');
+    if (!card) {
+      return { ok: false as const, reason: 'expected .card--paused' };
+    }
+    const row = root.querySelector('.paused-compact-row');
+    const label = row?.querySelector('.paused-text');
+    const btn = root.querySelector('[data-overlay-resume]');
+    if (!row || !label || !btn || btn.textContent?.trim() !== 'Play') {
+      return { ok: false as const, reason: 'paused compact row / Play control' };
+    }
+    if (!label.textContent?.includes('Auto refresh paused')) {
+      return { ok: false as const, reason: 'paused copy' };
+    }
+    const lr = label.getBoundingClientRect();
+    const br = btn.getBoundingClientRect();
+    const yOverlap = Math.min(lr.bottom, br.bottom) - Math.max(lr.top, br.top);
+    if (yOverlap <= 0) {
+      return { ok: false as const, reason: 'label and Play do not share a row (Y)' };
+    }
+    if (br.left < lr.right - 2) {
+      return { ok: false as const, reason: 'Play should sit to the right of the label' };
+    }
+    return { ok: true as const };
+  });
+  expect(layout).toEqual({ ok: true });
+
   await dash.close();
   await fixturePage.close();
 });

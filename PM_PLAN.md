@@ -18,7 +18,7 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 
 ## Later (see EDGE plan)
 
-- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** item **1** (same scope as EDGE **Epic 5.3** — side panel **Open in a tab** → full dashboard). **Open:** items **2–5** (overlay compaction, resume-after-idle, overlay **Extension context invalidated** on pause after reload). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
+- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5** (see EDGE plan). **Open:** **4**, **6**, **7**, **8** (overlay position — snap left/right vs drag + persistence). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
 - New epics/stories should still be added to the EDGE plan and [doc/requirements/](doc/requirements/) when you formalize scope.
 
 Keep this file in sync with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) checkboxes when scope changes. Session handoff notes use `doc/handoff/HANDOFF-*.md` (gitignored — not on `main`). Add `doc/requirements/` when you use it.

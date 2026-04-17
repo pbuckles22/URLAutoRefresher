@@ -18,7 +18,7 @@ This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/Agenti
 - **Product spec and epic checklist:** [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) — epic/story checkboxes are authoritative for shipped behavior; the plan’s **Backlog** defers to epics when the same scope is spelled out there (one spec, no drift).
 - **Phase summary (done / next):** [PM_PLAN.md](PM_PLAN.md)
 - **Session notes (local only):** `doc/handoff/HANDOFF-YYYY-MM-DD-next-agent.md` + dot revisions, or `.cursor/handoff/handoff-YYYY-MM-DD_HHmm.md` — see [.gitignore](.gitignore).
-- **Skills:** [.cursor/skills/](.cursor/skills/) — DEV_GUIDE.md, TEST_TDD.md, DESIGN_SYSTEM.md, techwriter, tester, code-reviewer, tech-debt-evaluator, pm-governance, ui-ux, visual-match
+- **Skills:** [.cursor/skills/](.cursor/skills/) — DEV_GUIDE.md, TEST_TDD.md, DESIGN_SYSTEM.md, techwriter, tester, code-reviewer, tech-debt-evaluator, pm-governance, ui-ux, visual-match, chromium-mv3-extension
 
 ## Pod (agents always working)
 

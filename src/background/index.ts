@@ -25,7 +25,7 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-chrome.action.onClicked.addListener(() => {
-  const url = chrome.runtime.getURL('dashboard/dashboard.html');
-  void chrome.tabs.create({ url });
+chrome.action.onClicked.addListener((tab) => {
+  const windowId = tab.windowId;
+  void chrome.sidePanel.open(windowId === undefined ? {} : { windowId });
 });

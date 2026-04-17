@@ -9,7 +9,7 @@
     "service_worker": "dist/background.js"
   },
   "action": {
-    "default_title": "URL Auto Refresher — open dashboard",
+    "default_title": "URL Auto Refresher — open side panel",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
