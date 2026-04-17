@@ -97,7 +97,7 @@ Implementation:
 - **`e2e/epic-3-2.spec.ts`** — per-job **Start/Stop**, **Delete**, **Edit** (storage), two **countdown** rows; uses `[data-individual-job-row]`, `[data-job-toggle]`, `[data-job-delete]`, `[data-job-countdown]`, edit fields.
 - **`e2e/epic-3-3.spec.ts`** — shared row module contract: summary line text, visible countdown/toggle/delete, edit fields present (inside closed `<details>`).
 - **`e2e/epic-4-1.spec.ts`** — global group from **window/tab browser** + per-tab URLs → storage.
-- **`e2e/epic-4-2.spec.ts`** — **Global (N)** header, saved row countdown, **Start/Stop**, **Edit**, **Delete**.
+- **`e2e/epic-4-2.spec.ts`** — **Global (N)** header, saved row countdown, **Start/Stop**, **Edit**, **Delete**; **Edit** add/remove members (**+** / **×**, Epic 4.2b).
 - **`e2e/epic-4-3.spec.ts`** — mutual exclusion: add global vs individual, add individual vs global, **Start** on global row when individual is enabled on the same tab (`[data-global-form-error]`, `[data-add-job-error]`, `[data-global-group-row-error]`).
 - **`e2e/epic-5.spec.ts`** — unified UI per EDGE **Epic 5**: **Global (N)** / **Individual (M)** on dashboard and generated side panel; browse layout; **Epic 5.3** cross-surface nav (side panel **Open in a tab** `[data-open-in-tab]` vs dashboard **Open side panel**); **Epic 5.4** countdown row text changes over ~2.5s (1s UI tick); extra assertions (“Backlog 1”) for top CTA DOM order + new tab opens packaged dashboard.
 - **`e2e/epic-6.spec.ts`** — **Epic 6** toolbar badge: after seeding storage, `chrome.action.getBadgeText` shows `m:ss` (not idle `×`).

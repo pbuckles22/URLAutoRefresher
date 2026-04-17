@@ -18,7 +18,7 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 
 ## Later (see EDGE plan)
 
-- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5** (see EDGE plan). **Open:** **4**, **6**, **7**, **8** (overlay position — snap left/right vs drag + persistence). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
+- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5**, **6** (see EDGE plan). **Open:** **4** (Play after long idle — **on hold**, hard to repro; suspected SW/messaging bug); **7** (rebind `tabId` when user closes a grouped tab and opens the same URL in a new tab — see EDGE #7); **8** (overlay — e.g. Twitch chat unhide behind fixed card; snap/drag + persistence — see EDGE #8). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
 - New epics/stories should still be added to the EDGE plan and [doc/requirements/](doc/requirements/) when you formalize scope.
 
-Keep this file in sync with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) checkboxes when scope changes. Session handoff notes use `doc/handoff/HANDOFF-*.md` (gitignored — not on `main`). Add `doc/requirements/` when you use it.
+Keep this file in sync with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) checkboxes when scope changes. Session handoff notes use `doc/handoff/HANDOFF-*.md` (gitignored — not on `main`); prefer **timestamped** names (`HANDOFF-YYYY-MM-DD-HHmmss.md`) and a **Recorded** line — [AGENT_HANDOFF.md](AGENT_HANDOFF.md). Add `doc/requirements/` when you use it.

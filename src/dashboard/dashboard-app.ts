@@ -4,7 +4,10 @@
  */
 import { formatGlobalGroupCountdown, formatIndividualJobCountdown } from '../lib/dashboard-countdown';
 import { buildGlobalGroupFromForm, buildGlobalGroupUpdateFromForm } from '../lib/global-group-form';
-import { createGlobalGroupListRow } from '../lib/global-group-list-row';
+import {
+  appendGlobalEditNewTargetRow,
+  createGlobalGroupListRow,
+} from '../lib/global-group-list-row';
 import { createIndividualJobListRow } from '../lib/individual-job-list-row';
 import { buildIndividualJobFromForm, buildIndividualJobUpdateFromForm } from '../lib/individual-job-form';
 import { removeIndividualJobById, replaceIndividualJob, setIndividualJobEnabled } from '../lib/individual-jobs';
@@ -194,17 +197,58 @@ export function initDashboardApp(): void {
     tabSelect.value = stillValid ? prev : '';
   }
 
-  async function populateTabSelect(): Promise<void> {
-    if (!tabSelect) {
-      return;
-    }
+  async function refreshCachedTabs(): Promise<void> {
     const tabs = await chrome.tabs.query({});
     const withIds = tabs.filter(
       (t): t is TabWithIds => typeof t.id === 'number' && typeof t.windowId === 'number'
     );
     withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
     cachedIndividualTabs = withIds;
+  }
+
+  async function populateTabSelect(): Promise<void> {
+    await refreshCachedTabs();
+    if (!tabSelect) {
+      return;
+    }
     applyIndividualTabSelectFilter();
+  }
+
+  /** Options for a new global-group member row: exclude tabs already chosen on other rows. */
+  function populateGlobalEditNewTabSelect(selectEl: HTMLSelectElement, groupRow: HTMLElement): void {
+    const selfRow = selectEl.closest('[data-global-edit-target-row]');
+    const taken = new Set<number>();
+    for (const tr of groupRow.querySelectorAll('[data-global-edit-target-row]')) {
+      if (tr === selfRow) {
+        continue;
+      }
+      if (tr.hasAttribute('data-global-edit-new-target')) {
+        const v = tr.querySelector<HTMLSelectElement>('[data-global-edit-pick-tab]')?.value;
+        if (v) {
+          taken.add(Number(v));
+        }
+      } else {
+        const id = tr.getAttribute('data-global-edit-target-tab');
+        if (id) {
+          taken.add(Number(id));
+        }
+      }
+    }
+    const current = selectEl.value;
+    selectEl.innerHTML = '<option value="">Select a tab…</option>';
+    for (const t of cachedIndividualTabs) {
+      if (t.id !== Number(current) && taken.has(t.id)) {
+        continue;
+      }
+      const opt = document.createElement('option');
+      opt.value = String(t.id);
+      opt.setAttribute('data-window-id', String(t.windowId));
+      const label = t.title?.trim() || t.url || `Tab ${t.id}`;
+      opt.textContent = `${label} (${t.id})`;
+      selectEl.appendChild(opt);
+    }
+    const still = current !== '' && [...selectEl.options].some((o) => o.value === current);
+    selectEl.value = still ? current : '';
   }
 
   /**
@@ -441,6 +485,27 @@ export function initDashboardApp(): void {
         return;
       }
 
+      if (t.closest('[data-global-edit-add-target]')) {
+        e.preventDefault();
+        void (async () => {
+          await refreshCachedTabs();
+          const container = row.querySelector('[data-global-edit-targets]');
+          if (!container || !(container instanceof HTMLElement)) {
+            return;
+          }
+          const select = appendGlobalEditNewTargetRow(container);
+          populateGlobalEditNewTabSelect(select, row as HTMLElement);
+        })();
+        return;
+      }
+
+      if (t.closest('[data-global-edit-remove-target]')) {
+        e.preventDefault();
+        const tr = t.closest('[data-global-edit-target-row]');
+        tr?.remove();
+        return;
+      }
+
       if (t.closest('[data-global-edit-save]')) {
         void (async () => {
           const errEl = row.querySelector('[data-global-edit-error]');
@@ -461,16 +526,59 @@ export function initDashboardApp(): void {
             tabId: number;
             windowId: number;
             targetUrl: string;
+            label?: string;
           }> = [];
-          for (const ex of existing.targets) {
-            const urlIn = row.querySelector<HTMLInputElement>(
-              `[data-global-edit-target-url][data-global-edit-target-tab="${ex.tabId}"]`
-            );
-            targets.push({
-              tabId: ex.tabId,
-              windowId: ex.windowId,
-              targetUrl: urlIn?.value ?? '',
-            });
+
+          for (const tr of row.querySelectorAll('[data-global-edit-target-row]')) {
+            if (tr.hasAttribute('data-global-edit-new-target')) {
+              const sel = tr.querySelector<HTMLSelectElement>('[data-global-edit-pick-tab]');
+              const urlIn = tr.querySelector<HTMLInputElement>('[data-global-edit-target-url]');
+              const raw = sel?.value?.trim() ?? '';
+              if (raw === '') {
+                if (errEl) {
+                  errEl.textContent = 'Select a tab for each new row, or remove empty rows';
+                }
+                return;
+              }
+              const tabId = Number(raw);
+              if (!Number.isInteger(tabId) || tabId < 1) {
+                if (errEl) {
+                  errEl.textContent = 'Invalid tab selection';
+                }
+                return;
+              }
+              let windowId: number | undefined = cachedIndividualTabs.find((x) => x.id === tabId)?.windowId;
+              if (windowId === undefined) {
+                const chromeTab = await chrome.tabs.get(tabId);
+                windowId =
+                  typeof chromeTab.windowId === 'number' ? chromeTab.windowId : undefined;
+              }
+              if (windowId === undefined || !Number.isInteger(windowId) || windowId < 0) {
+                if (errEl) {
+                  errEl.textContent = 'Could not resolve tab window';
+                }
+                return;
+              }
+              const tabMeta = cachedIndividualTabs.find((x) => x.id === tabId);
+              const label = tabMeta?.title?.trim();
+              targets.push({
+                tabId,
+                windowId,
+                targetUrl: urlIn?.value ?? '',
+                ...(label ? { label } : {}),
+              });
+            } else {
+              const tabId = Number(tr.getAttribute('data-global-edit-target-tab'));
+              const windowId = Number(tr.getAttribute('data-window-id'));
+              const urlIn = tr.querySelector<HTMLInputElement>('[data-global-edit-target-url]');
+              const prev = existing.targets.find((x) => x.tabId === tabId);
+              targets.push({
+                tabId,
+                windowId,
+                targetUrl: urlIn?.value ?? '',
+                ...(prev?.label ? { label: prev.label } : {}),
+              });
+            }
           }
 
           const patternsRaw = row.querySelector<HTMLTextAreaElement>('[data-global-edit-url-patterns]')?.value;
@@ -505,6 +613,46 @@ export function initDashboardApp(): void {
         })();
       }
     });
+
+    if (globalGroupsList.dataset.globalEditTabPickBound !== '1') {
+      globalGroupsList.dataset.globalEditTabPickBound = '1';
+      globalGroupsList.addEventListener('change', (e) => {
+        const sel = e.target;
+        if (!(sel instanceof HTMLSelectElement) || !sel.matches('[data-global-edit-pick-tab]')) {
+          return;
+        }
+        const tr = sel.closest('[data-global-edit-target-row]');
+        const groupRow = sel.closest('[data-global-group-row]');
+        if (!tr || !groupRow) {
+          return;
+        }
+        const urlIn = tr.querySelector<HTMLInputElement>('[data-global-edit-target-url]');
+        if (!urlIn) {
+          return;
+        }
+        const tabId = Number(sel.value);
+        if (!Number.isInteger(tabId) || tabId < 1) {
+          urlIn.value = '';
+          return;
+        }
+        const tab = cachedIndividualTabs.find((x) => x.id === tabId);
+        if (tab) {
+          urlIn.value = defaultTargetUrlForTab(tab.url ?? '');
+        } else {
+          void chrome.tabs.get(tabId).then((ct) => {
+            if (sel.value !== String(tabId) || !urlIn) {
+              return;
+            }
+            urlIn.value = defaultTargetUrlForTab(ct.url ?? '');
+          });
+        }
+        for (const other of groupRow.querySelectorAll<HTMLSelectElement>('[data-global-edit-pick-tab]')) {
+          if (other !== sel) {
+            populateGlobalEditNewTabSelect(other, groupRow as HTMLElement);
+          }
+        }
+      });
+    }
   }
 
   chrome.storage.onChanged.addListener((changes, areaName) => {

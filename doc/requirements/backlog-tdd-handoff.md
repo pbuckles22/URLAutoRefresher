@@ -9,7 +9,7 @@ This note is for an agent (or developer) picking up work from **[Backlog (UX / p
 - **Tier 1:** Vitest — `npm test` — for pure logic, parsers, and helpers.
 - **Tier 2:** Playwright — `npm run build && npm run test:e2e` — for extension pages, content scripts, shadow DOM, and `chrome.*` flows. See [TEST_PLAN.md](../../TEST_PLAN.md).
 
-Suggested order: **4** (idle resume) when reproducible; **6** / **7** (global groups); **8** (overlay position) as UX allows. Items **1–3** and **#5** are shipped (see below). Treat the EDGE plan as the acceptance checklist.
+Suggested order: **7** (global rebind); **8** (overlay position) as UX allows. **4** (idle **Play**) is **on hold** until reproducible — see §4. Items **1–3**, **#5**, and **#6** are shipped (see below). Treat the EDGE plan as the acceptance checklist.
 
 ---
 
@@ -37,7 +37,11 @@ Suggested order: **4** (idle resume) when reproducible; **6** / **7** (global gr
 
 ---
 
-## 4) Play (resume) no-ops after long idle
+## 4) Play (resume) no-ops after long idle — **on hold**
+
+### Status
+
+**On hold** until the team can **reproduce reliably** or confirm root cause. Behavior is **hard to replicate**. When picked up, **treat as a suspected bug** (idle / SW / messaging), not a dismissed report. **Not item 5:** “Extension context invalidated” after extension reload is **§5** below (shipped).
 
 ### Goal
 
@@ -74,19 +78,11 @@ Suggested order: **4** (idle resume) when reproducible; **6** / **7** (global gr
 
 ---
 
-## 6) Global group — edit: add / remove member tabs
+## 6) Global group — edit: add / remove member URLs (tabs) — **shipped**
 
-### Goal
+**Implementation:** [`src/lib/global-group-list-row.ts`](../../src/lib/global-group-list-row.ts) — **Member tabs** section, **`+`** (`data-global-edit-add-target`), per-row **`×`** (`data-global-edit-remove-target`); [`src/dashboard/dashboard-app.ts`](../../src/dashboard/dashboard-app.ts) — collect targets from `[data-global-edit-target-row]`, `refreshCachedTabs` for tab picker; [`buildGlobalGroupUpdateFromForm`](../../src/lib/global-group-form.ts) — variable membership; filters `pausedTabIds` / `tabNextFireAt` when tabs removed.
 
-After initial **create**, **Edit** on a global group must allow **adding** tabs (same window/tab browser + per-tab URLs as create) and **removing** members, then **Save** — not only inline fields on the row today.
-
-### TDD / tests
-
-- **Tier 2:** Playwright on dashboard — open edit for a saved group, add a tab / remove a tab, assert `chrome.storage.local` targets array (or drive UI hooks `[data-…]`).
-
-### Acceptance
-
-- User can change group membership from **Edit** without deleting and recreating the group.
+**Tests:** Tier 1 — [`src/lib/global-group-form.test.ts`](../../src/lib/global-group-form.test.ts); Tier 2 — [`e2e/epic-4-2.spec.ts`](../../e2e/epic-4-2.spec.ts) **Epic 4.2b** (add second tab via Edit).
 
 ---
 
@@ -96,6 +92,14 @@ After initial **create**, **Edit** on a global group must allow **adding** tabs 
 
 Stored targets use **`tabId`**. If the user **closes** a grouped tab and **opens the same URL** again, the new tab must be **adopted** so alarms/refresh apply to the visible tab.
 
+### User scenario
+
+Example: a Twitch tab is in a global group (with or without URL patterns). User closes `twitch.tv/me` and opens the same URL in a **new** tab. The extension should **rebind** membership to that new `tabId` so auto-refresh resumes (subject to group Start/Stop), and per-tab state (`pausedTabIds`, jitter, overlay) follows the new tab as the replacement member — without requiring dashboard edits.
+
+### Relation to P9.1
+
+**P9.1** matches tabs by URL pattern for inclusion; it does not fully solve **stale `tabId`** after close/reopen. This backlog item is the explicit **lifecycle rebind** when a matching tab shows up again.
+
 ### TDD / tests
 
 - **Tier 1:** Pure helpers for URL equality / pattern match + “orphan old tab id” rules if extracted.
@@ -103,7 +107,9 @@ Stored targets use **`tabId`**. If the user **closes** a grouped tab and **opens
 
 ### Acceptance
 
-- Closing and reopening the same URL does not strand the group on a dead `tabId`; document edge cases (multiple tabs same URL, etc.).
+- Closing and reopening the same URL does not strand the group on a dead `tabId`.
+- Document chosen behavior when **multiple** tabs share the same URL (which `tabId` is bound; avoid surprising “steals”).
+- No regression on mutual exclusion or group Start/Stop semantics.
 
 ---
 
@@ -113,13 +119,17 @@ Stored targets use **`tabId`**. If the user **closes** a grouped tab and **opens
 
 Avoid blocking underlying page controls: **snap** card left/right and/or **drag** to reposition; decide **persistence** (remember vs reset on refresh).
 
+### User story
+
+Sometimes the auto-refresh **overlay hides** site content or controls. **Example (Twitch):** chat is **minimized** to the side; the control to **unhide** chat can sit **under** the fixed **top-right** overlay. The user **cannot move** the overlay, so they struggle to reach the control. **Outcome:** user can reposition the card (snap and/or drag) so host UI stays usable; optional persistence per origin or global pref.
+
 ### TDD / tests
 
 - **Tier 2** if behavior is DOM-heavy; **Tier 1** for pure position/prefs helpers if extracted.
 
 ### Acceptance
 
-- Document chosen UX in EDGE backlog / PR; no regression on overlay pause/resume.
+- Document chosen UX in EDGE backlog / PR (snap vs drag vs both; persistence behavior); no regression on overlay pause/resume.
 
 ---
 
@@ -138,6 +148,6 @@ Avoid blocking underlying page controls: **snap** card left/right and/or **drag*
 
 ## Done when
 
-- EDGE plan backlog items are updated (checked off, reworded as shipped, or split into new stories). Items **1–3** and overlay **#5** are documented as shipped in the EDGE plan and [PM_PLAN.md](../../PM_PLAN.md).
+- EDGE plan backlog items are updated (checked off, reworded as shipped, or split into new stories). Items **1–3**, overlay **#5**, and **#6** are documented as shipped in the EDGE plan and [PM_PLAN.md](../../PM_PLAN.md).
 - `npm run ci` passes.
 - [PM_PLAN.md](../../PM_PLAN.md) “Later” section reflects backlog status when items ship or scope changes.

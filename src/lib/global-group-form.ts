@@ -12,11 +12,12 @@ export type GlobalGroupFormInput = {
   urlPatternsRaw?: string;
 };
 
-/** Edit form: one row per existing explicit tab; patterns edited separately. */
+/** Edit form: explicit member tabs (add/remove allowed); patterns edited separately. */
 export type GlobalGroupUpdateFormInput = {
   name: string;
   baseIntervalSec: number;
   jitterSec: number;
+  /** Full membership after edit — order preserved; must not contain duplicate tabIds. */
   targets: Array<{ tabId: number; windowId: number; targetUrl: string; label?: string }>;
   urlPatternsRaw?: string;
 };
@@ -117,8 +118,32 @@ export function buildGlobalGroupFromForm(
   };
 }
 
+function filterPausedStateForTabs(
+  existing: GlobalGroup,
+  newTabIds: Set<number>
+): Pick<GlobalGroup, 'pausedTabIds' | 'tabNextFireAt'> {
+  let pausedTabIds = existing.pausedTabIds?.filter((id) => newTabIds.has(id));
+  if (pausedTabIds?.length === 0) {
+    pausedTabIds = undefined;
+  }
+
+  let tabNextFireAt = existing.tabNextFireAt;
+  if (tabNextFireAt) {
+    const next: Record<string, number> = {};
+    for (const [k, v] of Object.entries(tabNextFireAt)) {
+      if (newTabIds.has(Number(k))) {
+        next[k] = v;
+      }
+    }
+    tabNextFireAt = Object.keys(next).length > 0 ? next : undefined;
+  }
+
+  return { pausedTabIds, tabNextFireAt };
+}
+
 /**
- * Re-validates fields for an existing group (Epic 4.2 edit). Preserves `id`, `enabled`, `nextFireAt`, `pausedTabIds`.
+ * Re-validates fields for an existing group (Epic 4.2 edit + backlog 6 add/remove members).
+ * Preserves `id`, `enabled`, `nextFireAt` (legacy); filters `pausedTabIds` / `tabNextFireAt` to remaining tab ids.
  */
 export function buildGlobalGroupUpdateFromForm(
   input: GlobalGroupUpdateFormInput,
@@ -144,29 +169,27 @@ export function buildGlobalGroupUpdateFromForm(
     return jitter;
   }
 
-  const inputByTab = new Map(input.targets.map((t) => [t.tabId, t] as const));
-  if (inputByTab.size !== input.targets.length) {
-    return { ok: false, error: 'Duplicate tab in form' };
-  }
-
-  if (existing.targets.length !== input.targets.length) {
-    return { ok: false, error: 'Each tab target must be provided once' };
-  }
-
+  const seen = new Set<number>();
   const targets: TargetRef[] = [];
-  for (const ex of existing.targets) {
-    const row = inputByTab.get(ex.tabId);
-    if (!row) {
-      return { ok: false, error: 'Each tab target must be provided once' };
+  for (const t of input.targets) {
+    if (!Number.isInteger(t.tabId) || t.tabId < 1) {
+      return { ok: false, error: 'Invalid tab' };
     }
-    const url = validateHttpUrl(row.targetUrl);
+    if (!Number.isInteger(t.windowId) || t.windowId < 0) {
+      return { ok: false, error: 'Invalid window' };
+    }
+    if (seen.has(t.tabId)) {
+      return { ok: false, error: `Duplicate tab ${t.tabId} in form` };
+    }
+    seen.add(t.tabId);
+    const url = validateHttpUrl(t.targetUrl);
     if (!url.ok) {
       return url;
     }
-    const label = row.label?.trim();
+    const label = t.label?.trim();
     targets.push({
-      tabId: ex.tabId,
-      windowId: ex.windowId,
+      tabId: t.tabId,
+      windowId: t.windowId,
       targetUrl: url.value,
       ...(label ? { label } : {}),
     });
@@ -175,6 +198,8 @@ export function buildGlobalGroupUpdateFromForm(
   if (targets.length < 1 && urlPatterns.length < 1) {
     return { ok: false, error: 'Keep at least one tab or one URL pattern' };
   }
+
+  const { pausedTabIds, tabNextFireAt } = filterPausedStateForTabs(existing, seen);
 
   const next: GlobalGroup = {
     ...existing,
@@ -188,6 +213,18 @@ export function buildGlobalGroupUpdateFromForm(
     next.urlPatterns = urlPatterns;
   } else {
     delete next.urlPatterns;
+  }
+
+  if (pausedTabIds !== undefined) {
+    next.pausedTabIds = pausedTabIds;
+  } else {
+    delete next.pausedTabIds;
+  }
+
+  if (tabNextFireAt !== undefined) {
+    next.tabNextFireAt = tabNextFireAt;
+  } else {
+    delete next.tabNextFireAt;
   }
 
   return { ok: true, value: next };

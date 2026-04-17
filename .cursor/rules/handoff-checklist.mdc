@@ -20,3 +20,5 @@ When the user wants a handoff, or when you are writing or updating a handoff not
 6. **Git commit** — If the first four checks passed: stage the changes and run `git commit` with a short message. If any check failed or is blocking, report back and do not commit until fixed.
 
 Then complete the rest of the handoff (update **PM_PLAN** / **EDGE plan** if product scope changed; **Done this session**, **Next up**, etc. in your **`doc/handoff/`** or `.cursor/handoff/` note — see **AGENT_HANDOFF.md**).
+
+**Filename and timestamp:** Prefer **`doc/handoff/HANDOFF-YYYY-MM-DD-HHmmss.md`** (local **24h** time, no colons — Windows-safe) so multiple handoffs per day get unique files. Add a **`Recorded:`** line under the H1 (ISO-8601 or local offset). See **AGENT_HANDOFF.md** → Source of truth → session notes.

@@ -4,7 +4,7 @@
 
 **Tracked under `doc/handoff/` on `main`:** only [`HANDOFF_MOVE_TO_LOCAL.md`](../../doc/handoff/HANDOFF_MOVE_TO_LOCAL.md) (contributor guide).
 
-**Session narratives (local, gitignored):** `doc/handoff/HANDOFF-*.md` and `handoff-YYYY-MM-DD_HHmm.md` in this folder — see [`.gitignore`](../../.gitignore).
+**Session narratives (local, gitignored):** `doc/handoff/HANDOFF-*.md` (recommended: `HANDOFF-YYYY-MM-DD-HHmmss.md`) and `handoff-YYYY-MM-DD_HHmm.md` in this folder — see [`.gitignore`](../../.gitignore) and [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md).
 
 **Product state on `main`:** [PM_PLAN.md](../../PM_PLAN.md), [EDGE plan](../../doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). **Process:** [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md).
 

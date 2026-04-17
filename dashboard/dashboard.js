@@ -172,6 +172,23 @@
       }
     };
   }
+  function filterPausedStateForTabs(existing, newTabIds) {
+    let pausedTabIds = existing.pausedTabIds?.filter((id) => newTabIds.has(id));
+    if (pausedTabIds?.length === 0) {
+      pausedTabIds = void 0;
+    }
+    let tabNextFireAt = existing.tabNextFireAt;
+    if (tabNextFireAt) {
+      const next = {};
+      for (const [k, v] of Object.entries(tabNextFireAt)) {
+        if (newTabIds.has(Number(k))) {
+          next[k] = v;
+        }
+      }
+      tabNextFireAt = Object.keys(next).length > 0 ? next : void 0;
+    }
+    return { pausedTabIds, tabNextFireAt };
+  }
   function buildGlobalGroupUpdateFromForm(input, existing) {
     const name = input.name.trim();
     if (!name) {
@@ -190,27 +207,27 @@
     if (!jitter.ok) {
       return jitter;
     }
-    const inputByTab = new Map(input.targets.map((t) => [t.tabId, t]));
-    if (inputByTab.size !== input.targets.length) {
-      return { ok: false, error: "Duplicate tab in form" };
-    }
-    if (existing.targets.length !== input.targets.length) {
-      return { ok: false, error: "Each tab target must be provided once" };
-    }
+    const seen = /* @__PURE__ */ new Set();
     const targets = [];
-    for (const ex of existing.targets) {
-      const row = inputByTab.get(ex.tabId);
-      if (!row) {
-        return { ok: false, error: "Each tab target must be provided once" };
+    for (const t of input.targets) {
+      if (!Number.isInteger(t.tabId) || t.tabId < 1) {
+        return { ok: false, error: "Invalid tab" };
       }
-      const url = validateHttpUrl(row.targetUrl);
+      if (!Number.isInteger(t.windowId) || t.windowId < 0) {
+        return { ok: false, error: "Invalid window" };
+      }
+      if (seen.has(t.tabId)) {
+        return { ok: false, error: `Duplicate tab ${t.tabId} in form` };
+      }
+      seen.add(t.tabId);
+      const url = validateHttpUrl(t.targetUrl);
       if (!url.ok) {
         return url;
       }
-      const label = row.label?.trim();
+      const label = t.label?.trim();
       targets.push({
-        tabId: ex.tabId,
-        windowId: ex.windowId,
+        tabId: t.tabId,
+        windowId: t.windowId,
         targetUrl: url.value,
         ...label ? { label } : {}
       });
@@ -218,6 +235,7 @@
     if (targets.length < 1 && urlPatterns.length < 1) {
       return { ok: false, error: "Keep at least one tab or one URL pattern" };
     }
+    const { pausedTabIds, tabNextFireAt } = filterPausedStateForTabs(existing, seen);
     const next = {
       ...existing,
       name,
@@ -229,6 +247,16 @@
       next.urlPatterns = urlPatterns;
     } else {
       delete next.urlPatterns;
+    }
+    if (pausedTabIds !== void 0) {
+      next.pausedTabIds = pausedTabIds;
+    } else {
+      delete next.pausedTabIds;
+    }
+    if (tabNextFireAt !== void 0) {
+      next.tabNextFireAt = tabNextFireAt;
+    } else {
+      delete next.tabNextFireAt;
     }
     return { ok: true, value: next };
   }
@@ -245,6 +273,9 @@
   }
   function primaryBtnStyle() {
     return "padding: 0.35rem 0.75rem; border-radius: 6px; border: none; background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer; font-size: 0.85rem";
+  }
+  function addMemberBtnStyle() {
+    return `${btnStyle()} border-color: #137333; color: #81c995; background: #1e3a2f; font-weight: 600`;
   }
   var inputStyle = "padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #202124; color: #e8eaed";
   function createGlobalGroupListRow(g, nowMs) {
@@ -331,21 +362,25 @@
     patTa.style.cssText = `${inputStyle}; resize: vertical; min-height: 3rem`;
     patLab.appendChild(patTa);
     editWrap.append(nameLab, intLab, jitLab, patLab);
+    const membersHeader = document.createElement("div");
+    membersHeader.style.cssText = "display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.35rem";
+    const membersTitle = document.createElement("span");
+    membersTitle.textContent = "Member tabs";
+    membersTitle.style.fontSize = "0.85rem";
+    membersTitle.style.color = "#e8eaed";
+    const addTabBtn = document.createElement("button");
+    addTabBtn.type = "button";
+    addTabBtn.setAttribute("data-global-edit-add-target", "");
+    addTabBtn.setAttribute("aria-label", "Add tab to group");
+    addTabBtn.textContent = "+";
+    addTabBtn.title = "Add tab to group";
+    addTabBtn.style.cssText = addMemberBtnStyle();
+    membersHeader.append(membersTitle, addTabBtn);
+    const targetsContainer = document.createElement("div");
+    targetsContainer.setAttribute("data-global-edit-targets", "");
+    editWrap.append(membersHeader, targetsContainer);
     for (const t of g.targets) {
-      const lab = document.createElement("label");
-      lab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
-      const cap = document.createElement("span");
-      cap.textContent = t.label ? `Tab ${t.tabId} \u2014 ${t.label} \xB7 target URL` : `Tab ${t.tabId} \u2014 target URL`;
-      lab.appendChild(cap);
-      const urlIn = document.createElement("input");
-      urlIn.type = "text";
-      urlIn.setAttribute("data-global-edit-target-url", "");
-      urlIn.setAttribute("data-global-edit-target-tab", String(t.tabId));
-      urlIn.value = t.targetUrl;
-      urlIn.autocomplete = "off";
-      urlIn.style.cssText = inputStyle;
-      lab.appendChild(urlIn);
-      editWrap.appendChild(lab);
+      appendGlobalEditExistingTargetRow(targetsContainer, t);
     }
     const editErr = document.createElement("p");
     editErr.setAttribute("data-global-edit-error", "");
@@ -359,6 +394,69 @@
     details.appendChild(editWrap);
     li.appendChild(details);
     return li;
+  }
+  function appendGlobalEditExistingTargetRow(container, t) {
+    const row = document.createElement("div");
+    row.setAttribute("data-global-edit-target-row", "");
+    row.setAttribute("data-global-edit-target-tab", String(t.tabId));
+    row.setAttribute("data-window-id", String(t.windowId));
+    row.style.cssText = "display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; margin-top: 0.35rem";
+    const lab = document.createElement("label");
+    lab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 1 1 14rem";
+    const cap = document.createElement("span");
+    cap.textContent = t.label ? `Tab ${t.tabId} \u2014 ${t.label} \xB7 target URL` : `Tab ${t.tabId} \u2014 target URL`;
+    lab.appendChild(cap);
+    const urlIn = document.createElement("input");
+    urlIn.type = "text";
+    urlIn.setAttribute("data-global-edit-target-url", "");
+    urlIn.setAttribute("data-global-edit-target-tab", String(t.tabId));
+    urlIn.value = t.targetUrl;
+    urlIn.autocomplete = "off";
+    urlIn.style.cssText = inputStyle;
+    lab.appendChild(urlIn);
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.setAttribute("data-global-edit-remove-target", "");
+    rm.setAttribute("aria-label", "Remove tab from group");
+    rm.textContent = "\xD7";
+    rm.title = "Remove tab from group";
+    rm.style.cssText = dangerBtnStyle();
+    row.append(lab, rm);
+    container.appendChild(row);
+  }
+  function appendGlobalEditNewTargetRow(container) {
+    const row = document.createElement("div");
+    row.setAttribute("data-global-edit-target-row", "");
+    row.setAttribute("data-global-edit-new-target", "1");
+    row.style.cssText = "display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; margin-top: 0.35rem";
+    const selLab = document.createElement("label");
+    selLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 1 1 12rem";
+    selLab.innerHTML = "<span>Pick open tab</span>";
+    const select = document.createElement("select");
+    select.setAttribute("data-global-edit-pick-tab", "");
+    select.style.cssText = `${inputStyle}; max-width: 100%`;
+    select.innerHTML = '<option value="">Select a tab\u2026</option>';
+    selLab.appendChild(select);
+    const urlLab = document.createElement("label");
+    urlLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 2 1 14rem";
+    urlLab.innerHTML = "<span>Target URL</span>";
+    const urlIn = document.createElement("input");
+    urlIn.type = "text";
+    urlIn.setAttribute("data-global-edit-target-url", "");
+    urlIn.placeholder = "https://\u2026";
+    urlIn.autocomplete = "off";
+    urlIn.style.cssText = inputStyle;
+    urlLab.appendChild(urlIn);
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.setAttribute("data-global-edit-remove-target", "");
+    rm.setAttribute("aria-label", "Remove tab from group");
+    rm.textContent = "\xD7";
+    rm.title = "Remove tab from group";
+    rm.style.cssText = dangerBtnStyle();
+    row.append(selLab, urlLab, rm);
+    container.appendChild(row);
+    return select;
   }
 
   // src/lib/individual-job-list-row.ts
@@ -1268,17 +1366,55 @@
       const stillValid = prev !== "" && [...tabSelect.options].some((o) => o.value === prev);
       tabSelect.value = stillValid ? prev : "";
     }
-    async function populateTabSelect() {
-      if (!tabSelect) {
-        return;
-      }
+    async function refreshCachedTabs() {
       const tabs = await chrome.tabs.query({});
       const withIds = tabs.filter(
         (t) => typeof t.id === "number" && typeof t.windowId === "number"
       );
       withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
       cachedIndividualTabs = withIds;
+    }
+    async function populateTabSelect() {
+      await refreshCachedTabs();
+      if (!tabSelect) {
+        return;
+      }
       applyIndividualTabSelectFilter();
+    }
+    function populateGlobalEditNewTabSelect(selectEl, groupRow) {
+      const selfRow = selectEl.closest("[data-global-edit-target-row]");
+      const taken = /* @__PURE__ */ new Set();
+      for (const tr of groupRow.querySelectorAll("[data-global-edit-target-row]")) {
+        if (tr === selfRow) {
+          continue;
+        }
+        if (tr.hasAttribute("data-global-edit-new-target")) {
+          const v = tr.querySelector("[data-global-edit-pick-tab]")?.value;
+          if (v) {
+            taken.add(Number(v));
+          }
+        } else {
+          const id = tr.getAttribute("data-global-edit-target-tab");
+          if (id) {
+            taken.add(Number(id));
+          }
+        }
+      }
+      const current = selectEl.value;
+      selectEl.innerHTML = '<option value="">Select a tab\u2026</option>';
+      for (const t of cachedIndividualTabs) {
+        if (t.id !== Number(current) && taken.has(t.id)) {
+          continue;
+        }
+        const opt = document.createElement("option");
+        opt.value = String(t.id);
+        opt.setAttribute("data-window-id", String(t.windowId));
+        const label = t.title?.trim() || t.url || `Tab ${t.id}`;
+        opt.textContent = `${label} (${t.id})`;
+        selectEl.appendChild(opt);
+      }
+      const still = current !== "" && [...selectEl.options].some((o) => o.value === current);
+      selectEl.value = still ? current : "";
     }
     function syncIndividualTargetUrlFromSelectedTab() {
       if (!tabSelect || !urlInput) {
@@ -1498,6 +1634,25 @@
           })();
           return;
         }
+        if (t.closest("[data-global-edit-add-target]")) {
+          e.preventDefault();
+          void (async () => {
+            await refreshCachedTabs();
+            const container = row.querySelector("[data-global-edit-targets]");
+            if (!container || !(container instanceof HTMLElement)) {
+              return;
+            }
+            const select = appendGlobalEditNewTargetRow(container);
+            populateGlobalEditNewTabSelect(select, row);
+          })();
+          return;
+        }
+        if (t.closest("[data-global-edit-remove-target]")) {
+          e.preventDefault();
+          const tr = t.closest("[data-global-edit-target-row]");
+          tr?.remove();
+          return;
+        }
         if (t.closest("[data-global-edit-save]")) {
           void (async () => {
             const errEl = row.querySelector("[data-global-edit-error]");
@@ -1513,15 +1668,55 @@
             const interval = Number(row.querySelector("[data-global-edit-interval]")?.value);
             const jitter = Number(row.querySelector("[data-global-edit-jitter]")?.value);
             const targets = [];
-            for (const ex of existing.targets) {
-              const urlIn = row.querySelector(
-                `[data-global-edit-target-url][data-global-edit-target-tab="${ex.tabId}"]`
-              );
-              targets.push({
-                tabId: ex.tabId,
-                windowId: ex.windowId,
-                targetUrl: urlIn?.value ?? ""
-              });
+            for (const tr of row.querySelectorAll("[data-global-edit-target-row]")) {
+              if (tr.hasAttribute("data-global-edit-new-target")) {
+                const sel = tr.querySelector("[data-global-edit-pick-tab]");
+                const urlIn = tr.querySelector("[data-global-edit-target-url]");
+                const raw = sel?.value?.trim() ?? "";
+                if (raw === "") {
+                  if (errEl) {
+                    errEl.textContent = "Select a tab for each new row, or remove empty rows";
+                  }
+                  return;
+                }
+                const tabId = Number(raw);
+                if (!Number.isInteger(tabId) || tabId < 1) {
+                  if (errEl) {
+                    errEl.textContent = "Invalid tab selection";
+                  }
+                  return;
+                }
+                let windowId = cachedIndividualTabs.find((x) => x.id === tabId)?.windowId;
+                if (windowId === void 0) {
+                  const chromeTab = await chrome.tabs.get(tabId);
+                  windowId = typeof chromeTab.windowId === "number" ? chromeTab.windowId : void 0;
+                }
+                if (windowId === void 0 || !Number.isInteger(windowId) || windowId < 0) {
+                  if (errEl) {
+                    errEl.textContent = "Could not resolve tab window";
+                  }
+                  return;
+                }
+                const tabMeta = cachedIndividualTabs.find((x) => x.id === tabId);
+                const label = tabMeta?.title?.trim();
+                targets.push({
+                  tabId,
+                  windowId,
+                  targetUrl: urlIn?.value ?? "",
+                  ...label ? { label } : {}
+                });
+              } else {
+                const tabId = Number(tr.getAttribute("data-global-edit-target-tab"));
+                const windowId = Number(tr.getAttribute("data-window-id"));
+                const urlIn = tr.querySelector("[data-global-edit-target-url]");
+                const prev = existing.targets.find((x) => x.tabId === tabId);
+                targets.push({
+                  tabId,
+                  windowId,
+                  targetUrl: urlIn?.value ?? "",
+                  ...prev?.label ? { label: prev.label } : {}
+                });
+              }
             }
             const patternsRaw = row.querySelector("[data-global-edit-url-patterns]")?.value;
             const built = buildGlobalGroupUpdateFromForm(
@@ -1555,6 +1750,45 @@
           })();
         }
       });
+      if (globalGroupsList.dataset.globalEditTabPickBound !== "1") {
+        globalGroupsList.dataset.globalEditTabPickBound = "1";
+        globalGroupsList.addEventListener("change", (e) => {
+          const sel = e.target;
+          if (!(sel instanceof HTMLSelectElement) || !sel.matches("[data-global-edit-pick-tab]")) {
+            return;
+          }
+          const tr = sel.closest("[data-global-edit-target-row]");
+          const groupRow = sel.closest("[data-global-group-row]");
+          if (!tr || !groupRow) {
+            return;
+          }
+          const urlIn = tr.querySelector("[data-global-edit-target-url]");
+          if (!urlIn) {
+            return;
+          }
+          const tabId = Number(sel.value);
+          if (!Number.isInteger(tabId) || tabId < 1) {
+            urlIn.value = "";
+            return;
+          }
+          const tab = cachedIndividualTabs.find((x) => x.id === tabId);
+          if (tab) {
+            urlIn.value = defaultTargetUrlForTab(tab.url ?? "");
+          } else {
+            void chrome.tabs.get(tabId).then((ct) => {
+              if (sel.value !== String(tabId) || !urlIn) {
+                return;
+              }
+              urlIn.value = defaultTargetUrlForTab(ct.url ?? "");
+            });
+          }
+          for (const other of groupRow.querySelectorAll("[data-global-edit-pick-tab]")) {
+            if (other !== sel) {
+              populateGlobalEditNewTabSelect(other, groupRow);
+            }
+          }
+        });
+      }
     }
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== "local" || !(STORAGE_KEY in changes)) {

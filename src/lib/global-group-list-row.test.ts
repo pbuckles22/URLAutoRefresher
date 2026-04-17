@@ -41,8 +41,12 @@ describe('createGlobalGroupListRow', () => {
     expect((li.querySelector<HTMLInputElement>('[data-global-edit-interval]'))?.value).toBe('55');
     expect((li.querySelector<HTMLInputElement>('[data-global-edit-jitter]'))?.value).toBe('4');
 
-    const u40 = li.querySelector<HTMLInputElement>('[data-global-edit-target-tab="40"]');
-    const u41 = li.querySelector<HTMLInputElement>('[data-global-edit-target-tab="41"]');
+    const u40 = li.querySelector<HTMLInputElement>(
+      '[data-global-edit-target-url][data-global-edit-target-tab="40"]'
+    );
+    const u41 = li.querySelector<HTMLInputElement>(
+      '[data-global-edit-target-url][data-global-edit-target-tab="41"]'
+    );
     expect(u40?.value).toBe('https://example.com/a');
     expect(u41?.value).toBe('https://example.com/b');
 

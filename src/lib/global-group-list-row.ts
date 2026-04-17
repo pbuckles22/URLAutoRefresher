@@ -20,6 +20,10 @@ function primaryBtnStyle(): string {
   return 'padding: 0.35rem 0.75rem; border-radius: 6px; border: none; background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer; font-size: 0.85rem';
 }
 
+function addMemberBtnStyle(): string {
+  return `${btnStyle()} border-color: #137333; color: #81c995; background: #1e3a2f; font-weight: 600`;
+}
+
 const inputStyle =
   'padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #202124; color: #e8eaed';
 
@@ -126,23 +130,29 @@ export function createGlobalGroupListRow(g: GlobalGroup, nowMs: number): HTMLLIE
 
   editWrap.append(nameLab, intLab, jitLab, patLab);
 
+  const membersHeader = document.createElement('div');
+  membersHeader.style.cssText =
+    'display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.35rem';
+  const membersTitle = document.createElement('span');
+  membersTitle.textContent = 'Member tabs';
+  membersTitle.style.fontSize = '0.85rem';
+  membersTitle.style.color = '#e8eaed';
+  const addTabBtn = document.createElement('button');
+  addTabBtn.type = 'button';
+  addTabBtn.setAttribute('data-global-edit-add-target', '');
+  addTabBtn.setAttribute('aria-label', 'Add tab to group');
+  addTabBtn.textContent = '+';
+  addTabBtn.title = 'Add tab to group';
+  addTabBtn.style.cssText = addMemberBtnStyle();
+  membersHeader.append(membersTitle, addTabBtn);
+
+  const targetsContainer = document.createElement('div');
+  targetsContainer.setAttribute('data-global-edit-targets', '');
+
+  editWrap.append(membersHeader, targetsContainer);
+
   for (const t of g.targets) {
-    const lab = document.createElement('label');
-    lab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem';
-    const cap = document.createElement('span');
-    cap.textContent = t.label
-      ? `Tab ${t.tabId} — ${t.label} · target URL`
-      : `Tab ${t.tabId} — target URL`;
-    lab.appendChild(cap);
-    const urlIn = document.createElement('input');
-    urlIn.type = 'text';
-    urlIn.setAttribute('data-global-edit-target-url', '');
-    urlIn.setAttribute('data-global-edit-target-tab', String(t.tabId));
-    urlIn.value = t.targetUrl;
-    urlIn.autocomplete = 'off';
-    urlIn.style.cssText = inputStyle;
-    lab.appendChild(urlIn);
-    editWrap.appendChild(lab);
+    appendGlobalEditExistingTargetRow(targetsContainer, t);
   }
 
   const editErr = document.createElement('p');
@@ -160,4 +170,87 @@ export function createGlobalGroupListRow(g: GlobalGroup, nowMs: number): HTMLLIE
   li.appendChild(details);
 
   return li;
+}
+
+/** One explicit member row in global group Edit (existing tab). */
+export function appendGlobalEditExistingTargetRow(
+  container: HTMLElement,
+  t: { tabId: number; windowId: number; targetUrl: string; label?: string }
+): void {
+  const row = document.createElement('div');
+  row.setAttribute('data-global-edit-target-row', '');
+  row.setAttribute('data-global-edit-target-tab', String(t.tabId));
+  row.setAttribute('data-window-id', String(t.windowId));
+  row.style.cssText =
+    'display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; margin-top: 0.35rem';
+
+  const lab = document.createElement('label');
+  lab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 1 1 14rem';
+  const cap = document.createElement('span');
+  cap.textContent = t.label
+    ? `Tab ${t.tabId} — ${t.label} · target URL`
+    : `Tab ${t.tabId} — target URL`;
+  lab.appendChild(cap);
+  const urlIn = document.createElement('input');
+  urlIn.type = 'text';
+  urlIn.setAttribute('data-global-edit-target-url', '');
+  urlIn.setAttribute('data-global-edit-target-tab', String(t.tabId));
+  urlIn.value = t.targetUrl;
+  urlIn.autocomplete = 'off';
+  urlIn.style.cssText = inputStyle;
+  lab.appendChild(urlIn);
+
+  const rm = document.createElement('button');
+  rm.type = 'button';
+  rm.setAttribute('data-global-edit-remove-target', '');
+  rm.setAttribute('aria-label', 'Remove tab from group');
+  rm.textContent = '×';
+  rm.title = 'Remove tab from group';
+  rm.style.cssText = dangerBtnStyle();
+
+  row.append(lab, rm);
+  container.appendChild(row);
+}
+
+/** Appends a row to pick an open tab + target URL; returns the tab `<select>` to populate. */
+export function appendGlobalEditNewTargetRow(container: HTMLElement): HTMLSelectElement {
+  const row = document.createElement('div');
+  row.setAttribute('data-global-edit-target-row', '');
+  row.setAttribute('data-global-edit-new-target', '1');
+  row.style.cssText =
+    'display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; margin-top: 0.35rem';
+
+  const selLab = document.createElement('label');
+  selLab.style.cssText =
+    'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 1 1 12rem';
+  selLab.innerHTML = '<span>Pick open tab</span>';
+  const select = document.createElement('select');
+  select.setAttribute('data-global-edit-pick-tab', '');
+  select.style.cssText = `${inputStyle}; max-width: 100%`;
+  select.innerHTML = '<option value="">Select a tab…</option>';
+  selLab.appendChild(select);
+
+  const urlLab = document.createElement('label');
+  urlLab.style.cssText =
+    'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 2 1 14rem';
+  urlLab.innerHTML = '<span>Target URL</span>';
+  const urlIn = document.createElement('input');
+  urlIn.type = 'text';
+  urlIn.setAttribute('data-global-edit-target-url', '');
+  urlIn.placeholder = 'https://…';
+  urlIn.autocomplete = 'off';
+  urlIn.style.cssText = inputStyle;
+  urlLab.appendChild(urlIn);
+
+  const rm = document.createElement('button');
+  rm.type = 'button';
+  rm.setAttribute('data-global-edit-remove-target', '');
+  rm.setAttribute('aria-label', 'Remove tab from group');
+  rm.textContent = '×';
+  rm.title = 'Remove tab from group';
+  rm.style.cssText = dangerBtnStyle();
+
+  row.append(selLab, urlLab, rm);
+  container.appendChild(row);
+  return select;
 }

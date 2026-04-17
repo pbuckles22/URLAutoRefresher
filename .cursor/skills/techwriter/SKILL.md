@@ -31,6 +31,8 @@ Use this skill when creating or revising project docs so they stay consistent an
 
 **Include:** Repo purpose; source-of-truth links (plan, PM_PLAN, move guide in `doc/handoff/`); run and test commands; handoff protocol. Put **what shipped** in **PM_PLAN** / plan on **`main`**; **session** narrative stays **local** (`HANDOFF-*.md` gitignored) — not in AGENT_HANDOFF.
 
+**Session handoff files:** Naming and timestamps are defined in **AGENT_HANDOFF.md** (recommended filename `HANDOFF-YYYY-MM-DD-HHmmss.md`, plus a **`Recorded:`** line in the markdown). The mandatory steps live in **`.cursor/rules/handoff-checklist.mdc`**. When you change **how** handoffs are named or structured, update **AGENT_HANDOFF.md** (and the checklist if steps change); use **techwriter** for tone/structure.
+
 **Style:** Dense but structured. Headings and bullets so agents can jump to the right section.
 
 ---

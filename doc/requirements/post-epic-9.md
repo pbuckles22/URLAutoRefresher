@@ -12,3 +12,5 @@ Incremental product behavior after [Epic 8](../plan/EDGE_URL_AUTO_REFRESHER_PLAN
 | **P9.6** | Twitch **live bridge**: after extension reload, avoid noisy **Extension context invalidated** (guards, teardown, unhandled rejection handling). | DevTools stays clean during development. |
 
 **Related:** Epic **2.4** “one alarm per global group / synchronized refresh” is superseded by P9.3 for globals; individuals remain one alarm per job.
+
+**P9.1 and tab lifecycle:** URL patterns auto-include matching **open** tabs; they do not replace **[Backlog 7](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs)** — rebinding stored **`tabId`** when the user closes a grouped tab and opens the same URL again (new tab id).
