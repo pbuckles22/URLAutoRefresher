@@ -1,6 +1,9 @@
 import type { ExtensionPrefs } from './prefs';
 import { resolveGlobalGroupTargets } from './global-group-targets';
 import type { AppState } from './types';
+import { pageMatchesExplicitTarget } from './member-url';
+
+export { pageMatchesExplicitTarget } from './member-url';
 
 export type PageOverlayVm =
   | { show: false }
@@ -16,11 +19,14 @@ export type PageOverlayVm =
 
 /**
  * Overlay visibility + mode for a tab (individual job wins over global groups).
+ * Pass `tabUrl` from the sender tab so global groups still match when the stored member tabId
+ * differs from the live tab (same channel in a new tab / after navigation).
  */
 export async function getPageOverlayVmForTab(
   state: AppState,
   prefs: ExtensionPrefs,
-  tabId: number
+  tabId: number,
+  tabUrl?: string
 ): Promise<PageOverlayVm> {
   if (!prefs.showPageOverlayTimer) {
     return { show: false };
@@ -41,14 +47,21 @@ export async function getPageOverlayVmForTab(
       continue;
     }
     const resolved = await resolveGlobalGroupTargets(g);
-    if (!resolved.some((t) => t.tabId === tabId)) {
-      continue;
+    const directMember = resolved.some((t) => t.tabId === tabId);
+    let scheduleTabId = tabId;
+
+    if (!directMember) {
+      const hit = g.targets.find((t) => pageMatchesExplicitTarget(tabUrl, t.targetUrl));
+      if (!hit) {
+        continue;
+      }
+      scheduleTabId = hit.tabId;
     }
-    if (g.pausedTabIds?.includes(tabId)) {
+
+    if (g.pausedTabIds?.includes(tabId) || g.pausedTabIds?.includes(scheduleTabId)) {
       return { show: true, mode: 'paused', globalGroupId: g.id };
     }
-    const next =
-      g.tabNextFireAt?.[String(tabId)] ?? g.nextFireAt;
+    const next = g.tabNextFireAt?.[String(scheduleTabId)] ?? g.nextFireAt;
     return { show: true, mode: 'timer', nextFireAt: next, globalGroupId: g.id };
   }
 

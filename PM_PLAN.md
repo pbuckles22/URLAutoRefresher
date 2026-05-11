@@ -1,6 +1,6 @@
-# PM_PLAN — URL Auto Refresher
+# PM_PLAN — Media Control Suite
 
-High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
+High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) (**Media Control Suite** — user-facing working name; internal package keys may still read `url-auto-refresher` until renamed deliberately).
 
 ## Current
 
@@ -16,9 +16,14 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 - **Epic 9:** Done — blip / phrase–regex triggered refresh; rate limits ([doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md)).
 - **Post–Epic 9:** Done — URL patterns for globals, per-tab pause/jitter, dashboard order, overlay polish, Twitch bridge hardening ([doc/requirements/post-epic-9.md](doc/requirements/post-epic-9.md)).
 
+## Next (see EDGE plan)
+
+- **[Epic 10](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-10--url-first-membership-phased) — URL-first membership (phased):** make `targetUrl`/member key the durable identity; resolve live tabs at refresh; migrate schedule/pause keys off `tabId`; URL-centric UI + sweep. **10.1 done** — [`src/lib/member-url.ts`](src/lib/member-url.ts). **Next story:** **10.2** (resolve live `tabId` at refresh in scheduler). Stories **10.2–10.5** remain. **Backlog #7** (same-URL new tab) is **superseded** by Epic 10 per EDGE plan.
+
 ## Later (see EDGE plan)
 
-- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5**, **6** (see EDGE plan). **Open:** **4** (Play after long idle — **on hold**, hard to repro; suspected SW/messaging bug); **7** (rebind `tabId` when user closes a grouped tab and opens the same URL in a new tab — see EDGE #7); **8** (overlay — e.g. Twitch chat unhide behind fixed card; snap/drag + persistence — see EDGE #8). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
+- **[Epic 11](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-11--precision-volume-web-audio) — Precision volume (Web Audio):** in-page gain, shortcuts, OSD; requirements in [doc/requirements/precision-volume-controller.md](doc/requirements/precision-volume-controller.md). **Recommended after [Epic 10](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-10--url-first-membership-phased)** to reduce overlap risk on content scripts and messaging.
+- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5**, **6** (see EDGE plan). **Open:** **4** (Play after long idle — **on hold**, hard to repro; suspected SW/messaging bug); **7** *(superseded by [Epic 10](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-10--url-first-membership-phased) — keep for traceability only)*; **8** (overlay — e.g. Twitch chat unhide behind fixed card; snap/drag + persistence — see EDGE #8). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
 - New epics/stories should still be added to the EDGE plan and [doc/requirements/](doc/requirements/) when you formalize scope.
 
 Keep this file in sync with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) checkboxes when scope changes. Session handoff notes use `doc/handoff/HANDOFF-*.md` (gitignored — not on `main`); prefer **timestamped** names (`HANDOFF-YYYY-MM-DD-HHmmss.md`) and a **Recorded** line — [AGENT_HANDOFF.md](AGENT_HANDOFF.md). Add `doc/requirements/` when you use it.
