@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   defaultTargetUrlForTab,
+  pinTabIdFirst,
   tabRowsFromWindowsSnapshot,
 } from './window-tab-browser';
 
@@ -48,5 +49,38 @@ describe('tabRowsFromWindowsSnapshot', () => {
       },
     ]);
     expect(rows.map((r) => r.tabId)).toEqual([100, 200, 201]);
+  });
+
+  it('moves pinTabId row first when provided', () => {
+    const rows = tabRowsFromWindowsSnapshot(
+      [
+        {
+          id: 1,
+          tabs: [
+            { id: 100, index: 0, title: 'A', url: 'https://a/' },
+            { id: 101, index: 1, title: 'B', url: 'https://b/' },
+          ],
+        },
+      ],
+      101
+    );
+    expect(rows.map((r) => r.tabId)).toEqual([101, 100]);
+  });
+});
+
+describe('pinTabIdFirst', () => {
+  it('moves matching id to index 0', () => {
+    const tabs = [
+      { id: 1, x: 'a' },
+      { id: 2, x: 'b' },
+      { id: 3, x: 'c' },
+    ];
+    expect(pinTabIdFirst(tabs, 2).map((t) => t.id)).toEqual([2, 1, 3]);
+  });
+
+  it('no-ops when pin missing or invalid', () => {
+    const tabs = [{ id: 1 }, { id: 2 }];
+    expect(pinTabIdFirst(tabs, 99).map((t) => t.id)).toEqual([1, 2]);
+    expect(pinTabIdFirst(tabs, 0).map((t) => t.id)).toEqual([1, 2]);
   });
 });

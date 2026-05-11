@@ -223,7 +223,7 @@ export function appendGlobalEditNewTargetRow(container: HTMLElement): HTMLSelect
   const selLab = document.createElement('label');
   selLab.style.cssText =
     'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 1 1 12rem';
-  selLab.innerHTML = '<span>Pick open tab</span>';
+  selLab.innerHTML = '<span>Pick open tab (optional)</span>';
   const select = document.createElement('select');
   select.setAttribute('data-global-edit-pick-tab', '');
   select.style.cssText = `${inputStyle}; max-width: 100%`;
