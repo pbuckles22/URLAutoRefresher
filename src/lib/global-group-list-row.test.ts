@@ -71,4 +71,23 @@ describe('createGlobalGroupListRow', () => {
     const summaryLine = li.querySelector('span:not([data-global-group-countdown])');
     expect(summaryLine?.textContent).toContain('2 URL patterns');
   });
+
+  it('TwitchFavs summary uses streamers wording', () => {
+    const li = createGlobalGroupListRow(
+      sampleGroup({ name: 'TwitchFavs', urlPatterns: ['https://www.twitch.tv/a'] }),
+      Date.now()
+    );
+    const summaryLine = li.querySelector('span:not([data-global-group-countdown])');
+    expect(summaryLine?.textContent).toContain('1 streamer');
+  });
+
+  it('shows TwitchFavs pattern hint when name is TwitchFavs', () => {
+    const li = createGlobalGroupListRow(
+      sampleGroup({ name: 'TwitchFavs', urlPatterns: ['https://www.twitch.tv/x'] }),
+      Date.now()
+    );
+    const hint = li.querySelector<HTMLElement>('[data-twitch-favs-pattern-hint]');
+    expect(hint).toBeTruthy();
+    expect(hint?.style.display).toBe('block');
+  });
 });

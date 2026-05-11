@@ -1,4 +1,9 @@
 import { memberKeyFromTargetUrl } from './member-url';
+import {
+  isTwitchFavsGroupName,
+  parseTwitchFavsUrlPatternsRaw,
+  reconcileTwitchFavsTargets,
+} from './twitch-favs';
 import type { GlobalGroup, TargetRef } from './types';
 import type { Result } from './validation';
 import { validateHttpUrl, validateIntervalSec, validateJitterSec } from './validation';
@@ -57,11 +62,13 @@ export function buildGlobalGroupFromForm(
     return { ok: false, error: 'Enter a group name' };
   }
 
-  const patternsResult = parseUrlPatternsRaw(input.urlPatternsRaw);
+  const patternsResult = isTwitchFavsGroupName(name)
+    ? parseTwitchFavsUrlPatternsRaw(input.urlPatternsRaw)
+    : parseUrlPatternsRaw(input.urlPatternsRaw);
   if (!patternsResult.ok) {
     return patternsResult;
   }
-  const urlPatterns = patternsResult.value;
+  let urlPatterns = patternsResult.value;
 
   if (input.targets.length < 1 && urlPatterns.length < 1) {
     return { ok: false, error: 'Select at least one tab or add at least one URL pattern' };
@@ -96,6 +103,12 @@ export function buildGlobalGroupFromForm(
       targetUrl: url.value,
       ...(label ? { label } : {}),
     });
+  }
+
+  if (isTwitchFavsGroupName(name)) {
+    const pruned = reconcileTwitchFavsTargets(targets, urlPatterns);
+    targets.length = 0;
+    targets.push(...pruned);
   }
 
   return {
@@ -156,11 +169,13 @@ export function buildGlobalGroupUpdateFromForm(
     return { ok: false, error: 'Enter a group name' };
   }
 
-  const patternsResult = parseUrlPatternsRaw(input.urlPatternsRaw);
+  const patternsResult = isTwitchFavsGroupName(name)
+    ? parseTwitchFavsUrlPatternsRaw(input.urlPatternsRaw)
+    : parseUrlPatternsRaw(input.urlPatternsRaw);
   if (!patternsResult.ok) {
     return patternsResult;
   }
-  const urlPatterns = patternsResult.value;
+  let urlPatterns = patternsResult.value;
 
   const interval = validateIntervalSec(input.baseIntervalSec);
   if (!interval.ok) {
@@ -195,6 +210,12 @@ export function buildGlobalGroupUpdateFromForm(
 
   if (targets.length < 1 && urlPatterns.length < 1) {
     return { ok: false, error: 'Keep at least one tab or one URL pattern' };
+  }
+
+  if (isTwitchFavsGroupName(name)) {
+    const pruned = reconcileTwitchFavsTargets(targets, urlPatterns);
+    targets.length = 0;
+    targets.push(...pruned);
   }
 
   const { pausedMemberKeys, memberNextFireAt } = filterPausedStateForTabs(existing, targets);

@@ -17,6 +17,7 @@ import {
   setGlobalGroupEnabled,
 } from '../lib/global-groups';
 import { memberKeyFromTargetUrl } from '../lib/member-url';
+import { isTwitchFavsGroupName, TWITCH_FAVS_PATTERN_HINT } from '../lib/twitch-favs';
 import { validateHttpUrl } from '../lib/validation';
 import { mergeDistinctPatternLines } from '../lib/url-glob';
 import { defaultTargetUrlForTab, pinTabIdFirst, tabRowsFromWindowsSnapshot } from '../lib/window-tab-browser';
@@ -81,10 +82,22 @@ export function initDashboardApp(): void {
   const globalIntervalInput = document.querySelector<HTMLInputElement>('[data-global-interval]');
   const globalJitterInput = document.querySelector<HTMLInputElement>('[data-global-jitter]');
   const globalUrlPatterns = document.querySelector<HTMLTextAreaElement>('[data-global-url-patterns]');
+  const globalTwitchFavsHint = document.querySelector<HTMLElement>('[data-global-twitch-favs-hint]');
   const globalFormError = document.querySelector<HTMLElement>('[data-global-form-error]');
   const globalSectionHeading = document.querySelector<HTMLElement>('[data-global-section-heading]');
   const individualSectionHeading = document.querySelector<HTMLElement>('[data-individual-section-heading]');
   const globalGroupsList = document.querySelector<HTMLUListElement>('[data-global-groups-list]');
+
+  if (globalTwitchFavsHint) {
+    globalTwitchFavsHint.textContent = TWITCH_FAVS_PATTERN_HINT;
+  }
+  if (globalGroupName && globalTwitchFavsHint) {
+    const syncGlobalTwitchFavsHint = (): void => {
+      globalTwitchFavsHint.style.display = isTwitchFavsGroupName(globalGroupName.value) ? 'block' : 'none';
+    };
+    globalGroupName.addEventListener('input', syncGlobalTwitchFavsHint);
+    syncGlobalTwitchFavsHint();
+  }
 
   async function renderGlobalGroupsList(): Promise<void> {
     const state = await loadAppState();

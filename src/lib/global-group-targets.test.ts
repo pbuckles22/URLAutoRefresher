@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { resolveGlobalGroupTargets } from './global-group-targets';
+import { canonicalTwitchChannelUrl } from './twitch-favs';
 import type { GlobalGroup } from './types';
 
 describe('resolveGlobalGroupTargets', () => {
@@ -38,5 +39,24 @@ describe('resolveGlobalGroupTargets', () => {
     const got = await resolveGlobalGroupTargets(group, queryTabs);
     expect(got).toHaveLength(1);
     expect(got[0]!.targetUrl).toBe('https://saved.example/');
+  });
+
+  it('TwitchFavs: canonical favorite matches twitch.tv and www tab URLs', async () => {
+    const group: GlobalGroup = {
+      id: 'g',
+      name: 'TwitchFavs',
+      targets: [],
+      urlPatterns: [canonicalTwitchChannelUrl('ninja')],
+      baseIntervalSec: 60,
+      jitterSec: 0,
+      enabled: true,
+    };
+    const queryTabs = vi.fn().mockResolvedValue([
+      { id: 1, windowId: 0, url: 'https://twitch.tv/Ninja', active: false, index: 0 },
+    ]);
+    const got = await resolveGlobalGroupTargets(group, queryTabs);
+    expect(got).toHaveLength(1);
+    expect(got[0]!.tabId).toBe(1);
+    expect(got[0]!.targetUrl).toContain('twitch.tv');
   });
 });
