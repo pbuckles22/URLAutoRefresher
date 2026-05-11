@@ -67,6 +67,23 @@ describe('manifest.json', () => {
     expect(commands?.['panic-mute']).toBeDefined();
   });
 
+  it('uses only chrome.commands-supported accelerator tokens (no Equal/Minus/Digit*/Plus)', () => {
+    const commands = manifest.commands as Record<
+      string,
+      { suggested_key?: string | Record<string, string> }
+    >;
+    expect(commands).toBeDefined();
+    const invalidSegment = /\b(Equal|Minus|Plus|Digit\d*)\b/i;
+    for (const def of Object.values(commands ?? {})) {
+      const sk = def?.suggested_key;
+      const strings: string[] =
+        typeof sk === 'string' ? [sk] : sk ? Object.values(sk) : [];
+      for (const chord of strings) {
+        expect(chord, `invalid chord segment in ${chord}`).not.toMatch(invalidSegment);
+      }
+    }
+  });
+
   it('injects Twitch live bridge on twitch.tv only (Epic 8)', () => {
     const scripts = manifest.content_scripts as Array<Record<string, unknown>>;
     const twitch = scripts.find(
