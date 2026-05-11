@@ -222,7 +222,7 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Requirements detail:** [doc/requirements/precision-volume-controller.md](../requirements/precision-volume-controller.md).
 
-- [ ] **11.1** — **`manifest.json` + build:** Add **`chrome.commands`** (increase / decrease / panic mute) and any **minimal** new permissions; extend [`Scripts/build.mjs`](../../Scripts/build.mjs) if a new content bundle is required. *Outcome: extension loads; commands registered.*
+- [x] **11.1** — **`manifest.json` + build:** Add **`chrome.commands`** (increase / decrease / panic mute) and any **minimal** new permissions; extend [`Scripts/build.mjs`](../../Scripts/build.mjs) if a new content bundle is required. *Outcome: extension loads; commands registered.* *Implemented: [`manifest.json`](../../manifest.json) `commands`; [`volume-commands.ts`](../../src/background/volume-commands.ts) → [`precision-volume-bridge.ts`](../../src/content/precision-volume-bridge.ts) (imported from [`page-overlay.ts`](../../src/content/page-overlay.ts)); message [`PRECISION_VOLUME_COMMAND`](../../src/lib/messages.ts).*
 
 - [ ] **11.2** — **Content hook:** On matching media, create **one** `MediaElementSource` per element (guard against double-hook), **zero-blast** initial gain, connect through `GainNode` to destination; handle **CORS** limits per [web-audio-dsp](../../.cursor/skills/web-audio-dsp/SKILL.md). *Outcome: safe attach without duplicate-source crashes.*
 

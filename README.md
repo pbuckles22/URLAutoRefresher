@@ -103,6 +103,20 @@ Epics through **7** (ship notes for Edge — install, permissions, limits, manua
 
 The extension requests: **`storage`**, **`alarms`**, **`tabs`**, **`windows`**, **`sidePanel`**, and broad **`http*://*/*`** host access so scheduled refreshes can navigate tabs to your configured target URLs.
 
+## Keyboard shortcuts (precision volume — Epic 11)
+
+Registered via **`chrome.commands`** in [`manifest.json`](manifest.json) (defaults below). Remap or disable under **edge://extensions/shortcuts** (or Chrome equivalent).
+
+| Command | Default chord |
+|--------|----------------|
+| Increase precision volume | **Ctrl+Shift+Up** · **Command+Shift+Up** |
+| Decrease precision volume | **Ctrl+Shift+Down** · **Command+Shift+Down** |
+| Panic mute | **Ctrl+Shift+0** · **Command+Shift+0** |
+
+Only key names [documented for `chrome.commands`](https://developer.chrome.com/docs/extensions/reference/api/commands#supported_keys) are valid (e.g. `Up`, `Down`, `0`–`9`, `Comma`, `Period` — not `Equal`, `Minus`, or `Digit0`). Remap under **edge://extensions/shortcuts** if a chord conflicts with the browser or OS.
+
+The active tab’s content script receives the command (**11.1** wiring); Web Audio gain control lands in **11.2+**.
+
 ## Manual QA (releases)
 
 After `npm run build`, load this repo **unpacked** in Edge: **Extensions** → **Developer mode** → **Load unpacked** → select the folder that contains `manifest.json` (same as [Development](#development) step 5). Then walk the **same** cases as [Testing checklist (manual)](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#testing-checklist-manual):

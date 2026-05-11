@@ -23,6 +23,29 @@
     "page": "dashboard/dashboard.html",
     "open_in_tab": true
   },
+  "commands": {
+    "volume-up": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Up",
+        "mac": "Command+Shift+Up"
+      },
+      "description": "Increase precision media volume on the active tab"
+    },
+    "volume-down": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Down",
+        "mac": "Command+Shift+Down"
+      },
+      "description": "Decrease precision media volume on the active tab"
+    },
+    "panic-mute": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+0",
+        "mac": "Command+Shift+0"
+      },
+      "description": "Panic mute media volume on the active tab"
+    }
+  },
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
