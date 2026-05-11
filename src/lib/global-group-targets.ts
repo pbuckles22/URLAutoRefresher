@@ -3,6 +3,7 @@ import {
   type TabPickCandidate,
 } from './member-url';
 import type { GlobalGroup, ResolvedMemberTab } from './types';
+import { isTwitchFavsGroupName, tabUrlMatchesTwitchFavsFavorite } from './twitch-favs';
 import { urlMatchesGlob } from './url-glob';
 
 function isHttpUrl(u: string | undefined): boolean {
@@ -84,7 +85,10 @@ export async function resolveGlobalGroupTargets(
       continue;
     }
     for (const pattern of patterns) {
-      if (urlMatchesGlob(url, pattern)) {
+      const match = isTwitchFavsGroupName(group.name)
+        ? tabUrlMatchesTwitchFavsFavorite(url, pattern)
+        : urlMatchesGlob(url, pattern);
+      if (match) {
         byId.set(id, { tabId: id, windowId: wid, targetUrl: url });
         break;
       }

@@ -6,8 +6,10 @@ import { attachBadgeListeners } from './badge';
 import { attachLiveAwareListeners } from './live-aware';
 import { attachPageOverlayMessageHandler } from './page-overlay-handler';
 import { attachSchedulingListeners, bootstrapScheduling } from './scheduler';
+import { attachTwitchFavsTabListener } from './twitch-favs-sync';
 
 attachSchedulingListeners();
+attachTwitchFavsTabListener();
 attachBadgeListeners();
 attachPageOverlayMessageHandler();
 attachLiveAwareListeners();

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildGlobalGroupFromForm, buildGlobalGroupUpdateFromForm } from './global-group-form';
+import { canonicalTwitchChannelUrl } from './twitch-favs';
 import type { GlobalGroup } from './types';
 
 describe('buildGlobalGroupFromForm', () => {
@@ -95,6 +96,47 @@ describe('buildGlobalGroupFromForm', () => {
         jitterSec: 3,
         enabled: true,
       });
+    }
+  });
+
+  it('TwitchFavs: names-only patterns without explicit tabs', () => {
+    const r = buildGlobalGroupFromForm(
+      {
+        name: 'TwitchFavs',
+        baseIntervalSec: 60,
+        jitterSec: 0,
+        targets: [],
+        urlPatternsRaw: 'ninja, shroud',
+      },
+      () => 'tf-1'
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.urlPatterns).toEqual([
+        canonicalTwitchChannelUrl('ninja'),
+        canonicalTwitchChannelUrl('shroud'),
+      ]);
+      expect(r.value.targets).toEqual([]);
+    }
+  });
+
+  it('TwitchFavs: prunes targets not in favorites list', () => {
+    const r = buildGlobalGroupFromForm(
+      {
+        name: 'TwitchFavs',
+        baseIntervalSec: 60,
+        jitterSec: 0,
+        targets: [
+          { targetUrl: 'https://www.twitch.tv/ninja' },
+          { targetUrl: 'https://example.com/other' },
+        ],
+        urlPatternsRaw: 'ninja',
+      },
+      () => 'tf-2'
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.targets).toEqual([{ targetUrl: canonicalTwitchChannelUrl('ninja') }]);
     }
   });
 });

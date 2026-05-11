@@ -176,6 +176,136 @@
     return sorted[0]?.id;
   }
 
+  // src/lib/twitch-favs.ts
+  var RESERVED = "twitchfavs";
+  var MAX_TWITCH_FAVS_TOKENS = 20;
+  var MAX_TOKEN_LEN = 200;
+  var TWITCH_FAVS_PATTERN_HINT = "TwitchFavs: enter streamer logins or full Twitch URLs (comma or newline). Each becomes https://www.twitch.tv/\u2026 for matching.";
+  function isTwitchFavsGroupName(name) {
+    return name.trim().toLowerCase() === RESERVED;
+  }
+  function twitchChannelLoginFromUrl(url) {
+    try {
+      const u = new URL(url.trim());
+      if (!/(^|\.)twitch\.tv$/i.test(u.hostname)) {
+        return null;
+      }
+      const parts = u.pathname.split("/").filter(Boolean);
+      if (parts.length !== 1) {
+        return null;
+      }
+      const login = parts[0];
+      if (!/^[\w]+$/i.test(login)) {
+        return null;
+      }
+      return login.toLowerCase();
+    } catch {
+      return null;
+    }
+  }
+  function canonicalTwitchChannelUrl(loginLower) {
+    return `https://www.twitch.tv/${loginLower}`;
+  }
+  function tabUrlMatchesTwitchFavsFavorite(tabUrl, favoriteCanonicalUrl) {
+    const a = twitchChannelLoginFromUrl(tabUrl);
+    const b = twitchChannelLoginFromUrl(favoriteCanonicalUrl);
+    return a !== null && b !== null && a === b;
+  }
+  function expandTwitchFavsToken(token) {
+    const t = token.trim();
+    if (!t) {
+      return { ok: false, error: "Empty streamer token" };
+    }
+    if (t.length > MAX_TOKEN_LEN) {
+      return { ok: false, error: `Each entry must be at most ${MAX_TOKEN_LEN} characters` };
+    }
+    if (/^https?:\/\//i.test(t)) {
+      const login = twitchChannelLoginFromUrl(t);
+      if (!login) {
+        return {
+          ok: false,
+          error: "Twitch URL must be a channel root (e.g. https://www.twitch.tv/streamername)"
+        };
+      }
+      return { ok: true, value: canonicalTwitchChannelUrl(login) };
+    }
+    if (!/^[\w]+$/i.test(t)) {
+      return { ok: false, error: "Streamer names must use letters, numbers, or underscores only" };
+    }
+    return { ok: true, value: canonicalTwitchChannelUrl(t.toLowerCase()) };
+  }
+  function parseTwitchFavsUrlPatternsRaw(raw) {
+    const tokens = [];
+    for (const line of (raw ?? "").split(/\r?\n/)) {
+      for (const part of line.split(",")) {
+        const segment = part.trim();
+        if (!segment) {
+          continue;
+        }
+        tokens.push(segment);
+        if (tokens.length > MAX_TWITCH_FAVS_TOKENS) {
+          return { ok: false, error: `At most ${MAX_TWITCH_FAVS_TOKENS} streamers or URLs` };
+        }
+      }
+    }
+    if (tokens.length === 0) {
+      return { ok: true, value: [] };
+    }
+    const seen = /* @__PURE__ */ new Set();
+    const urls = [];
+    for (const tok of tokens) {
+      const ex = expandTwitchFavsToken(tok);
+      if (!ex.ok) {
+        return ex;
+      }
+      const mk = memberKeyFromTargetUrl(ex.value);
+      if (!mk) {
+        return { ok: false, error: "Invalid expanded Twitch URL" };
+      }
+      if (seen.has(mk)) {
+        continue;
+      }
+      seen.add(mk);
+      urls.push(ex.value);
+    }
+    return { ok: true, value: urls };
+  }
+  function twitchFavsFavoriteMemberKeys(canonicalUrls) {
+    const keys = /* @__PURE__ */ new Set();
+    for (const u of canonicalUrls) {
+      const mk = memberKeyFromTargetUrl(u.trim());
+      if (mk) {
+        keys.add(mk);
+      }
+    }
+    return keys;
+  }
+  function reconcileTwitchFavsTargets(targets, favoriteCanonicalUrls) {
+    const favKeys = twitchFavsFavoriteMemberKeys(favoriteCanonicalUrls);
+    const canonicalByKey = /* @__PURE__ */ new Map();
+    for (const u of favoriteCanonicalUrls) {
+      const mk = memberKeyFromTargetUrl(u.trim());
+      if (mk && !canonicalByKey.has(mk)) {
+        canonicalByKey.set(mk, u.trim());
+      }
+    }
+    const byKey = /* @__PURE__ */ new Map();
+    for (const t of targets) {
+      const mk = memberKeyFromTargetUrl(t.targetUrl.trim());
+      if (!mk || !favKeys.has(mk)) {
+        continue;
+      }
+      const canon = canonicalByKey.get(mk) ?? t.targetUrl.trim();
+      if (!byKey.has(mk)) {
+        byKey.set(mk, {
+          targetUrl: canon,
+          ...t.label?.trim() ? { label: t.label.trim() } : {}
+        });
+      }
+    }
+    return [...byKey.values()];
+  }
+
   // src/lib/validation.ts
   function validateHttpUrl(input) {
     const trimmed = input.trim();
@@ -233,11 +363,11 @@
     if (!name) {
       return { ok: false, error: "Enter a group name" };
     }
-    const patternsResult = parseUrlPatternsRaw(input.urlPatternsRaw);
+    const patternsResult = isTwitchFavsGroupName(name) ? parseTwitchFavsUrlPatternsRaw(input.urlPatternsRaw) : parseUrlPatternsRaw(input.urlPatternsRaw);
     if (!patternsResult.ok) {
       return patternsResult;
     }
-    const urlPatterns = patternsResult.value;
+    let urlPatterns = patternsResult.value;
     if (input.targets.length < 1 && urlPatterns.length < 1) {
       return { ok: false, error: "Select at least one tab or add at least one URL pattern" };
     }
@@ -269,6 +399,11 @@
         targetUrl: url.value,
         ...label ? { label } : {}
       });
+    }
+    if (isTwitchFavsGroupName(name)) {
+      const pruned = reconcileTwitchFavsTargets(targets, urlPatterns);
+      targets.length = 0;
+      targets.push(...pruned);
     }
     return {
       ok: true,
@@ -312,11 +447,11 @@
     if (!name) {
       return { ok: false, error: "Enter a group name" };
     }
-    const patternsResult = parseUrlPatternsRaw(input.urlPatternsRaw);
+    const patternsResult = isTwitchFavsGroupName(name) ? parseTwitchFavsUrlPatternsRaw(input.urlPatternsRaw) : parseUrlPatternsRaw(input.urlPatternsRaw);
     if (!patternsResult.ok) {
       return patternsResult;
     }
-    const urlPatterns = patternsResult.value;
+    let urlPatterns = patternsResult.value;
     const interval = validateIntervalSec(input.baseIntervalSec);
     if (!interval.ok) {
       return interval;
@@ -348,6 +483,11 @@
     }
     if (targets.length < 1 && urlPatterns.length < 1) {
       return { ok: false, error: "Keep at least one tab or one URL pattern" };
+    }
+    if (isTwitchFavsGroupName(name)) {
+      const pruned = reconcileTwitchFavsTargets(targets, urlPatterns);
+      targets.length = 0;
+      targets.push(...pruned);
     }
     const { pausedMemberKeys, memberNextFireAt } = filterPausedStateForTabs(existing, targets);
     const next = {
@@ -399,7 +539,7 @@
     const top = document.createElement("div");
     top.style.cssText = "display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;";
     const patCount = g.urlPatterns?.filter((p) => p.trim()).length ?? 0;
-    const autoHint = patCount > 0 ? ` + ${patCount} URL pattern${patCount === 1 ? "" : "s"}` : "";
+    const autoHint = patCount > 0 ? isTwitchFavsGroupName(g.name) ? ` + ${patCount} streamer${patCount === 1 ? "" : "s"}` : ` + ${patCount} URL pattern${patCount === 1 ? "" : "s"}` : "";
     const summaryLine = document.createElement("span");
     summaryLine.textContent = `${g.name} \xB7 ${g.targets.length} explicit${autoHint} \xB7 every ${g.baseIntervalSec}s \xB1${g.jitterSec}s`;
     summaryLine.style.flex = "1 1 12rem";
@@ -475,6 +615,16 @@
     patTa.autocomplete = "off";
     patTa.style.cssText = `${inputStyle}; resize: vertical; min-height: 3rem`;
     patLab.appendChild(patTa);
+    const twitchPatHint = document.createElement("p");
+    twitchPatHint.setAttribute("data-twitch-favs-pattern-hint", "");
+    twitchPatHint.textContent = TWITCH_FAVS_PATTERN_HINT;
+    twitchPatHint.style.cssText = "margin: 0.25rem 0 0; font-size: 0.78rem; color: #9aa0a6; line-height: 1.35; display: none";
+    patLab.appendChild(twitchPatHint);
+    const syncTwitchPatHint = () => {
+      twitchPatHint.style.display = isTwitchFavsGroupName(nameIn.value) ? "block" : "none";
+    };
+    syncTwitchPatHint();
+    nameIn.addEventListener("input", syncTwitchPatHint);
     editWrap.append(nameLab, intLab, jitLab, patLab);
     const membersHeader = document.createElement("div");
     membersHeader.style.cssText = "display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.35rem";
@@ -1090,7 +1240,8 @@
         continue;
       }
       for (const pattern of patterns) {
-        if (urlMatchesGlob(url, pattern)) {
+        const match = isTwitchFavsGroupName(group.name) ? tabUrlMatchesTwitchFavsFavorite(url, pattern) : urlMatchesGlob(url, pattern);
+        if (match) {
           byId.set(id, { tabId: id, windowId: wid, targetUrl: url });
           break;
         }
@@ -1509,10 +1660,21 @@
     const globalIntervalInput = document.querySelector("[data-global-interval]");
     const globalJitterInput = document.querySelector("[data-global-jitter]");
     const globalUrlPatterns = document.querySelector("[data-global-url-patterns]");
+    const globalTwitchFavsHint = document.querySelector("[data-global-twitch-favs-hint]");
     const globalFormError = document.querySelector("[data-global-form-error]");
     const globalSectionHeading = document.querySelector("[data-global-section-heading]");
     const individualSectionHeading = document.querySelector("[data-individual-section-heading]");
     const globalGroupsList = document.querySelector("[data-global-groups-list]");
+    if (globalTwitchFavsHint) {
+      globalTwitchFavsHint.textContent = TWITCH_FAVS_PATTERN_HINT;
+    }
+    if (globalGroupName && globalTwitchFavsHint) {
+      const syncGlobalTwitchFavsHint = () => {
+        globalTwitchFavsHint.style.display = isTwitchFavsGroupName(globalGroupName.value) ? "block" : "none";
+      };
+      globalGroupName.addEventListener("input", syncGlobalTwitchFavsHint);
+      syncGlobalTwitchFavsHint();
+    }
     async function renderGlobalGroupsList() {
       const state = await loadAppState();
       if (globalSectionHeading) {

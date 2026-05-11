@@ -3,6 +3,7 @@
  */
 import { formatGlobalGroupCountdown } from './dashboard-countdown';
 import { memberKeyFromTargetUrl } from './member-url';
+import { isTwitchFavsGroupName, TWITCH_FAVS_PATTERN_HINT } from './twitch-favs';
 import type { GlobalGroup, TargetRef } from './types';
 
 function rowStyle(): string {
@@ -38,7 +39,12 @@ export function createGlobalGroupListRow(g: GlobalGroup, nowMs: number): HTMLLIE
   top.style.cssText = 'display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;';
 
   const patCount = g.urlPatterns?.filter((p) => p.trim()).length ?? 0;
-  const autoHint = patCount > 0 ? ` + ${patCount} URL pattern${patCount === 1 ? '' : 's'}` : '';
+  const autoHint =
+    patCount > 0
+      ? isTwitchFavsGroupName(g.name)
+        ? ` + ${patCount} streamer${patCount === 1 ? '' : 's'}`
+        : ` + ${patCount} URL pattern${patCount === 1 ? '' : 's'}`
+      : '';
 
   const summaryLine = document.createElement('span');
   summaryLine.textContent = `${g.name} · ${g.targets.length} explicit${autoHint} · every ${g.baseIntervalSec}s ±${g.jitterSec}s`;
@@ -128,6 +134,18 @@ export function createGlobalGroupListRow(g: GlobalGroup, nowMs: number): HTMLLIE
   patTa.autocomplete = 'off';
   patTa.style.cssText = `${inputStyle}; resize: vertical; min-height: 3rem`;
   patLab.appendChild(patTa);
+
+  const twitchPatHint = document.createElement('p');
+  twitchPatHint.setAttribute('data-twitch-favs-pattern-hint', '');
+  twitchPatHint.textContent = TWITCH_FAVS_PATTERN_HINT;
+  twitchPatHint.style.cssText =
+    'margin: 0.25rem 0 0; font-size: 0.78rem; color: #9aa0a6; line-height: 1.35; display: none';
+  patLab.appendChild(twitchPatHint);
+  const syncTwitchPatHint = (): void => {
+    twitchPatHint.style.display = isTwitchFavsGroupName(nameIn.value) ? 'block' : 'none';
+  };
+  syncTwitchPatHint();
+  nameIn.addEventListener('input', syncTwitchPatHint);
 
   editWrap.append(nameLab, intLab, jitLab, patLab);
 
