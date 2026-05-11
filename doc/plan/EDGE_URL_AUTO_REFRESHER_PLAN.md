@@ -23,7 +23,7 @@ Manifest V3 Edge extension (**working name;** ships as **Media Control Suite** i
 | [x] **8** | Live-aware pause (Twitch-first) | 3 |
 | [x] **9** | Blip / error-text triggered refresh | 3 |
 | [x] **Post-9** | Incremental polish (see [Post–Epic 9](#postepic-9--incremental-enhancements-shipped)) | 6 |
-| [ ] **10** | [URL-first membership](#epic-10--url-first-membership-phased) (phased migration) | 5 |
+| [ ] **10** | [URL-first membership](#epic-10--url-first-membership-phased) (phased migration) | 6 |
 | [ ] **11** | [Precision volume (Web Audio)](#epic-11--precision-volume-web-audio) | 7 |
 
 *(Optional: set an epic row to `[x]` when **all** its stories are done.)*
@@ -196,9 +196,11 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Product rule (decide early):** When **multiple open tabs** match the same member URL, which tab receives the refresh (e.g. last-focused in last-focused window, or lowest tab id). Document in code/tests.
 
+**Implementation order (agents / DLC):** Ship **10.1 → 10.2 → 10.3 → 10.4 → 10.5** in that sequence for the URL-first migration. **10.6 (TwitchFavs)** requires **10.1**; **recommended after 10.2** so scheduler refresh uses resolved tab ids. Details: [doc/requirements/twitch-favs-managed-membership.md](../requirements/twitch-favs-managed-membership.md).
+
 - [x] **10.1** — **Member URL identity (library only):** canonical key helper(s) (e.g. `memberKeyFromTargetUrl`, normalize `www`/path — align with [`page-overlay-state.ts`](../../src/lib/page-overlay-state.ts) ideas) + **pure** “pick best open tab” helper from `chrome.tabs` query results. **Vitest only**; no behavior change in background/UI. *Implemented in [`src/lib/member-url.ts`](../../src/lib/member-url.ts); `pageMatchesExplicitTarget` lives there and is re-exported from [`page-overlay-state.ts`](../../src/lib/page-overlay-state.ts).*
 
-- [ ] **10.2** — **Resolve at refresh time:** In [`scheduler.ts`](../../src/background/scheduler.ts) (global + individual paths as needed), resolve **live `tabId`** from stored **`targetUrl`/member key** before `tabs.update` (do not trust stale id as identity). **Optional:** evolve alarm names from `tabId` toward **group/job + member key** in a follow-up commit in this story if needed.
+- [x] **10.2** — **Resolve at refresh time:** In [`scheduler.ts`](../../src/background/scheduler.ts) (global + individual paths as needed), resolve **live `tabId`** from stored **`targetUrl`/member key** before `tabs.update` (do not trust stale id as identity). **Optional:** evolve alarm names from `tabId` toward **group/job + member key** in a follow-up commit in this story if needed. *Implemented in [`resolve-live-tab.ts`](../../src/lib/resolve-live-tab.ts) (`resolveLiveTabIdForTargetUrl`), [`global-group-tab-rebind.ts`](../../src/lib/global-group-tab-rebind.ts) (`rebindGlobalGroupTabIds`), and scheduler wiring; Vitest: `resolve-live-tab.test.ts`, `global-group-tab-rebind.test.ts`.*
 
 - [ ] **10.3** — **Schedule + pause keys:** Key `tabNextFireAt` (and global pause list) by **member key** (or explicit per-row id), not `String(tabId)` / `pausedTabIds`. Bump **`schemaVersion`**; migrate on load in one place ([`state.ts`](../../src/lib/state.ts) path). **Checkpoint:** pause/resume, countdown persistence, alarms still aligned after reload.
 
@@ -206,7 +208,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 - [ ] **10.5** — **Sweep:** [`page-overlay-schedule.ts`](../../src/lib/page-overlay-schedule.ts), [`tab-lifecycle.ts`](../../src/lib/tab-lifecycle.ts), [`badge.ts`](../../src/background/badge.ts), and any remaining **tab-id-only** checks. Remove dead UI paths.
 
-**Backlog relationship:** **[Backlog #7](#7-global-group--rebinding-when-a-tab-closes-and-reopens-same-url)** (rebind when same URL in a new tab) is **subsumed** by this epic’s URL-first model; after Epic **10** ships, treat **#7** as addressed unless a narrow residual bug remains.
+- [ ] **10.6** — **TwitchFavs managed membership:** For the global group whose **name** is **`TwitchFavs`** (case-insensitive), treat **Auto-include URL patterns** as **streamer names** (newline or comma); expand to **`https://www.twitch.tv/{login}`**; **case-insensitive** matching; **prune** stored **`targets`** not on the list; **upsert** `tabId`/`targetUrl` per channel on **`tabs.onUpdated`** and on save—**drop old `tabId`** when the same channel opens in a **new** tab. Vitest for parsers/sync; touch [`global-group-form.ts`](../../src/lib/global-group-form.ts), [`global-group-list-row.ts`](../../src/lib/global-group-list-row.ts), background (`tabs.onUpdated` + [`scheduler.ts`](../../src/background/scheduler.ts) alarm sync). **Requirements:** [doc/requirements/twitch-favs-managed-membership.md](../requirements/twitch-favs-managed-membership.md).
+
+**Backlog relationship:** **[Backlog #7](#7-global-group--rebinding-when-a-tab-closes-and-reopens-same-url)** (rebind when same URL in a new tab) is **subsumed** by this epic’s URL-first model; after Epic **10** ships, treat **#7** as addressed unless a narrow residual bug remains. **10.6** is the **TwitchFavs-shaped** slice of that behavior for a named group.
 
 ---
 

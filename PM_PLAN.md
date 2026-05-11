@@ -18,7 +18,7 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 
 ## Next (see EDGE plan)
 
-- **[Epic 10](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-10--url-first-membership-phased) — URL-first membership (phased):** make `targetUrl`/member key the durable identity; resolve live tabs at refresh; migrate schedule/pause keys off `tabId`; URL-centric UI + sweep. **10.1 done** — [`src/lib/member-url.ts`](src/lib/member-url.ts). **Next story:** **10.2** (resolve live `tabId` at refresh in scheduler). Stories **10.2–10.5** remain. **Backlog #7** (same-URL new tab) is **superseded** by Epic 10 per EDGE plan.
+- **[Epic 10](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-10--url-first-membership-phased) — URL-first membership (phased):** make `targetUrl`/member key the durable identity; resolve live tabs at refresh; migrate schedule/pause keys off `tabId`; URL-centric UI + sweep; plus **[10.6 TwitchFavs](doc/requirements/twitch-favs-managed-membership.md)** (managed tab list for group name `TwitchFavs`). **10.1–10.2 done** — [`member-url.ts`](src/lib/member-url.ts), [`resolve-live-tab.ts`](src/lib/resolve-live-tab.ts), [`global-group-tab-rebind.ts`](src/lib/global-group-tab-rebind.ts), [`scheduler.ts`](src/background/scheduler.ts). **Story order:** **10.3 → 10.4 → 10.5**; **10.6** after **10.1**, **recommended after 10.2** (see EDGE Epic 10 header). **Next default story:** **10.3** (schedule + pause keys / migration). **Backlog #7** is **superseded** by Epic 10 per EDGE plan.
 
 ## Later (see EDGE plan)
 
