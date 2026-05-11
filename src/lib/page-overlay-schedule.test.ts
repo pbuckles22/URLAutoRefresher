@@ -7,7 +7,7 @@ const tabB = 'https://b.test/';
 
 describe('page-overlay-schedule', () => {
   it('tabHasActiveRefreshJob false when no jobs', () => {
-    expect(tabHasActiveRefreshJob(DEFAULT_STATE, 1, tabA)).toBe(false);
+    expect(tabHasActiveRefreshJob(DEFAULT_STATE, tabA)).toBe(false);
   });
 
   it('detects enabled individual for tab URL', () => {
@@ -24,8 +24,8 @@ describe('page-overlay-schedule', () => {
         },
       ],
     };
-    expect(tabHasActiveRefreshJob(state, 7, tabA)).toBe(true);
-    expect(getNextFireAtForTab(state, 7, tabA)).toBe(1_700_000_000_000);
+    expect(tabHasActiveRefreshJob(state, tabA)).toBe(true);
+    expect(getNextFireAtForTab(state, tabA)).toBe(1_700_000_000_000);
   });
 
   it('ignores disabled individual', () => {
@@ -42,7 +42,7 @@ describe('page-overlay-schedule', () => {
         },
       ],
     };
-    expect(tabHasActiveRefreshJob(state, 7, tabA)).toBe(false);
+    expect(tabHasActiveRefreshJob(state, tabA)).toBe(false);
   });
 
   it('treats overlay-paused individual as inactive for tabHasActiveRefreshJob', () => {
@@ -60,8 +60,8 @@ describe('page-overlay-schedule', () => {
         },
       ],
     };
-    expect(tabHasActiveRefreshJob(state, 7, tabA)).toBe(false);
-    expect(getNextFireAtForTab(state, 7, tabA)).toBe(undefined);
+    expect(tabHasActiveRefreshJob(state, tabA)).toBe(false);
+    expect(getNextFireAtForTab(state, tabA)).toBe(undefined);
   });
 
   it('detects enabled global member by URL', () => {
@@ -79,7 +79,7 @@ describe('page-overlay-schedule', () => {
         },
       ],
     };
-    expect(tabHasActiveRefreshJob(state, 3, tabB)).toBe(true);
-    expect(getNextFireAtForTab(state, 3, tabB)).toBe(99);
+    expect(tabHasActiveRefreshJob(state, tabB)).toBe(true);
+    expect(getNextFireAtForTab(state, tabB)).toBe(99);
   });
 });

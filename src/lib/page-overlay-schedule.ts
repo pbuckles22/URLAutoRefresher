@@ -2,7 +2,7 @@ import type { AppState } from './types';
 import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url';
 
 /** Tab has at least one enabled individual or global refresh for this page URL. Pass `tabUrl` from the tab (http/https). */
-export function tabHasActiveRefreshJob(state: AppState, _tabId: number, tabUrl?: string): boolean {
+export function tabHasActiveRefreshJob(state: AppState, tabUrl?: string): boolean {
   if (!tabUrl) {
     return false;
   }
@@ -21,7 +21,7 @@ export function tabHasActiveRefreshJob(state: AppState, _tabId: number, tabUrl?:
 }
 
 /** Next fire time for this tab's active job (individual wins). Pass `tabUrl` from the page. */
-export function getNextFireAtForTab(state: AppState, _tabId: number, tabUrl?: string): number | undefined {
+export function getNextFireAtForTab(state: AppState, tabUrl?: string): number | undefined {
   if (!tabUrl) {
     return undefined;
   }

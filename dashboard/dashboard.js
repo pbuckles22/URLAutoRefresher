@@ -1106,9 +1106,19 @@
   function err(message) {
     return { ok: false, error: message };
   }
+  function memberKeysFromResolved(resolved) {
+    const keys = /* @__PURE__ */ new Set();
+    for (const t of resolved) {
+      const mk = memberKeyFromTargetUrl(t.targetUrl);
+      if (mk) {
+        keys.add(mk);
+      }
+    }
+    return keys;
+  }
   async function validateGlobalGroupResolvedEnrollment(state, candidate, excludeGroupId) {
     const resolved = await resolveGlobalGroupTargets(candidate);
-    const resolvedTabIds = new Set(resolved.map((t) => t.tabId));
+    const candidateMemberKeys = memberKeysFromResolved(resolved);
     for (const j of state.individualJobs) {
       if (!j.enabled) {
         continue;
@@ -1131,10 +1141,10 @@
         continue;
       }
       const other = await resolveGlobalGroupTargets(g);
-      for (const t of other) {
-        if (resolvedTabIds.has(t.tabId)) {
+      for (const mk of memberKeysFromResolved(other)) {
+        if (candidateMemberKeys.has(mk)) {
           return err(
-            `A tab in this selection already belongs to enabled global group "${g.name}". Disable that group or adjust patterns.`
+            `This group shares a member URL with enabled global group "${g.name}". Disable that group or adjust targets and URL patterns.`
           );
         }
       }

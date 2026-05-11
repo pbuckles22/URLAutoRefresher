@@ -1,6 +1,6 @@
-import { memberKeyFromTargetUrl } from './member-url';
 import { resolveGlobalGroupTargets } from './global-group-targets';
-import type { AppState, GlobalGroup } from './types';
+import { memberKeyFromTargetUrl } from './member-url';
+import type { AppState, GlobalGroup, ResolvedMemberTab } from './types';
 import type { Result } from './validation';
 
 function ok(): Result<void> {
@@ -11,9 +11,20 @@ function err(message: string): Result<void> {
   return { ok: false, error: message };
 }
 
+function memberKeysFromResolved(resolved: ResolvedMemberTab[]): Set<string> {
+  const keys = new Set<string>();
+  for (const t of resolved) {
+    const mk = memberKeyFromTargetUrl(t.targetUrl);
+    if (mk) {
+      keys.add(mk);
+    }
+  }
+  return keys;
+}
+
 /**
- * Ensures no resolved tab in `candidate` conflicts with enabled individual jobs
- * or another enabled global group (explicit + pattern-resolved).
+ * Ensures no resolved member URL in `candidate` conflicts with enabled individual jobs
+ * or another enabled global group (overlap by `memberKeyFromTargetUrl`, not only the same live `tabId`).
  */
 export async function validateGlobalGroupResolvedEnrollment(
   state: AppState,
@@ -21,7 +32,7 @@ export async function validateGlobalGroupResolvedEnrollment(
   excludeGroupId?: string
 ): Promise<Result<void>> {
   const resolved = await resolveGlobalGroupTargets(candidate);
-  const resolvedTabIds = new Set(resolved.map((t) => t.tabId));
+  const candidateMemberKeys = memberKeysFromResolved(resolved);
 
   for (const j of state.individualJobs) {
     if (!j.enabled) {
@@ -46,10 +57,10 @@ export async function validateGlobalGroupResolvedEnrollment(
       continue;
     }
     const other = await resolveGlobalGroupTargets(g);
-    for (const t of other) {
-      if (resolvedTabIds.has(t.tabId)) {
+    for (const mk of memberKeysFromResolved(other)) {
+      if (candidateMemberKeys.has(mk)) {
         return err(
-          `A tab in this selection already belongs to enabled global group "${g.name}". Disable that group or adjust patterns.`
+          `This group shares a member URL with enabled global group "${g.name}". Disable that group or adjust targets and URL patterns.`
         );
       }
     }

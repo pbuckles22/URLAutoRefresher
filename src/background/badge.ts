@@ -69,4 +69,24 @@ export function attachBadgeListeners(): void {
   chrome.tabs.onDetached.addListener(() => {
     void refreshActionBadge();
   });
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.url === undefined) {
+      return;
+    }
+    void (async () => {
+      try {
+        const [tab, last] = await Promise.all([chrome.tabs.get(tabId), chrome.windows.getLastFocused()]);
+        if (
+          tab.windowId !== undefined &&
+          last.id !== undefined &&
+          last.id !== chrome.windows.WINDOW_ID_NONE &&
+          tab.windowId === last.id
+        ) {
+          await refreshActionBadge();
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+  });
 }
