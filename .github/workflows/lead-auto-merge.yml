@@ -1,0 +1,53 @@
+# When a designated *lead* submits an approving review, enable GitHub **auto-merge**.
+# The PR then merges automatically once required checks (e.g. CI) and branch protection pass.
+#
+# Setup (repo admin):
+# 1. Settings → General → Pull Requests → enable **Allow auto-merge**.
+# 2. Optional: Settings → Secrets and variables → Actions → **Variables** →
+#    `LEAD_APPROVER_LOGINS` = comma-separated GitHub usernames (no spaces), e.g. `alice,bob`.
+#    If unset, defaults to `pbuckles22` (change default in the step below if needed).
+# 3. Branch protection on `main`: require status check **ci** (and any review rules you want).
+
+name: Lead approval — enable auto-merge
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: lead-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  enable-auto-merge:
+    name: Enable auto-merge after lead approval
+    if: github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check reviewer is a designated lead
+        id: lead
+        env:
+          REVIEWER: ${{ github.event.review.user.login }}
+          LEADS_RAW: ${{ vars.LEAD_APPROVER_LOGINS }}
+        run: |
+          set -euo pipefail
+          LEADS=$(echo "${LEADS_RAW:-pbuckles22}" | tr -d '[:space:]')
+          if echo ",${LEADS}," | grep -qF ",${REVIEWER},"; then
+            echo "is_lead=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_lead=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Enable auto-merge for this PR
+        if: steps.lead.outputs.is_lead == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --auto \
+            --merge
