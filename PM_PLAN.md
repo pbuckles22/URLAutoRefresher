@@ -19,7 +19,7 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 
 ## Next (see EDGE plan)
 
-- **[Epic 11](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-11--precision-volume-web-audio) — Precision volume (Web Audio):** **[11.1 done](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md)** — `chrome.commands` + background → content stub ([`manifest.json`](manifest.json), [`src/background/volume-commands.ts`](src/background/volume-commands.ts)). **Next:** **11.2** content hook (GainNode, zero-blast), then **11.3** mutation observer, **11.4** messaging ramps, **11.5** dashboard fader, **11.6** OSD. Requirements: [doc/requirements/precision-volume-controller.md](doc/requirements/precision-volume-controller.md).
+- **[Epic 11](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-11--precision-volume-web-audio) — Precision volume (Web Audio):** **[11.1–11.2 done](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md)** — `chrome.commands` + background → content Web Audio hook ([`manifest.json`](manifest.json), [`src/background/volume-commands.ts`](src/background/volume-commands.ts), [`src/content/precision-volume-bridge.ts`](src/content/precision-volume-bridge.ts)). **Next:** **11.3** mutation observer, **11.4** messaging ramps, **11.5** dashboard fader, **11.6** OSD. Requirements: [doc/requirements/precision-volume-controller.md](doc/requirements/precision-volume-controller.md).
 
 ## Later (see EDGE plan)
 
