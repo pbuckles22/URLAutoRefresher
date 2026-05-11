@@ -33,7 +33,7 @@ npm install
 npm run ci
 ```
 
-`npm run ci` runs **`npm test`**, **`npm run build`**, and **`npm run test:e2e`** (Playwright with the unpacked extension). Use it before every PR; the same command runs in **GitHub Actions** (`.github/workflows/ci.yml`, with **xvfb** on Linux). For local iteration you can run `npm test`, `npm run build`, or `npm run test:e2e` separately.
+`npm run ci` runs **`npm test`**, **`npm run build`**, and **`npm run test:e2e`** (Playwright with the unpacked extension). Run it **before every push to `main`** (or merge into `main`); the same command runs in **GitHub Actions** on push and PR (`.github/workflows/ci.yml`, with **xvfb** on Linux). For local iteration you can run `npm test`, `npm run build`, or `npm run test:e2e` separately.
 
 Load unpacked in Edge from this repo root after a successful build (needs `dist/background.js`, `dist/page-overlay.js`, `dashboard/dashboard.js`, and `icons/`).
 
@@ -47,21 +47,19 @@ Load unpacked in Edge from this repo root after a successful build (needs `dist/
 
 ---
 
-## Branch and pull request (how work lands on `main`)
+## Git workflow (how work lands on `main`)
 
-**Goal:** Small, reviewable units; **every change** reaches `main` through an **approved PR** (you read **Files changed** on GitHub and merge when satisfied—treat the PR as the black-box boundary).
+This repo is **not** using a mandatory GitHub **pull-request / approval** gate—no “person in the middle” between you and `main`. **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) remains the quality bar.
 
-1. **Branch** from up-to-date `main` — one **story or coherent slice** per branch when possible (e.g. `epic-10/10.1-member-key-helpers`, `fix/overlay-pause-copy`). Short-lived branches are fine; **check in (push) often** on the branch so the PR stays small and easy to re-read.
-2. **Before push / open PR:** Run **`npm run ci`** locally (same as [`.github/workflows/ci.yml`](.github/workflows/ci.yml): Vitest, build, Playwright E2E). Fix failures before requesting review.
-3. **Review:** Use the **code-reviewer** skill (`.cursor/skills/code-reviewer/SKILL.md`) on the diff—agent or self—before or alongside the human PR review. Optionally **tech-debt-evaluator** or **extension-architect** / **tech-lead** for larger slices.
-4. **Lead approval → auto-merge (automated):** [`.github/workflows/lead-auto-merge.yml`](.github/workflows/lead-auto-merge.yml) runs when someone submits **Approve** on a PR. If their GitHub username is listed in the **lead** allowlist, the workflow runs **`gh pr merge --auto`**, so GitHub **merges to `main` automatically** once **CI** and **branch protection** rules are satisfied (no extra local `git push` to `main`). **One-time repo setup:** enable **Allow auto-merge** (Settings → General → Pull Requests). Optionally set Actions variable **`LEAD_APPROVER_LOGINS`** to comma-separated usernames; if unset, the workflow default is **`pbuckles22`**—edit the workflow file to change the default. Add branch protection on **`main`** requiring the **`ci`** check (and extra required reviewers if you want more than the lead gate).
-5. **Direct push to `main`:** Avoid for product or behavior changes; reserve for true emergencies or repo hygiene you explicitly allow.
-6. **Linting:** This repo has **no separate ESLint/Prettier** skill or script today. **Quality gate** = TypeScript (via build), **Vitest**, **Playwright**, and **code-reviewer** discipline. If you add ESLint later, document the command here and optionally add a **`lint`** npm script + CI step.
+1. **`main` is the integration branch.** Commit locally, run **`npm run ci`**, then **`git push origin main`** when green. Optional: use a short-lived **feature branch** for larger slices, then merge or rebase into `main` yourself—still no required PR on GitHub.
+2. **Before push:** Run **`npm run ci`** (Vitest, build, Playwright E2E). Fix failures before pushing.
+3. **Review (optional):** Use **code-reviewer**, **tech-debt-evaluator**, or **extension-architect** / **tech-lead** when useful—tools for you and agents, not a merge blocker.
+4. **Linting:** No separate ESLint script today. Quality gate = **`npm run ci`** plus judgment.
 
-**GitHub:** There is no Cursor **GitHub skill** in `.cursor/skills/`. Use the GitHub **web UI** (PR, **Files changed**, checks) or [GitHub CLI](https://cli.github.com/) (`gh pr create`, `gh pr checks`). Same **`npm run ci`** runs on **`pull_request`** to `main` / `master`.
+**GitHub:** Optional PRs or **`gh`** still work if you want a diff view; they are **not** required to ship.
 
 ---
 
 ## Handoff protocol
 
-When ending a session: (1) Run the handoff checklist (code review, tech debt, tests/coverage). (2) Update **[PM_PLAN.md](PM_PLAN.md)** and epic checkboxes in the **EDGE plan** if shipped scope changed — that is what **`main`** carries for **product** state. (3) Write a **local** session note under **`doc/handoff/`** (`HANDOFF-*.md`) and/or **`.cursor/handoff/handoff-*.md`** (both gitignored). Use a **timestamped filename** (`HANDOFF-YYYY-MM-DD-HHmmss.md`) and a **Recorded** line in the body when more than one handoff per day is possible. (4) Include Code review, Tech debt, Tests / CI, Done this session, Next up. Anything the team must see on GitHub should land in **PM_PLAN**, the **EDGE plan**, **README**, or the **PR** — not in tracked `doc/handoff/` session files.
+When ending a session: (1) Run the handoff checklist (code review, tech debt, tests/coverage). (2) Update **[PM_PLAN.md](PM_PLAN.md)** and epic checkboxes in the **EDGE plan** if shipped scope changed — that is what **`main`** carries for **product** state. (3) Write a **local** session note under **`doc/handoff/`** (`HANDOFF-*.md`) and/or **`.cursor/handoff/handoff-*.md`** (both gitignored). Use a **timestamped filename** (`HANDOFF-YYYY-MM-DD-HHmmss.md`) and a **Recorded** line in the body when more than one handoff per day is possible. (4) Include Code review, Tech debt, Tests / CI, Done this session, Next up. Anything others must see on GitHub should land in **PM_PLAN**, the **EDGE plan**, or **README** — not only in gitignored handoff notes.
