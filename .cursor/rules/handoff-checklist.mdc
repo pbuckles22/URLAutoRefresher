@@ -8,6 +8,12 @@ alwaysApply: false
 
 When the user wants a handoff, or when you are writing or updating a handoff note (e.g. **`doc/handoff/HANDOFF-*.md`** or **`.cursor/handoff/handoff-*.md`** — both **gitignored**, not on **`main`**):
 
+## When to create a handoff (timing)
+
+- **Right time:** You are at a real stopping point: scope is done **or** you are intentionally handing off **mid-flight** with a clear label (e.g. **WIP**, **blocked**, **needs decision**).
+- **Wrong time:** Do **not** write a handoff that reads “ship complete” if delivery is not actually finished (e.g. commits on `main` that were never pushed, CI not run, or known follow-ups omitted). If work is incomplete, **say so explicitly** in **Ship status** or a **Not done** section at the top — not only in **Next up**.
+- **Push:** When `npm run ci` is green and you committed to **`main`**, run **`git push origin main`** before ending unless the user asked you not to push, or push failed (then record the failure and that **`main` is ahead of origin**).
+
 **You must run all four and record results in the handoff note. Do not skip any.**
 
 1. **Code review** — Use the **code-reviewer** skill (`.cursor/skills/code-reviewer/SKILL.md`). Review the changed or relevant code since last handoff (or main branch). Output PASS/WARN/FAIL and a short summary. Put the summary in the handoff note under **Code review**.
@@ -17,7 +23,7 @@ When the user wants a handoff, or when you are writing or updating a handoff not
 
 5. **Tier 2 (integration / E2E) if needed** — If you added or changed behavior that requires integration or E2E validation, run the Tier 2 command from TEST_PLAN.md. Note in the handoff whether Tier 2 was run and the result. See `.cursor/rules/testing.mdc` and TEST_PLAN.md.
 
-6. **Git commit** — If the first four checks passed: stage the changes and run `git commit` with a short message. **`git push`** to **`main`** (or merge your branch into `main` then push) only after **`npm run ci`** is green — see **AGENT_HANDOFF.md** → *Git workflow*.
+6. **Git commit + push** — If the first four checks passed: stage the changes and run `git commit` with a short message. **`git push origin main`** (or merge your branch into `main` then push) after **`npm run ci`** is green — see **AGENT_HANDOFF.md** → *Git workflow*. Treat “committed but not pushed” as **unfinished** unless the user asked to stop before push.
 
 Then complete the rest of the handoff (update **PM_PLAN** / **EDGE plan** if product scope changed; **Done this session**, **Next up**, etc. in your **`doc/handoff/`** or `.cursor/handoff/` note — see **AGENT_HANDOFF.md**).
 
