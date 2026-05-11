@@ -8,7 +8,13 @@ vi.mock('./global-group-targets', async (importOriginal) => {
   const mod = await importOriginal<typeof import('./global-group-targets')>();
   return {
     ...mod,
-    resolveGlobalGroupTargets: vi.fn(async (g: GlobalGroup) => [...g.targets]),
+    resolveGlobalGroupTargets: vi.fn(async (g: GlobalGroup) =>
+      g.targets.map((t, idx) => ({
+        tabId: 400 + idx,
+        windowId: 1,
+        targetUrl: t.targetUrl,
+      }))
+    ),
   };
 });
 
@@ -19,7 +25,7 @@ describe('getPageOverlayUiState (Epic 3.0)', () => {
       individualJobs: [
         {
           id: 'j1',
-          target: { tabId: 1, windowId: 1, targetUrl: 'https://a.test' },
+          target: { targetUrl: 'https://a.test' },
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: true,
@@ -27,13 +33,15 @@ describe('getPageOverlayUiState (Epic 3.0)', () => {
         },
       ],
     };
-    await expect(getPageOverlayUiState(state, { showPageOverlayTimer: false }, 1)).resolves.toEqual({
+    await expect(getPageOverlayUiState(state, { showPageOverlayTimer: false }, 1, 'https://a.test')).resolves.toEqual({
       show: false,
     });
   });
 
   it('hides overlay when pref is on but tab has no active job', async () => {
-    await expect(getPageOverlayUiState(DEFAULT_STATE, DEFAULT_PREFS, 99)).resolves.toEqual({ show: false });
+    await expect(getPageOverlayUiState(DEFAULT_STATE, DEFAULT_PREFS, 99, 'https://none/')).resolves.toEqual({
+      show: false,
+    });
   });
 
   it('shows overlay with nextFireAt when pref on and enabled individual targets tab', async () => {
@@ -42,7 +50,7 @@ describe('getPageOverlayUiState (Epic 3.0)', () => {
       individualJobs: [
         {
           id: 'j1',
-          target: { tabId: 2, windowId: 1, targetUrl: 'https://a.test' },
+          target: { targetUrl: 'https://a.test' },
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: true,
@@ -50,7 +58,7 @@ describe('getPageOverlayUiState (Epic 3.0)', () => {
         },
       ],
     };
-    await expect(getPageOverlayUiState(state, DEFAULT_PREFS, 2)).resolves.toEqual({
+    await expect(getPageOverlayUiState(state, DEFAULT_PREFS, 2, 'https://a.test/page')).resolves.toEqual({
       show: true,
       mode: 'timer',
       nextFireAt: 9_000_000,
@@ -65,7 +73,7 @@ describe('getPageOverlayUiState (Epic 3.0)', () => {
         {
           id: 'g1',
           name: 'G',
-          targets: [{ tabId: 4, windowId: 1, targetUrl: 'https://b.test' }],
+          targets: [{ targetUrl: 'https://b.test' }],
           baseIntervalSec: 30,
           jitterSec: 0,
           enabled: true,
@@ -73,7 +81,7 @@ describe('getPageOverlayUiState (Epic 3.0)', () => {
         },
       ],
     };
-    await expect(getPageOverlayUiState(state, DEFAULT_PREFS, 4)).resolves.toEqual({
+    await expect(getPageOverlayUiState(state, DEFAULT_PREFS, 4, 'https://b.test/z')).resolves.toEqual({
       show: true,
       mode: 'timer',
       nextFireAt: 42,

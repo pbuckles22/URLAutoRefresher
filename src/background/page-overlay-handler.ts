@@ -9,7 +9,7 @@ import {
 } from '../lib/messages';
 import { getBlipWatchForTab } from '../lib/blip-tab-state';
 import { resolveGlobalGroupTargets } from '../lib/global-group-targets';
-import { memberKeyFromTargetUrl } from '../lib/member-url';
+import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from '../lib/member-url';
 import { getPageOverlayVmForTab } from '../lib/page-overlay-state';
 import { loadExtensionPrefs } from '../lib/prefs';
 import { loadAppState, saveAppState } from '../lib/storage';
@@ -31,14 +31,15 @@ function pruneBlipHits(ts: readonly number[], now: number): number[] {
 
 async function handleBlipRefreshRequest(sender: chrome.runtime.MessageSender): Promise<boolean> {
   const tabId = sender.tab?.id;
-  if (tabId === undefined) {
+  const tabUrl = sender.tab?.url;
+  if (tabId === undefined || !tabUrl) {
     return false;
   }
   const state = await loadAppState();
   const job = state.individualJobs.find(
     (j) =>
       j.enabled &&
-      j.target.tabId === tabId &&
+      pageMatchesExplicitTarget(tabUrl, j.target.targetUrl) &&
       ((j.blipWatchPhrases?.length ?? 0) > 0 || !!(j.blipWatchRegex && j.blipWatchRegex.trim()))
   );
   if (!job) {
@@ -69,13 +70,20 @@ async function handleIndividualJobOverlayPause(
   jobId: string,
   paused: boolean
 ): Promise<boolean> {
+  let tabUrl: string | undefined;
+  try {
+    const t = await chrome.tabs.get(tabId);
+    tabUrl = t.url;
+  } catch {
+    return false;
+  }
   let state = await loadAppState();
   const idx = state.individualJobs.findIndex((j) => j.id === jobId);
   if (idx < 0) {
     return false;
   }
   const j = state.individualJobs[idx];
-  if (!j.enabled || j.target.tabId !== tabId) {
+  if (!j.enabled || !tabUrl || !pageMatchesExplicitTarget(tabUrl, j.target.targetUrl)) {
     return false;
   }
   const nextJ = {
@@ -176,7 +184,7 @@ export function attachPageOverlayMessageHandler(): void {
       try {
         const [state, prefs] = await Promise.all([loadAppState(), loadExtensionPrefs()]);
         const vm = await getPageOverlayVmForTab(state, prefs, tabId, tabUrl);
-        const blip = getBlipWatchForTab(state, tabId);
+        const blip = getBlipWatchForTab(state, tabUrl);
         if (!vm.show) {
           response = blip ? { ok: true, show: false, blip } : { ok: true, show: false };
         } else if (vm.mode === 'paused') {

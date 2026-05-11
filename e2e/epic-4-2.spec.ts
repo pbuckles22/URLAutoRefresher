@@ -183,15 +183,15 @@ test('Epic 4.2b: edit global group — add second tab with + and Save', async ()
     async (storageKey) => {
       const data = await chrome.storage.local.get(storageKey);
       const raw = data[storageKey as keyof typeof data] as
-        | { globalGroups?: { targets?: { tabId: number }[] }[] }
+        | { globalGroups?: { targets?: { targetUrl: string }[] }[] }
         | undefined;
       return raw?.globalGroups?.[0]?.targets ?? [];
     },
     STORAGE_KEY
   );
   expect(stored).toHaveLength(2);
-  const got = stored.map((t) => t.tabId).sort((a, b) => a - b);
-  expect(got).toEqual([tabA, tabB].sort((a, b) => a - b));
+  const got = stored.map((t) => t.targetUrl).sort();
+  expect(got).toEqual(['https://example.com/e2e-a', 'https://example.com/e2e-b'].sort());
 
   await dash.close();
   await fixturePage1.close();

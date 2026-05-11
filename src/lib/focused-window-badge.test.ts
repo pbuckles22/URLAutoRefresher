@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import * as globalGroupTargets from './global-group-targets';
+import { memberKeyFromTargetUrl } from './member-url';
 import {
   badgeTextFromComputation,
   collectNextFireTimesForTabSet,
@@ -9,19 +11,19 @@ import {
 import type { AppState } from './types';
 
 const emptyState = (): AppState => ({
-  schemaVersion: 2,
+  schemaVersion: 3,
   globalGroups: [],
   individualJobs: [],
 });
 
 describe('collectNextFireTimesForTabSet', () => {
-  it('includes individual job when tab is in set', async () => {
+  it('includes individual job when a focused tab URL matches the job target', async () => {
     const state: AppState = {
       ...emptyState(),
       individualJobs: [
         {
           id: 'a',
-          target: { tabId: 5, windowId: 1, targetUrl: 'https://a.test' },
+          target: { targetUrl: 'https://a.test/' },
           baseIntervalSec: 10,
           jitterSec: 0,
           enabled: true,
@@ -29,11 +31,17 @@ describe('collectNextFireTimesForTabSet', () => {
         },
       ],
     };
-    await expect(collectNextFireTimesForTabSet(state, new Set([5]))).resolves.toEqual([1000]);
-    await expect(collectNextFireTimesForTabSet(state, new Set([9]))).resolves.toEqual([]);
+    await expect(collectNextFireTimesForTabSet(state, new Set(['https://a.test/page']))).resolves.toEqual([1000]);
+    await expect(collectNextFireTimesForTabSet(state, new Set(['https://other.test/']))).resolves.toEqual([]);
   });
 
-  it('includes global group per-member next fire when tab is in set', async () => {
+  it('includes global group per-member next fire when a resolved tab URL matches', async () => {
+    const resolvedMemberUrl = 'https://b/subpath';
+    const mk = memberKeyFromTargetUrl(resolvedMemberUrl);
+    expect(mk).toBeTruthy();
+    vi.spyOn(globalGroupTargets, 'resolveGlobalGroupTargets').mockResolvedValue([
+      { tabId: 1, windowId: 1, targetUrl: resolvedMemberUrl },
+    ]);
     const state: AppState = {
       ...emptyState(),
       globalGroups: [
@@ -41,18 +49,19 @@ describe('collectNextFireTimesForTabSet', () => {
           id: 'g',
           name: 'G',
           targets: [
-            { tabId: 1, windowId: 1, targetUrl: 'https://a/' },
-            { tabId: 2, windowId: 1, targetUrl: 'https://b/' },
+            { targetUrl: 'https://a/' },
+            { targetUrl: 'https://b/' },
           ],
           baseIntervalSec: 10,
           jitterSec: 0,
           enabled: true,
-          memberNextFireAt: { a: 400, b: 500 },
+          memberNextFireAt: { [mk!]: 500 },
         },
       ],
     };
-    await expect(collectNextFireTimesForTabSet(state, new Set([2]))).resolves.toEqual([500]);
-    await expect(collectNextFireTimesForTabSet(state, new Set([3]))).resolves.toEqual([]);
+    await expect(collectNextFireTimesForTabSet(state, new Set(['https://b/subpath']))).resolves.toEqual([500]);
+    await expect(collectNextFireTimesForTabSet(state, new Set(['https://c/']))).resolves.toEqual([]);
+    vi.restoreAllMocks();
   });
 });
 
@@ -69,7 +78,7 @@ describe('computeBadgeComputation', () => {
       individualJobs: [
         {
           id: 'a',
-          target: { tabId: 1, windowId: 1, targetUrl: 'https://a/' },
+          target: { targetUrl: 'https://a/' },
           baseIntervalSec: 10,
           jitterSec: 0,
           enabled: true,
@@ -77,7 +86,7 @@ describe('computeBadgeComputation', () => {
         },
         {
           id: 'b',
-          target: { tabId: 2, windowId: 2, targetUrl: 'https://b/' },
+          target: { targetUrl: 'https://b/' },
           baseIntervalSec: 10,
           jitterSec: 0,
           enabled: true,
@@ -85,7 +94,9 @@ describe('computeBadgeComputation', () => {
         },
       ],
     };
-    const c = await computeBadgeComputation(state, 0, new Set([1]), { fallbackWhenFocusedEmpty: true });
+    const c = await computeBadgeComputation(state, 0, new Set(['https://a/x']), {
+      fallbackWhenFocusedEmpty: true,
+    });
     expect(c).toEqual({ kind: 'countdown', remainMs: 10_000, source: 'focused' });
   });
 
@@ -95,7 +106,7 @@ describe('computeBadgeComputation', () => {
       individualJobs: [
         {
           id: 'b',
-          target: { tabId: 2, windowId: 2, targetUrl: 'https://b/' },
+          target: { targetUrl: 'https://b/' },
           baseIntervalSec: 10,
           jitterSec: 0,
           enabled: true,
@@ -103,13 +114,15 @@ describe('computeBadgeComputation', () => {
         },
       ],
     };
-    const c = await computeBadgeComputation(state, 0, new Set([99]), { fallbackWhenFocusedEmpty: true });
+    const c = await computeBadgeComputation(state, 0, new Set(['https://other/']), {
+      fallbackWhenFocusedEmpty: true,
+    });
     expect(c).toEqual({ kind: 'countdown', remainMs: 8000, source: 'fallback' });
   });
 
   it('idle when nothing scheduled and no fallback match', async () => {
     await expect(
-      computeBadgeComputation(emptyState(), 0, new Set([1]), { fallbackWhenFocusedEmpty: true })
+      computeBadgeComputation(emptyState(), 0, new Set(['https://x/']), { fallbackWhenFocusedEmpty: true })
     ).resolves.toEqual({ kind: 'idle' });
   });
 
@@ -119,7 +132,7 @@ describe('computeBadgeComputation', () => {
       individualJobs: [
         {
           id: 'b',
-          target: { tabId: 2, windowId: 2, targetUrl: 'https://b/' },
+          target: { targetUrl: 'https://b/' },
           baseIntervalSec: 10,
           jitterSec: 0,
           enabled: true,
@@ -127,7 +140,9 @@ describe('computeBadgeComputation', () => {
         },
       ],
     };
-    const c = await computeBadgeComputation(state, 0, new Set([99]), { fallbackWhenFocusedEmpty: false });
+    const c = await computeBadgeComputation(state, 0, new Set(['https://other/']), {
+      fallbackWhenFocusedEmpty: false,
+    });
     expect(c).toEqual({ kind: 'idle' });
   });
 });

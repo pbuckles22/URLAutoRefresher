@@ -1,6 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 import { dashboardUrl, FIXTURE_ORIGIN, launchExtensionContext } from './extension-helpers';
 
+/** Matches fixture page URL for overlay membership (URL-first jobs). */
+const FIXTURE_PAGE_TARGET_URL = `${FIXTURE_ORIGIN}/`;
+
 const STORAGE_KEY = 'urlAutoRefresher_state_v1';
 
 async function expectOverlayCardVisible(fixturePage: Page): Promise<void> {
@@ -47,23 +50,16 @@ test('content script shows overlay when tab has enabled job and pref is on', asy
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
   await dash.evaluate(
-    async (storageKey) => {
-      const tabs = await chrome.tabs.query({ url: 'http://127.0.0.1:8765/*' });
-      const tab = tabs[0];
-      if (!tab?.id) {
-        throw new Error(`fixture tab not found, got ${tabs.length} tab(s)`);
-      }
+    async ({ storageKey, targetUrl }: { storageKey: string; targetUrl: string }) => {
       await chrome.storage.local.set({
         [storageKey]: {
-          schemaVersion: 1,
+          schemaVersion: 3,
           globalGroups: [],
           individualJobs: [
             {
               id: 'e2e-individual',
               target: {
-                tabId: tab.id,
-                windowId: tab.windowId,
-                targetUrl: 'https://example.com/',
+                targetUrl,
               },
               baseIntervalSec: 60,
               jitterSec: 0,
@@ -74,7 +70,7 @@ test('content script shows overlay when tab has enabled job and pref is on', asy
         },
       });
     },
-    STORAGE_KEY
+    { storageKey: STORAGE_KEY, targetUrl: FIXTURE_PAGE_TARGET_URL }
   );
 
   // Let the service worker debounce + resync (storage listener) finish before the fixture tab reloads.
@@ -128,23 +124,16 @@ test('Backlog 3: paused overlay is compact row — Play beside copy, not stacked
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
   await dash.evaluate(
-    async (storageKey) => {
-      const tabs = await chrome.tabs.query({ url: 'http://127.0.0.1:8765/*' });
-      const tab = tabs[0];
-      if (!tab?.id) {
-        throw new Error(`fixture tab not found, got ${tabs.length} tab(s)`);
-      }
+    async ({ storageKey, targetUrl }: { storageKey: string; targetUrl: string }) => {
       await chrome.storage.local.set({
         [storageKey]: {
-          schemaVersion: 1,
+          schemaVersion: 3,
           globalGroups: [],
           individualJobs: [
             {
               id: 'e2e-individual-paused',
               target: {
-                tabId: tab.id,
-                windowId: tab.windowId,
-                targetUrl: 'https://example.com/',
+                targetUrl,
               },
               baseIntervalSec: 60,
               jitterSec: 0,
@@ -156,7 +145,7 @@ test('Backlog 3: paused overlay is compact row — Play beside copy, not stacked
         },
       });
     },
-    STORAGE_KEY
+    { storageKey: STORAGE_KEY, targetUrl: FIXTURE_PAGE_TARGET_URL }
   );
 
   await dash.waitForTimeout(500);
@@ -206,23 +195,16 @@ test('turning off overlay pref removes overlay from fixture page', async () => {
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
   await dash.evaluate(
-    async (storageKey) => {
-      const tabs = await chrome.tabs.query({ url: 'http://127.0.0.1:8765/*' });
-      const tab = tabs[0];
-      if (!tab?.id) {
-        throw new Error(`fixture tab not found, got ${tabs.length} tab(s)`);
-      }
+    async ({ storageKey, targetUrl }: { storageKey: string; targetUrl: string }) => {
       await chrome.storage.local.set({
         [storageKey]: {
-          schemaVersion: 1,
+          schemaVersion: 3,
           globalGroups: [],
           individualJobs: [
             {
               id: 'e2e-individual',
               target: {
-                tabId: tab.id,
-                windowId: tab.windowId,
-                targetUrl: 'https://example.com/',
+                targetUrl,
               },
               baseIntervalSec: 60,
               jitterSec: 0,
@@ -233,7 +215,7 @@ test('turning off overlay pref removes overlay from fixture page', async () => {
         },
       });
     },
-    STORAGE_KEY
+    { storageKey: STORAGE_KEY, targetUrl: FIXTURE_PAGE_TARGET_URL }
   );
 
   await dash.waitForTimeout(500);

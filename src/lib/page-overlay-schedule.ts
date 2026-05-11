@@ -1,34 +1,46 @@
 import type { AppState } from './types';
-import { memberKeyFromTargetUrl } from './member-url';
+import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url';
 
-/** Tab has at least one enabled individual or global refresh targeting it. */
-export function tabHasActiveRefreshJob(state: AppState, tabId: number): boolean {
+/** Tab has at least one enabled individual or global refresh for this page URL. Pass `tabUrl` from the tab (http/https). */
+export function tabHasActiveRefreshJob(state: AppState, _tabId: number, tabUrl?: string): boolean {
+  if (!tabUrl) {
+    return false;
+  }
   if (
     state.individualJobs.some(
-      (j) => j.enabled && !j.overlayPaused && j.target.tabId === tabId
+      (j) => j.enabled && !j.overlayPaused && pageMatchesExplicitTarget(tabUrl, j.target.targetUrl)
     )
   ) {
     return true;
   }
   return state.globalGroups.some(
-    (g) => g.enabled && g.targets.length > 0 && g.targets.some((t) => t.tabId === tabId)
+    (g) =>
+      g.enabled &&
+      g.targets.some((t) => pageMatchesExplicitTarget(tabUrl, t.targetUrl))
   );
 }
 
-/** Next fire time for this tab's active job (individual wins if ever both; mutual exclusion should prevent both). */
-export function getNextFireAtForTab(state: AppState, tabId: number): number | undefined {
+/** Next fire time for this tab's active job (individual wins). Pass `tabUrl` from the page. */
+export function getNextFireAtForTab(state: AppState, _tabId: number, tabUrl?: string): number | undefined {
+  if (!tabUrl) {
+    return undefined;
+  }
   for (const job of state.individualJobs) {
-    if (job.enabled && !job.overlayPaused && job.target.tabId === tabId) {
+    if (
+      job.enabled &&
+      !job.overlayPaused &&
+      pageMatchesExplicitTarget(tabUrl, job.target.targetUrl)
+    ) {
       return job.nextFireAt;
     }
   }
   for (const group of state.globalGroups) {
-    if (!group.enabled || group.targets.length === 0) {
+    if (!group.enabled) {
       continue;
     }
-    const target = group.targets.find((t) => t.tabId === tabId);
-    if (target) {
-      const mk = memberKeyFromTargetUrl(target.targetUrl);
+    const hit = group.targets.find((t) => pageMatchesExplicitTarget(tabUrl, t.targetUrl));
+    if (hit) {
+      const mk = memberKeyFromTargetUrl(hit.targetUrl);
       if (!mk) {
         continue;
       }

@@ -4,14 +4,15 @@
 import { describe, expect, it } from 'vitest';
 import { formatGlobalGroupCountdown } from './dashboard-countdown';
 import { createGlobalGroupListRow } from './global-group-list-row';
+import { memberKeyFromTargetUrl } from './member-url';
 import type { GlobalGroup } from './types';
 
 const sampleGroup = (overrides: Partial<GlobalGroup> = {}): GlobalGroup => ({
   id: 'gg-1',
   name: 'Sync set',
   targets: [
-    { tabId: 40, windowId: 1, targetUrl: 'https://example.com/a', label: 'Dash' },
-    { tabId: 41, windowId: 1, targetUrl: 'https://example.com/b' },
+    { targetUrl: 'https://example.com/a', label: 'Dash' },
+    { targetUrl: 'https://example.com/b' },
   ],
   baseIntervalSec: 55,
   jitterSec: 4,
@@ -41,11 +42,13 @@ describe('createGlobalGroupListRow', () => {
     expect((li.querySelector<HTMLInputElement>('[data-global-edit-interval]'))?.value).toBe('55');
     expect((li.querySelector<HTMLInputElement>('[data-global-edit-jitter]'))?.value).toBe('4');
 
-    const u40 = li.querySelector<HTMLInputElement>(
-      '[data-global-edit-target-url][data-global-edit-target-tab="40"]'
+    const mkA = memberKeyFromTargetUrl('https://example.com/a')!;
+    const mkB = memberKeyFromTargetUrl('https://example.com/b')!;
+    const u40 = li.querySelector(`[data-global-edit-member-key="${mkA}"]`)?.querySelector<HTMLInputElement>(
+      '[data-global-edit-target-url]'
     );
-    const u41 = li.querySelector<HTMLInputElement>(
-      '[data-global-edit-target-url][data-global-edit-target-tab="41"]'
+    const u41 = li.querySelector(`[data-global-edit-member-key="${mkB}"]`)?.querySelector<HTMLInputElement>(
+      '[data-global-edit-target-url]'
     );
     expect(u40?.value).toBe('https://example.com/a');
     expect(u41?.value).toBe('https://example.com/b');

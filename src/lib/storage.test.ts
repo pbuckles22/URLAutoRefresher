@@ -37,8 +37,6 @@ describe('storage (chrome.storage.local)', () => {
         {
           id: 'j1',
           target: {
-            tabId: 1,
-            windowId: 1,
             targetUrl: 'https://example.com',
           },
           baseIntervalSec: 60,
@@ -60,10 +58,7 @@ describe('storage (chrome.storage.local)', () => {
         {
           id: 'g1',
           name: 'Sync',
-          targets: [
-            { tabId: 10, windowId: 2, targetUrl: 'https://one.example/' },
-            { tabId: 11, windowId: 2, targetUrl: 'https://two.example/' },
-          ],
+          targets: [{ targetUrl: 'https://one.example/' }, { targetUrl: 'https://two.example/' }],
           baseIntervalSec: 120,
           jitterSec: 15,
           enabled: true,

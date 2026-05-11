@@ -19,8 +19,7 @@ export type PageOverlayVm =
 
 /**
  * Overlay visibility + mode for a tab (individual job wins over global groups).
- * Pass `tabUrl` from the sender tab so global groups still match when the stored member tabId
- * differs from the live tab (same channel in a new tab / after navigation).
+ * Pass `tabUrl` from the sender tab so membership matches without persisted tab ids (Epic 10.4).
  */
 export async function getPageOverlayVmForTab(
   state: AppState,
@@ -33,7 +32,7 @@ export async function getPageOverlayVmForTab(
   }
 
   for (const j of state.individualJobs) {
-    if (!j.enabled || j.target.tabId !== tabId) {
+    if (!j.enabled || !tabUrl || !pageMatchesExplicitTarget(tabUrl, j.target.targetUrl)) {
       continue;
     }
     if (j.overlayPaused) {

@@ -33,7 +33,7 @@ export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTM
   const liveHint = j.liveAwareRefresh ? ' · Twitch live-aware' : '';
   const blipHint =
     (j.blipWatchPhrases?.length ?? 0) > 0 || j.blipWatchRegex?.trim() ? ' · blip watch' : '';
-  summaryLine.textContent = `Tab ${j.target.tabId} → ${j.target.targetUrl} · every ${j.baseIntervalSec}s ±${j.jitterSec}s${liveHint}${blipHint}`;
+  summaryLine.textContent = `${j.target.targetUrl} · every ${j.baseIntervalSec}s ±${j.jitterSec}s${liveHint}${blipHint}`;
   summaryLine.style.flex = '1 1 12rem';
 
   const countdown = document.createElement('span');

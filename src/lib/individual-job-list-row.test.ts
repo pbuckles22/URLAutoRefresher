@@ -8,7 +8,7 @@ import type { IndividualJob } from './types';
 
 const sampleJob = (overrides: Partial<IndividualJob> = {}): IndividualJob => ({
   id: 'job-1',
-  target: { tabId: 42, windowId: 1, targetUrl: 'https://example.com/path' },
+  target: { targetUrl: 'https://example.com/path' },
   baseIntervalSec: 60,
   jitterSec: 5,
   enabled: true,
@@ -28,9 +28,7 @@ describe('createIndividualJobListRow', () => {
     );
 
     const summaryLine = li.querySelector(':scope > div > span');
-    expect(summaryLine?.textContent).toBe(
-      'Tab 42 → https://example.com/path · every 60s ±5s'
-    );
+    expect(summaryLine?.textContent).toBe('https://example.com/path · every 60s ±5s');
 
     const toggle = li.querySelector<HTMLButtonElement>('[data-job-toggle]');
     expect(toggle?.textContent).toBe('Stop');

@@ -77,9 +77,7 @@ test.describe('Epic 3.3: shared individual job list row', () => {
       const line = top?.querySelector('span:not([data-job-countdown])');
       return line?.textContent ?? '';
     });
-    expect(summaryText).toBe(
-      `Tab ${fixtureTabId} → https://example.com/row-contract · every 90s ±2s`
-    );
+    expect(summaryText).toBe('https://example.com/row-contract · every 90s ±2s');
 
     await dash.close();
     await fixturePage.close();

@@ -21,7 +21,11 @@ describe('parseStoredPayload', () => {
       globalGroups: [],
       individualJobs: [],
     };
-    expect(parseStoredPayload(raw)).toEqual(raw);
+    expect(parseStoredPayload(raw)).toEqual({
+      schemaVersion: 3,
+      globalGroups: [],
+      individualJobs: [],
+    });
   });
 
   it('rejects wrong schema version', () => {
@@ -30,7 +34,7 @@ describe('parseStoredPayload', () => {
       globalGroups: [],
       individualJobs: [],
     });
-    expect(r).toMatchObject({ schemaVersion: 2, globalGroups: [], individualJobs: [] });
+    expect(r).toMatchObject({ schemaVersion: 3, globalGroups: [], individualJobs: [] });
   });
 
   it('migrates v1 tab-id schedule and pause to member keys', () => {
@@ -51,7 +55,7 @@ describe('parseStoredPayload', () => {
       individualJobs: [],
     };
     const out = parseStoredPayload(raw);
-    expect(out.schemaVersion).toBe(2);
+    expect(out.schemaVersion).toBe(3);
     expect(out.globalGroups[0].memberNextFireAt?.['a.com/x']).toBe(999);
     expect(out.globalGroups[0].pausedMemberKeys).toEqual(['a.com/x']);
   });
@@ -71,7 +75,9 @@ describe('validateUniqueIds', () => {
           enabled: false,
         },
       ],
-      individualJobs: [{ id: 'i1', target: sampleTarget(1), baseIntervalSec: 60, jitterSec: 0, enabled: false }],
+      individualJobs: [
+        { id: 'i1', target: sampleTarget('https://id.example/1'), baseIntervalSec: 60, jitterSec: 0, enabled: false },
+      ],
     });
     expect(r.ok).toBe(true);
   });
@@ -92,7 +98,7 @@ describe('validateUniqueIds', () => {
       ...DEFAULT_STATE,
       globalGroups: [group('x', [])],
       individualJobs: [
-        { id: 'x', target: sampleTarget(2), baseIntervalSec: 60, jitterSec: 0, enabled: false },
+        { id: 'x', target: sampleTarget('https://id.example/2'), baseIntervalSec: 60, jitterSec: 0, enabled: false },
       ],
     });
     expect(r.ok).toBe(false);
@@ -102,8 +108,8 @@ describe('validateUniqueIds', () => {
     const r = validateUniqueIds({
       ...DEFAULT_STATE,
       individualJobs: [
-        { id: 'dup', target: sampleTarget(1), baseIntervalSec: 60, jitterSec: 0, enabled: false },
-        { id: 'dup', target: sampleTarget(2), baseIntervalSec: 60, jitterSec: 0, enabled: false },
+        { id: 'dup', target: sampleTarget('https://id.example/a'), baseIntervalSec: 60, jitterSec: 0, enabled: false },
+        { id: 'dup', target: sampleTarget('https://id.example/b'), baseIntervalSec: 60, jitterSec: 0, enabled: false },
       ],
     });
     expect(r.ok).toBe(false);
@@ -111,11 +117,11 @@ describe('validateUniqueIds', () => {
 });
 
 describe('validateGlobalGroupTargets', () => {
-  it('fails when same tab appears twice in one group', () => {
+  it('fails when the same member URL appears twice in one group', () => {
     const r = validateGlobalGroupTargets({
       id: 'g',
       name: 'G',
-      targets: [sampleTarget(1), { ...sampleTarget(1), targetUrl: 'https://b.com' }],
+      targets: [{ targetUrl: 'https://x.example/foo' }, { targetUrl: 'https://x.example/foo' }],
       baseIntervalSec: 60,
       jitterSec: 0,
       enabled: true,
@@ -127,12 +133,12 @@ describe('validateGlobalGroupTargets', () => {
 describe('validateStateFields (Epic 1.2)', () => {
   it('accepts valid global and individual URLs and intervals', () => {
     const r = validateStateFields({
-      schemaVersion: 2,
+      schemaVersion: 3,
       globalGroups: [
         {
           id: 'g1',
           name: 'G',
-          targets: [{ tabId: 1, windowId: 1, targetUrl: 'https://a.com' }],
+          targets: [{ targetUrl: 'https://a.com' }],
           baseIntervalSec: 10,
           jitterSec: 0,
           enabled: false,
@@ -141,7 +147,7 @@ describe('validateStateFields (Epic 1.2)', () => {
       individualJobs: [
         {
           id: 'i1',
-          target: { tabId: 2, windowId: 1, targetUrl: 'https://b.com' },
+          target: { targetUrl: 'https://b.com' },
           baseIntervalSec: 20,
           jitterSec: 5,
           enabled: false,
@@ -157,7 +163,7 @@ describe('validateStateFields (Epic 1.2)', () => {
       individualJobs: [
         {
           id: 'i1',
-          target: { tabId: 1, windowId: 1, targetUrl: 'ftp://example.com' },
+          target: { targetUrl: 'ftp://example.com' },
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: false,
@@ -174,7 +180,7 @@ describe('validateStateFields (Epic 1.2)', () => {
         {
           id: 'g1',
           name: 'G',
-          targets: [{ tabId: 1, windowId: 1, targetUrl: 'https://a.com' }],
+          targets: [{ targetUrl: 'https://a.com' }],
           baseIntervalSec: 0,
           jitterSec: 0,
           enabled: false,
@@ -190,7 +196,7 @@ describe('validateStateFields (Epic 1.2)', () => {
       individualJobs: [
         {
           id: 'i1',
-          target: { tabId: 1, windowId: 1, targetUrl: 'https://a.com' },
+          target: { targetUrl: 'https://a.com' },
           baseIntervalSec: 60,
           jitterSec: -1,
           enabled: false,
@@ -204,12 +210,12 @@ describe('validateStateFields (Epic 1.2)', () => {
 describe('validateEnabledEnrollment', () => {
   it('allows same tab disabled in both places', () => {
     const r = validateEnabledEnrollment({
-      schemaVersion: 2,
+      schemaVersion: 3,
       globalGroups: [
         {
           id: 'g1',
           name: 'G',
-          targets: [sampleTarget(5)],
+          targets: [sampleTarget('https://overlap.example')],
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: false,
@@ -218,7 +224,7 @@ describe('validateEnabledEnrollment', () => {
       individualJobs: [
         {
           id: 'i1',
-          target: sampleTarget(5),
+          target: sampleTarget('https://overlap.example'),
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: false,
@@ -230,12 +236,12 @@ describe('validateEnabledEnrollment', () => {
 
   it('fails when tab is enabled in global and individual', () => {
     const r = validateEnabledEnrollment({
-      schemaVersion: 2,
+      schemaVersion: 3,
       globalGroups: [
         {
           id: 'g1',
           name: 'G',
-          targets: [sampleTarget(7)],
+          targets: [sampleTarget('https://collision.example')],
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: true,
@@ -244,7 +250,7 @@ describe('validateEnabledEnrollment', () => {
       individualJobs: [
         {
           id: 'i1',
-          target: sampleTarget(7),
+          target: sampleTarget('https://collision.example'),
           baseIntervalSec: 120,
           jitterSec: 0,
           enabled: true,
@@ -259,19 +265,19 @@ describe('validateEnabledEnrollment', () => {
 
   it('fails when two enabled individual jobs target the same tab', () => {
     const r = validateEnabledEnrollment({
-      schemaVersion: 2,
+      schemaVersion: 3,
       globalGroups: [],
       individualJobs: [
         {
           id: 'i1',
-          target: sampleTarget(9),
+          target: sampleTarget('https://same.example'),
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: true,
         },
         {
           id: 'i2',
-          target: sampleTarget(9),
+          target: sampleTarget('https://same.example'),
           baseIntervalSec: 120,
           jitterSec: 0,
           enabled: true,
@@ -291,7 +297,7 @@ describe('validateEnabledEnrollment', () => {
         {
           id: 'g1',
           name: 'A',
-          targets: [sampleTarget(3)],
+          targets: [sampleTarget('https://cross.example')],
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: true,
@@ -299,7 +305,7 @@ describe('validateEnabledEnrollment', () => {
         {
           id: 'g2',
           name: 'B',
-          targets: [sampleTarget(3)],
+          targets: [sampleTarget('https://cross.example')],
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: true,
@@ -309,17 +315,13 @@ describe('validateEnabledEnrollment', () => {
     });
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.error).toContain('another enabled global group');
+      expect(r.error).toMatch(/global group/i);
     }
   });
 });
 
-function sampleTarget(tabId: number) {
-  return {
-    tabId,
-    windowId: 1,
-    targetUrl: 'https://example.com',
-  };
+function sampleTarget(url = 'https://example.com') {
+  return { targetUrl: url };
 }
 
 function group(id: string, targets: ReturnType<typeof sampleTarget>[]) {

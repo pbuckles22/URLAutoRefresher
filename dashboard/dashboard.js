@@ -119,6 +119,62 @@
       return null;
     }
   }
+  function pageMatchesExplicitTarget(pageUrl, targetUrl) {
+    const p = pageUrl?.trim();
+    const t = targetUrl.trim();
+    if (!p || !t || !/^https?:\/\//i.test(p)) {
+      return false;
+    }
+    if (urlMatchesGlob(p, t)) {
+      return true;
+    }
+    const kp = memberKeyFromTargetUrl(p);
+    const kt = memberKeyFromTargetUrl(t);
+    if (kp === null || kt === null) {
+      return false;
+    }
+    if (kp === kt) {
+      return true;
+    }
+    return kp.startsWith(`${kt}/`) || kt.startsWith(`${kp}/`);
+  }
+  function pickBestOpenTabForMemberTarget(candidates, memberTargetUrl, context) {
+    const matched = candidates.filter(
+      (t) => t.url != null && pageMatchesExplicitTarget(t.url, memberTargetUrl)
+    );
+    if (matched.length === 0) {
+      return void 0;
+    }
+    if (matched.length === 1) {
+      return matched[0].id;
+    }
+    const wid = context?.lastFocusedWindowId;
+    let pool = matched;
+    if (wid !== void 0) {
+      const inWin = matched.filter((t) => t.windowId === wid);
+      if (inWin.length > 0) {
+        pool = inWin;
+      }
+    }
+    const withId = pool.filter((t) => t.id !== void 0);
+    if (withId.length === 0) {
+      return void 0;
+    }
+    const activeTabs = withId.filter((t) => t.active === true);
+    if (activeTabs.length === 1) {
+      return activeTabs[0].id;
+    }
+    const poolForSort = activeTabs.length > 1 ? activeTabs : withId;
+    const sorted = [...poolForSort].sort((a, b) => {
+      const ia = a.index ?? Number.MAX_SAFE_INTEGER;
+      const ib = b.index ?? Number.MAX_SAFE_INTEGER;
+      if (ia !== ib) {
+        return ia - ib;
+      }
+      return (a.id ?? Number.MAX_SAFE_INTEGER) - (b.id ?? Number.MAX_SAFE_INTEGER);
+    });
+    return sorted[0]?.id;
+  }
 
   // src/lib/validation.ts
   function validateHttpUrl(input) {
@@ -185,19 +241,6 @@
     if (input.targets.length < 1 && urlPatterns.length < 1) {
       return { ok: false, error: "Select at least one tab or add at least one URL pattern" };
     }
-    const seen = /* @__PURE__ */ new Set();
-    for (const t of input.targets) {
-      if (!Number.isInteger(t.tabId) || t.tabId < 1) {
-        return { ok: false, error: "Invalid tab" };
-      }
-      if (!Number.isInteger(t.windowId) || t.windowId < 0) {
-        return { ok: false, error: "Invalid window" };
-      }
-      if (seen.has(t.tabId)) {
-        return { ok: false, error: `Duplicate tab ${t.tabId} in selection` };
-      }
-      seen.add(t.tabId);
-    }
     const interval = validateIntervalSec(input.baseIntervalSec);
     if (!interval.ok) {
       return interval;
@@ -206,16 +249,23 @@
     if (!jitter.ok) {
       return jitter;
     }
+    const seenMk = /* @__PURE__ */ new Set();
     const targets = [];
     for (const t of input.targets) {
       const url = validateHttpUrl(t.targetUrl);
       if (!url.ok) {
         return url;
       }
+      const mk = memberKeyFromTargetUrl(url.value);
+      if (!mk) {
+        return { ok: false, error: "Invalid member URL" };
+      }
+      if (seenMk.has(mk)) {
+        return { ok: false, error: "Duplicate member URL in selection" };
+      }
+      seenMk.add(mk);
       const label = t.label?.trim();
       targets.push({
-        tabId: t.tabId,
-        windowId: t.windowId,
         targetUrl: url.value,
         ...label ? { label } : {}
       });
@@ -275,27 +325,23 @@
     if (!jitter.ok) {
       return jitter;
     }
-    const seen = /* @__PURE__ */ new Set();
+    const seenMk = /* @__PURE__ */ new Set();
     const targets = [];
     for (const t of input.targets) {
-      if (!Number.isInteger(t.tabId) || t.tabId < 1) {
-        return { ok: false, error: "Invalid tab" };
-      }
-      if (!Number.isInteger(t.windowId) || t.windowId < 0) {
-        return { ok: false, error: "Invalid window" };
-      }
-      if (seen.has(t.tabId)) {
-        return { ok: false, error: `Duplicate tab ${t.tabId} in form` };
-      }
-      seen.add(t.tabId);
       const url = validateHttpUrl(t.targetUrl);
       if (!url.ok) {
         return url;
       }
+      const mk = memberKeyFromTargetUrl(url.value);
+      if (!mk) {
+        return { ok: false, error: "Invalid member URL" };
+      }
+      if (seenMk.has(mk)) {
+        return { ok: false, error: "Duplicate member URL in form" };
+      }
+      seenMk.add(mk);
       const label = t.label?.trim();
       targets.push({
-        tabId: t.tabId,
-        windowId: t.windowId,
         targetUrl: url.value,
         ...label ? { label } : {}
       });
@@ -466,18 +512,17 @@
   function appendGlobalEditExistingTargetRow(container, t) {
     const row = document.createElement("div");
     row.setAttribute("data-global-edit-target-row", "");
-    row.setAttribute("data-global-edit-target-tab", String(t.tabId));
-    row.setAttribute("data-window-id", String(t.windowId));
+    const mk = memberKeyFromTargetUrl(t.targetUrl) ?? "";
+    row.setAttribute("data-global-edit-member-key", mk);
     row.style.cssText = "display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; margin-top: 0.35rem";
     const lab = document.createElement("label");
     lab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 1 1 14rem";
     const cap = document.createElement("span");
-    cap.textContent = t.label ? `Tab ${t.tabId} \u2014 ${t.label} \xB7 target URL` : `Tab ${t.tabId} \u2014 target URL`;
+    cap.textContent = t.label ? `${t.label} \xB7 target URL` : "Target URL";
     lab.appendChild(cap);
     const urlIn = document.createElement("input");
     urlIn.type = "text";
     urlIn.setAttribute("data-global-edit-target-url", "");
-    urlIn.setAttribute("data-global-edit-target-tab", String(t.tabId));
     urlIn.value = t.targetUrl;
     urlIn.autocomplete = "off";
     urlIn.style.cssText = inputStyle;
@@ -549,7 +594,7 @@
     const summaryLine = document.createElement("span");
     const liveHint = j.liveAwareRefresh ? " \xB7 Twitch live-aware" : "";
     const blipHint = (j.blipWatchPhrases?.length ?? 0) > 0 || j.blipWatchRegex?.trim() ? " \xB7 blip watch" : "";
-    summaryLine.textContent = `Tab ${j.target.tabId} \u2192 ${j.target.targetUrl} \xB7 every ${j.baseIntervalSec}s \xB1${j.jitterSec}s${liveHint}${blipHint}`;
+    summaryLine.textContent = `${j.target.targetUrl} \xB7 every ${j.baseIntervalSec}s \xB1${j.jitterSec}s${liveHint}${blipHint}`;
     summaryLine.style.flex = "1 1 12rem";
     const countdown = document.createElement("span");
     countdown.setAttribute("data-job-countdown", "");
@@ -716,12 +761,6 @@
     return { ok: true, value: out };
   }
   function buildIndividualJobFromForm(input, newId = () => crypto.randomUUID()) {
-    if (!Number.isInteger(input.tabId) || input.tabId < 1) {
-      return { ok: false, error: "Pick a tab" };
-    }
-    if (!Number.isInteger(input.windowId) || input.windowId < 0) {
-      return { ok: false, error: "Invalid window" };
-    }
     const url = validateHttpUrl(input.targetUrl);
     if (!url.ok) {
       return url;
@@ -744,8 +783,6 @@
       value: {
         id: newId(),
         target: {
-          tabId: input.tabId,
-          windowId: input.windowId,
           targetUrl: url.value
         },
         baseIntervalSec: interval.value,
@@ -759,8 +796,6 @@
   function buildIndividualJobUpdateFromForm(input, existing) {
     const base = buildIndividualJobFromForm(
       {
-        tabId: existing.target.tabId,
-        windowId: existing.target.windowId,
         targetUrl: input.targetUrl,
         baseIntervalSec: input.baseIntervalSec,
         jitterSec: input.jitterSec,
@@ -999,19 +1034,52 @@
     }
     return u.startsWith("http://") || u.startsWith("https://");
   }
+  function tabsToCandidates(tabs) {
+    return tabs.map((t) => ({
+      id: t.id,
+      windowId: t.windowId,
+      url: t.url,
+      active: t.active,
+      index: t.index
+    }));
+  }
   async function resolveGlobalGroupTargets(group, queryTabs = () => chrome.tabs.query({})) {
-    const byId = /* @__PURE__ */ new Map();
-    for (const t of group.targets) {
-      byId.set(t.tabId, t);
-    }
-    const patterns = group.urlPatterns?.filter((p) => p.trim()) ?? [];
-    if (patterns.length === 0) {
-      return [...byId.values()];
-    }
     let tabs;
     try {
       tabs = await queryTabs();
     } catch {
+      tabs = [];
+    }
+    const candidates = tabsToCandidates(tabs);
+    let lastFocusedWindowId;
+    try {
+      const w = await chrome.windows.getLastFocused();
+      lastFocusedWindowId = w.id;
+    } catch {
+      lastFocusedWindowId = void 0;
+    }
+    const byId = /* @__PURE__ */ new Map();
+    for (const member of group.targets) {
+      const pickedId = pickBestOpenTabForMemberTarget(candidates, member.targetUrl, {
+        lastFocusedWindowId
+      });
+      if (pickedId === void 0) {
+        continue;
+      }
+      const tab = tabs.find((x) => x.id === pickedId);
+      const wid = tab?.windowId;
+      const url = tab?.url;
+      if (wid === void 0 || !isHttpUrl(url)) {
+        continue;
+      }
+      byId.set(pickedId, {
+        tabId: pickedId,
+        windowId: wid,
+        targetUrl: member.targetUrl
+      });
+    }
+    const patterns = group.urlPatterns?.filter((p) => p.trim()) ?? [];
+    if (patterns.length === 0) {
       return [...byId.values()];
     }
     for (const tab of tabs) {
@@ -1040,12 +1108,22 @@
   }
   async function validateGlobalGroupResolvedEnrollment(state, candidate, excludeGroupId) {
     const resolved = await resolveGlobalGroupTargets(candidate);
-    const tabIds = new Set(resolved.map((t) => t.tabId));
+    const resolvedTabIds = new Set(resolved.map((t) => t.tabId));
     for (const j of state.individualJobs) {
-      if (j.enabled && tabIds.has(j.target.tabId)) {
-        return err(
-          `Tab ${j.target.tabId} has an enabled individual job. Disable that job or remove it before this group can use that tab.`
-        );
+      if (!j.enabled) {
+        continue;
+      }
+      const jmk = memberKeyFromTargetUrl(j.target.targetUrl);
+      if (!jmk) {
+        continue;
+      }
+      for (const t of resolved) {
+        const tmk = memberKeyFromTargetUrl(t.targetUrl);
+        if (tmk === jmk) {
+          return err(
+            `This URL has an enabled individual job. Disable that job or remove it before this group can use the same URL.`
+          );
+        }
       }
     }
     for (const g of state.globalGroups) {
@@ -1054,9 +1132,9 @@
       }
       const other = await resolveGlobalGroupTargets(g);
       for (const t of other) {
-        if (tabIds.has(t.tabId)) {
+        if (resolvedTabIds.has(t.tabId)) {
           return err(
-            `Tab ${t.tabId} already belongs to enabled global group "${g.name}". Disable that group or adjust patterns.`
+            `A tab in this selection already belongs to enabled global group "${g.name}". Disable that group or adjust patterns.`
           );
         }
       }
@@ -1065,7 +1143,7 @@
   }
 
   // src/lib/state.ts
-  var CURRENT_SCHEMA = 2;
+  var CURRENT_SCHEMA = 3;
   var DEFAULT_STATE = {
     schemaVersion: CURRENT_SCHEMA,
     globalGroups: [],
@@ -1081,9 +1159,20 @@
     const p = map[key];
     map[key] = p === void 0 ? val : Math.min(p, val);
   }
+  function normalizeTargetRef(raw) {
+    const url = typeof raw.targetUrl === "string" ? raw.targetUrl.trim() : "";
+    const labelRaw = raw.label;
+    const label = typeof labelRaw === "string" && labelRaw.trim().length > 0 ? labelRaw.trim() : void 0;
+    return label !== void 0 ? { targetUrl: url, label } : { targetUrl: url };
+  }
+  function migrateIndividualJobRecord(raw) {
+    const t = raw.target;
+    const target = t && typeof t === "object" && t !== null && !Array.isArray(t) ? normalizeTargetRef(t) : { targetUrl: "" };
+    return { ...raw, target };
+  }
   function normalizeGlobalGroup(raw) {
     const g = raw;
-    const targets = Array.isArray(raw.targets) ? raw.targets : [];
+    const rawTargetObjs = Array.isArray(raw.targets) ? raw.targets : [];
     const memberNextFireAt = { ...g.memberNextFireAt ?? {} };
     for (const [k, v] of Object.entries(g.tabNextFireAt ?? {})) {
       if (typeof v !== "number" || !Number.isFinite(v)) {
@@ -1091,9 +1180,10 @@
       }
       if (/^\d+$/.test(k)) {
         const tid = Number(k);
-        const target = targets.find((t) => t.tabId === tid);
-        if (target) {
-          const mk = memberKeyFromTargetUrl(target.targetUrl);
+        const legacy = rawTargetObjs.find((t) => Number(t.tabId) === tid);
+        const url = typeof legacy?.targetUrl === "string" ? legacy.targetUrl : "";
+        if (url) {
+          const mk = memberKeyFromTargetUrl(url);
           if (mk) {
             mergeMemberFireAt(memberNextFireAt, mk, v);
           }
@@ -1110,14 +1200,16 @@
       if (!Number.isInteger(id) || id < 1) {
         continue;
       }
-      const target = targets.find((t) => t.tabId === id);
-      if (target) {
-        const mk = memberKeyFromTargetUrl(target.targetUrl);
+      const legacy = rawTargetObjs.find((t) => Number(t.tabId) === id);
+      const url = typeof legacy?.targetUrl === "string" ? legacy.targetUrl : "";
+      if (url) {
+        const mk = memberKeyFromTargetUrl(url);
         if (mk) {
           pausedMemberKeys.add(mk);
         }
       }
     }
+    const targets = rawTargetObjs.map((row) => normalizeTargetRef(row));
     const {
       pausedTabIds: _pt,
       tabNextFireAt: _tnf,
@@ -1139,7 +1231,7 @@
     }
     const o = value;
     const sv = o.schemaVersion;
-    if (typeof sv !== "number" || sv !== 1 && sv !== CURRENT_SCHEMA) {
+    if (typeof sv !== "number" || sv !== 1 && sv !== 2 && sv !== CURRENT_SCHEMA) {
       return { ...DEFAULT_STATE };
     }
     if (!Array.isArray(o.globalGroups) || !Array.isArray(o.individualJobs)) {
@@ -1148,10 +1240,13 @@
     const globalGroups = o.globalGroups.map(
       (g) => normalizeGlobalGroup(g)
     );
+    const individualJobs = o.individualJobs.map(
+      (j) => migrateIndividualJobRecord(j)
+    );
     return {
       schemaVersion: CURRENT_SCHEMA,
       globalGroups,
-      individualJobs: o.individualJobs
+      individualJobs
     };
   }
   function validateUniqueIds(state) {
@@ -1171,12 +1266,16 @@
     return ok2(void 0);
   }
   function validateGlobalGroupTargets(group) {
-    const tabs = /* @__PURE__ */ new Set();
+    const keys = /* @__PURE__ */ new Set();
     for (const t of group.targets) {
-      if (tabs.has(t.tabId)) {
-        return err2(`Duplicate tabId ${t.tabId} in global group ${group.id}`);
+      const mk = memberKeyFromTargetUrl(t.targetUrl);
+      if (!mk) {
+        return err2(`Invalid member URL in global group ${group.id}`);
       }
-      tabs.add(t.tabId);
+      if (keys.has(mk)) {
+        return err2(`Duplicate member URL in global group ${group.id}`);
+      }
+      keys.add(mk);
     }
     return ok2(void 0);
   }
@@ -1191,31 +1290,39 @@
         return inner;
       }
       for (const t of g.targets) {
-        const prev = map.get(t.tabId);
+        const mk = memberKeyFromTargetUrl(t.targetUrl);
+        if (!mk) {
+          continue;
+        }
+        const prev = map.get(mk);
         if (prev) {
           return err2(
-            `Tab ${t.tabId} is already in another enabled global group. Disable or remove the other group, or remove this tab from one of the groups.`
+            `This URL is already used in ${prev}. Disable or remove the other group, or remove this URL from one of the groups.`
           );
         }
-        map.set(t.tabId, `global "${g.id}"`);
+        map.set(mk, `global group "${g.id}"`);
       }
     }
     for (const j of state.individualJobs) {
       if (!j.enabled) {
         continue;
       }
-      const prev = map.get(j.target.tabId);
+      const mk = memberKeyFromTargetUrl(j.target.targetUrl);
+      if (!mk) {
+        continue;
+      }
+      const prev = map.get(mk);
       if (prev) {
         if (prev.startsWith("global")) {
           return err2(
-            `Tab ${j.target.tabId} cannot be in an enabled global group and an enabled individual job at the same time. Stop or delete one of them, or turn off one schedule, before enabling the other.`
+            `This URL cannot be in an enabled global group and an enabled individual job at the same time. Stop or delete one of them, or turn off one schedule, before enabling the other.`
           );
         }
         return err2(
-          `Tab ${j.target.tabId} already has another enabled individual refresh job. Stop or delete the other job first.`
+          `This URL already has another enabled individual refresh job. Stop or delete the other job first.`
         );
       }
-      map.set(j.target.tabId, `individual "${j.id}"`);
+      map.set(mk, `individual "${j.id}"`);
     }
     return ok2(void 0);
   }
@@ -1479,7 +1586,7 @@
         const titleEl = document.createElement("span");
         titleEl.setAttribute("data-global-tab-title", "");
         const tlabel = row.title.trim() || row.url || `Tab ${row.tabId}`;
-        titleEl.textContent = `${tlabel} (${row.tabId})`;
+        titleEl.textContent = tlabel;
         titleEl.style.overflow = "hidden";
         titleEl.style.textOverflow = "ellipsis";
         titleEl.style.whiteSpace = "nowrap";
@@ -1549,11 +1656,6 @@
           const v = tr.querySelector("[data-global-edit-pick-tab]")?.value;
           if (v) {
             taken.add(Number(v));
-          }
-        } else {
-          const id = tr.getAttribute("data-global-edit-target-tab");
-          if (id) {
-            taken.add(Number(id));
           }
         }
       }
@@ -1853,33 +1955,17 @@
                   }
                   return;
                 }
-                let windowId = cachedIndividualTabs.find((x) => x.id === tabId)?.windowId;
-                if (windowId === void 0) {
-                  const chromeTab = await chrome.tabs.get(tabId);
-                  windowId = typeof chromeTab.windowId === "number" ? chromeTab.windowId : void 0;
-                }
-                if (windowId === void 0 || !Number.isInteger(windowId) || windowId < 0) {
-                  if (errEl) {
-                    errEl.textContent = "Could not resolve tab window";
-                  }
-                  return;
-                }
                 const tabMeta = cachedIndividualTabs.find((x) => x.id === tabId);
                 const label = tabMeta?.title?.trim();
                 targets.push({
-                  tabId,
-                  windowId,
                   targetUrl: urlIn?.value ?? "",
                   ...label ? { label } : {}
                 });
               } else {
-                const tabId = Number(tr.getAttribute("data-global-edit-target-tab"));
-                const windowId = Number(tr.getAttribute("data-window-id"));
+                const mkAttr = tr.getAttribute("data-global-edit-member-key") ?? "";
                 const urlIn = tr.querySelector("[data-global-edit-target-url]");
-                const prev = existing.targets.find((x) => x.tabId === tabId);
+                const prev = mkAttr !== "" ? existing.targets.find((x) => memberKeyFromTargetUrl(x.targetUrl) === mkAttr) : void 0;
                 targets.push({
-                  tabId,
-                  windowId,
                   targetUrl: urlIn?.value ?? "",
                   ...prev?.label ? { label: prev.label } : {}
                 });
@@ -1981,18 +2067,7 @@
           if (addJobError) {
             addJobError.textContent = "";
           }
-          const tabId = Number(tabSelect.value);
-          const tabs = await chrome.tabs.query({});
-          const tab = tabs.find((t) => t.id === tabId);
-          if (!tab?.id) {
-            if (addJobError) {
-              addJobError.textContent = "Pick a tab";
-            }
-            return;
-          }
           const built = buildIndividualJobFromForm({
-            tabId: tab.id,
-            windowId: tab.windowId,
             targetUrl: urlInput.value,
             baseIntervalSec: Number(intervalInput.value),
             jitterSec: Number(jitterInput.value),
@@ -2047,19 +2122,13 @@
           }
           const targets = [];
           for (const li of globalTabBrowser.querySelectorAll("[data-global-tab-row]")) {
-            const tabId = Number(li.getAttribute("data-global-tab-row"));
-            const windowId = Number(li.getAttribute("data-window-id"));
             const checked = li.querySelector("[data-global-tab-include]")?.checked;
             if (!checked) {
               continue;
             }
             const targetUrl = li.querySelector("[data-global-target-url]")?.value ?? "";
-            const titleText = li.querySelector("[data-global-tab-title]")?.textContent ?? "";
-            const m = /^(.*) \((\d+)\)\s*$/.exec(titleText);
-            const label = m?.[1]?.trim();
+            const label = li.querySelector("[data-global-tab-title]")?.textContent?.trim();
             targets.push({
-              tabId,
-              windowId,
               targetUrl,
               ...label ? { label } : {}
             });

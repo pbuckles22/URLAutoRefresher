@@ -1,18 +1,30 @@
-import { memberKeyFromTargetUrl } from './member-url';
+import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url';
 import { resolveGlobalGroupTargets } from './global-group-targets';
 import type { AppState } from './types';
 
-/** Collect `nextFireAt` for enabled jobs whose targets include a tab in `tabIds`. */
+function focusedUrlsHitJobTarget(
+  focusedTabUrls: ReadonlySet<string>,
+  jobTargetUrl: string
+): boolean {
+  for (const u of focusedTabUrls) {
+    if (pageMatchesExplicitTarget(u, jobTargetUrl)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Collect `nextFireAt` for enabled jobs whose targets match an http(s) URL of a tab in the focused window. */
 export async function collectNextFireTimesForTabSet(
   state: AppState,
-  tabIds: ReadonlySet<number>
+  focusedTabUrls: ReadonlySet<string>
 ): Promise<number[]> {
   const out: number[] = [];
   for (const job of state.individualJobs) {
     if (!job.enabled || job.nextFireAt === undefined) {
       continue;
     }
-    if (tabIds.has(job.target.tabId)) {
+    if (focusedUrlsHitJobTarget(focusedTabUrls, job.target.targetUrl)) {
       out.push(job.nextFireAt);
     }
   }
@@ -25,7 +37,7 @@ export async function collectNextFireTimesForTabSet(
       const resolved = await resolveGlobalGroupTargets(g);
       const keysForFocused = new Set<string>();
       for (const t of resolved) {
-        if (tabIds.has(t.tabId)) {
+        if (focusedUrlsHitJobTarget(focusedTabUrls, t.targetUrl)) {
           const mk = memberKeyFromTargetUrl(t.targetUrl);
           if (mk) {
             keysForFocused.add(mk);
@@ -40,8 +52,11 @@ export async function collectNextFireTimesForTabSet(
       }
       continue;
     }
-    if (g.nextFireAt !== undefined && g.targets.some((t) => tabIds.has(t.tabId))) {
-      out.push(g.nextFireAt);
+    if (g.nextFireAt !== undefined) {
+      const resolved = await resolveGlobalGroupTargets(g);
+      if (resolved.some((r) => focusedUrlsHitJobTarget(focusedTabUrls, r.targetUrl))) {
+        out.push(g.nextFireAt);
+      }
     }
   }
   return out;
@@ -83,10 +98,10 @@ export type BadgeComputation =
 export async function computeBadgeComputation(
   state: AppState,
   nowMs: number,
-  tabIdsInFocusedWindow: ReadonlySet<number>,
+  focusedTabUrls: ReadonlySet<string>,
   options: { fallbackWhenFocusedEmpty: boolean }
 ): Promise<BadgeComputation> {
-  const focusedTimes = await collectNextFireTimesForTabSet(state, tabIdsInFocusedWindow);
+  const focusedTimes = await collectNextFireTimesForTabSet(state, focusedTabUrls);
   let next = nearestTime(focusedTimes);
   if (next !== undefined) {
     return { kind: 'countdown', remainMs: next - nowMs, source: 'focused' };

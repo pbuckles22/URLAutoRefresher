@@ -20,7 +20,7 @@ describe('getPageOverlayVmForTab', () => {
         {
           id: 'g1',
           name: 'G',
-          targets: [{ tabId: 4, windowId: 1, targetUrl: 'https://b.test' }],
+          targets: [{ targetUrl: 'https://b.test' }],
           pausedMemberKeys: ['b.test'],
           baseIntervalSec: 30,
           jitterSec: 0,
@@ -29,7 +29,7 @@ describe('getPageOverlayVmForTab', () => {
         },
       ],
     };
-    const vm = await getPageOverlayVmForTab(state, DEFAULT_PREFS, 4);
+    const vm = await getPageOverlayVmForTab(state, DEFAULT_PREFS, 4, 'https://b.test/x');
     expect(vm).toEqual({ show: true, mode: 'paused', globalGroupId: 'g1' });
   });
 
@@ -39,7 +39,7 @@ describe('getPageOverlayVmForTab', () => {
       individualJobs: [
         {
           id: 'i1',
-          target: { tabId: 4, windowId: 1, targetUrl: 'https://twitch.tv/x' },
+          target: { targetUrl: 'https://twitch.tv/x' },
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: true,
@@ -47,7 +47,7 @@ describe('getPageOverlayVmForTab', () => {
         },
       ],
     };
-    const vm = await getPageOverlayVmForTab(state, DEFAULT_PREFS, 4);
+    const vm = await getPageOverlayVmForTab(state, DEFAULT_PREFS, 4, 'https://twitch.tv/x/y');
     expect(vm).toEqual({ show: true, mode: 'paused', individualJobId: 'i1' });
   });
 
@@ -57,7 +57,7 @@ describe('getPageOverlayVmForTab', () => {
       individualJobs: [
         {
           id: 'i1',
-          target: { tabId: 4, windowId: 1, targetUrl: 'https://twitch.tv/x' },
+          target: { targetUrl: 'https://twitch.tv/x' },
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: true,
@@ -65,7 +65,7 @@ describe('getPageOverlayVmForTab', () => {
         },
       ],
     };
-    const vm = await getPageOverlayVmForTab(state, DEFAULT_PREFS, 4);
+    const vm = await getPageOverlayVmForTab(state, DEFAULT_PREFS, 4, 'https://twitch.tv/x/live');
     expect(vm).toEqual({
       show: true,
       mode: 'timer',

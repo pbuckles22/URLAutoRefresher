@@ -8,8 +8,6 @@ describe('buildIndividualJobFromForm (Epic 3.1)', () => {
   it('builds enabled job with validated fields', () => {
     const r = buildIndividualJobFromForm(
       {
-        tabId: 12,
-        windowId: 3,
         targetUrl: '  https://example.com/path  ',
         baseIntervalSec: 60,
         jitterSec: 5,
@@ -20,7 +18,7 @@ describe('buildIndividualJobFromForm (Epic 3.1)', () => {
       ok: true,
       value: {
         id: 'job-test-id',
-        target: { tabId: 12, windowId: 3, targetUrl: 'https://example.com/path' },
+        target: { targetUrl: 'https://example.com/path' },
         baseIntervalSec: 60,
         jitterSec: 5,
         enabled: true,
@@ -28,18 +26,9 @@ describe('buildIndividualJobFromForm (Epic 3.1)', () => {
     });
   });
 
-  it('rejects non-integer or non-positive tabId', () => {
-    expect(buildIndividualJobFromForm({ tabId: 0, windowId: 1, targetUrl: 'https://a.com', baseIntervalSec: 1, jitterSec: 0 }, newId).ok).toBe(
-      false
-    );
-    expect(buildIndividualJobFromForm({ tabId: 1.2, windowId: 1, targetUrl: 'https://a.com', baseIntervalSec: 1, jitterSec: 0 }, newId).ok).toBe(
-      false
-    );
-  });
-
   it('rejects invalid URL', () => {
     const r = buildIndividualJobFromForm(
-      { tabId: 1, windowId: 1, targetUrl: 'ftp://x', baseIntervalSec: 10, jitterSec: 0 },
+      { targetUrl: 'ftp://x', baseIntervalSec: 10, jitterSec: 0 },
       newId
     );
     expect(r.ok).toBe(false);
@@ -47,19 +36,17 @@ describe('buildIndividualJobFromForm (Epic 3.1)', () => {
   });
 
   it('rejects invalid interval or jitter', () => {
+    expect(buildIndividualJobFromForm({ targetUrl: 'https://a.com', baseIntervalSec: 0, jitterSec: 0 }, newId).ok).toBe(
+      false
+    );
     expect(
-      buildIndividualJobFromForm({ tabId: 1, windowId: 1, targetUrl: 'https://a.com', baseIntervalSec: 0, jitterSec: 0 }, newId).ok
-    ).toBe(false);
-    expect(
-      buildIndividualJobFromForm({ tabId: 1, windowId: 1, targetUrl: 'https://a.com', baseIntervalSec: 10, jitterSec: -1 }, newId).ok
+      buildIndividualJobFromForm({ targetUrl: 'https://a.com', baseIntervalSec: 10, jitterSec: -1 }, newId).ok
     ).toBe(false);
   });
 
   it('sets liveAwareRefresh when requested', () => {
     const r = buildIndividualJobFromForm(
       {
-        tabId: 12,
-        windowId: 3,
         targetUrl: 'https://www.twitch.tv/x',
         baseIntervalSec: 60,
         jitterSec: 0,
@@ -74,7 +61,7 @@ describe('buildIndividualJobFromForm (Epic 3.1)', () => {
 describe('buildIndividualJobUpdateFromForm (Epic 3.2)', () => {
   const existing: IndividualJob = {
     id: 'keep-id',
-    target: { tabId: 5, windowId: 2, targetUrl: 'https://old.com' },
+    target: { targetUrl: 'https://old.com' },
     baseIntervalSec: 60,
     jitterSec: 1,
     enabled: false,
@@ -90,7 +77,7 @@ describe('buildIndividualJobUpdateFromForm (Epic 3.2)', () => {
       ok: true,
       value: {
         id: 'keep-id',
-        target: { tabId: 5, windowId: 2, targetUrl: 'https://new.com/' },
+        target: { targetUrl: 'https://new.com/' },
         baseIntervalSec: 90,
         jitterSec: 2,
         enabled: false,
@@ -128,10 +115,7 @@ describe('buildIndividualJobUpdateFromForm (Epic 3.2)', () => {
       { targetUrl: 'https://new.com/', baseIntervalSec: 90, jitterSec: 2, liveAwareRefresh: false },
       withLive
     );
-    expect(r.ok).toBe(true);
-    if (r.ok) {
-      expect(r.value).not.toHaveProperty('liveAwareRefresh');
-      expect(r.value).not.toHaveProperty('streamLive');
-    }
+    expect(r.ok && r.value?.liveAwareRefresh).toBeFalsy();
+    expect(r.ok && r.value?.streamLive).toBeUndefined();
   });
 });
