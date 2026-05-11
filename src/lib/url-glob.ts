@@ -43,3 +43,30 @@ export function normalizeUrlPatternLines(raw: string): string[] {
   }
   return out;
 }
+
+/** Append lines from `additions` to multiline `baseRaw`, deduping case-insensitively against existing and new lines. */
+export function mergeDistinctPatternLines(baseRaw: string, additions: readonly string[]): string {
+  const seen = new Set<string>();
+  const linesOut: string[] = [];
+  for (const line of baseRaw.split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t) {
+      continue;
+    }
+    seen.add(t.toLowerCase());
+    linesOut.push(t);
+  }
+  for (const add of additions) {
+    const t = add.trim();
+    if (!t) {
+      continue;
+    }
+    const k = t.toLowerCase();
+    if (seen.has(k)) {
+      continue;
+    }
+    seen.add(k);
+    linesOut.push(t);
+  }
+  return linesOut.join('\n');
+}

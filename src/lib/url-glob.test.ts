@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeUrlPatternLines, urlMatchesGlob } from './url-glob';
+import { mergeDistinctPatternLines, normalizeUrlPatternLines, urlMatchesGlob } from './url-glob';
 
 describe('urlMatchesGlob', () => {
   it('matches literal without star', () => {
@@ -19,5 +19,17 @@ describe('urlMatchesGlob', () => {
 describe('normalizeUrlPatternLines', () => {
   it('trims and drops blanks', () => {
     expect(normalizeUrlPatternLines('  a  \n\n b ')).toEqual(['a', 'b']);
+  });
+});
+
+describe('mergeDistinctPatternLines', () => {
+  it('appends without duplicating case-insensitively', () => {
+    expect(mergeDistinctPatternLines('https://a.example/foo', ['https://A.example/foo', 'https://b/'])).toBe(
+      'https://a.example/foo\nhttps://b/'
+    );
+  });
+
+  it('handles empty base', () => {
+    expect(mergeDistinctPatternLines('', ['https://z/'])).toBe('https://z/');
   });
 });

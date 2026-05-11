@@ -16,7 +16,9 @@ import {
   replaceGlobalGroup,
   setGlobalGroupEnabled,
 } from '../lib/global-groups';
-import { defaultTargetUrlForTab, tabRowsFromWindowsSnapshot } from '../lib/window-tab-browser';
+import { validateHttpUrl } from '../lib/validation';
+import { mergeDistinctPatternLines } from '../lib/url-glob';
+import { defaultTargetUrlForTab, pinTabIdFirst, tabRowsFromWindowsSnapshot } from '../lib/window-tab-browser';
 import { loadExtensionPrefs, saveExtensionPrefs } from '../lib/prefs';
 import { onlyNonLayoutAppStateDiff } from '../lib/app-state-list-layout';
 import { validateGlobalGroupResolvedEnrollment } from '../lib/global-group-enrollment';
@@ -117,12 +119,41 @@ export function initDashboardApp(): void {
     }
   }
 
+  function isSchedulableWebUrl(url: string | undefined): boolean {
+    const u = (url ?? '').trim();
+    return u.startsWith('http://') || u.startsWith('https://');
+  }
+
+  /** Active tab in last-focused window when it is a normal page; else first http(s) tab in that window. */
+  async function resolvePreferredPinTabId(): Promise<number | undefined> {
+    try {
+      const win = await chrome.windows.getLastFocused({ populate: true });
+      const tabs = win.tabs ?? [];
+      const active = tabs.find((t) => t.active);
+      if (active?.id !== undefined && isSchedulableWebUrl(active.url)) {
+        return active.id;
+      }
+      const sorted = [...tabs].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+      for (const t of sorted) {
+        if (t.id !== undefined && isSchedulableWebUrl(t.url)) {
+          return t.id;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return undefined;
+  }
+
   async function renderGlobalTabBrowser(): Promise<void> {
     if (!globalTabBrowser) {
       return;
     }
-    const windows = await chrome.windows.getAll({ populate: true });
-    const rows = tabRowsFromWindowsSnapshot(windows);
+    const [windows, pinId] = await Promise.all([
+      chrome.windows.getAll({ populate: true }),
+      resolvePreferredPinTabId(),
+    ]);
+    const rows = tabRowsFromWindowsSnapshot(windows, pinId);
     globalTabBrowser.innerHTML = '';
     for (const row of rows) {
       const li = document.createElement('li');
@@ -198,12 +229,12 @@ export function initDashboardApp(): void {
   }
 
   async function refreshCachedTabs(): Promise<void> {
-    const tabs = await chrome.tabs.query({});
+    const [tabs, pinId] = await Promise.all([chrome.tabs.query({}), resolvePreferredPinTabId()]);
     const withIds = tabs.filter(
       (t): t is TabWithIds => typeof t.id === 'number' && typeof t.windowId === 'number'
     );
     withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
-    cachedIndividualTabs = withIds;
+    cachedIndividualTabs = pinTabIdFirst(withIds, pinId);
   }
 
   async function populateTabSelect(): Promise<void> {
@@ -528,18 +559,31 @@ export function initDashboardApp(): void {
             targetUrl: string;
             label?: string;
           }> = [];
+          const extraPatternUrls: string[] = [];
 
           for (const tr of row.querySelectorAll('[data-global-edit-target-row]')) {
             if (tr.hasAttribute('data-global-edit-new-target')) {
               const sel = tr.querySelector<HTMLSelectElement>('[data-global-edit-pick-tab]');
               const urlIn = tr.querySelector<HTMLInputElement>('[data-global-edit-target-url]');
               const raw = sel?.value?.trim() ?? '';
-              if (raw === '') {
-                if (errEl) {
-                  errEl.textContent = 'Select a tab for each new row, or remove empty rows';
-                }
-                return;
+              const urlRaw = (urlIn?.value ?? '').trim();
+
+              if (raw === '' && urlRaw === '') {
+                continue;
               }
+
+              if (raw === '') {
+                const urlCheck = validateHttpUrl(urlRaw);
+                if (!urlCheck.ok) {
+                  if (errEl) {
+                    errEl.textContent = urlCheck.error;
+                  }
+                  return;
+                }
+                extraPatternUrls.push(urlCheck.value);
+                continue;
+              }
+
               const tabId = Number(raw);
               if (!Number.isInteger(tabId) || tabId < 1) {
                 if (errEl) {
@@ -581,7 +625,8 @@ export function initDashboardApp(): void {
             }
           }
 
-          const patternsRaw = row.querySelector<HTMLTextAreaElement>('[data-global-edit-url-patterns]')?.value;
+          const patternsField = row.querySelector<HTMLTextAreaElement>('[data-global-edit-url-patterns]')?.value ?? '';
+          const patternsRaw = mergeDistinctPatternLines(patternsField, extraPatternUrls);
           const built = buildGlobalGroupUpdateFromForm(
             { name, baseIntervalSec: interval, jitterSec: jitter, targets, urlPatternsRaw: patternsRaw },
             existing

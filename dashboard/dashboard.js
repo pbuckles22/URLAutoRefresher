@@ -431,7 +431,7 @@
     row.style.cssText = "display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; margin-top: 0.35rem";
     const selLab = document.createElement("label");
     selLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 1 1 12rem";
-    selLab.innerHTML = "<span>Pick open tab</span>";
+    selLab.innerHTML = "<span>Pick open tab (optional)</span>";
     const select = document.createElement("select");
     select.setAttribute("data-global-edit-pick-tab", "");
     select.style.cssText = `${inputStyle}; max-width: 100%`;
@@ -796,6 +796,52 @@
     return { ...state, globalGroups: next };
   }
 
+  // src/lib/url-glob.ts
+  var MAX_PATTERN_LEN = 200;
+  function escapeRegexLiteral(s) {
+    return s.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  }
+  function urlMatchesGlob(url, pattern) {
+    const p = pattern.trim();
+    if (!p || p.length > MAX_PATTERN_LEN) {
+      return false;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      return false;
+    }
+    if (!p.includes("*")) {
+      return url.toLowerCase().includes(p.toLowerCase());
+    }
+    const parts = p.split("*").map(escapeRegexLiteral);
+    const re = new RegExp(`^${parts.join(".*")}$`, "i");
+    return re.test(url);
+  }
+  function mergeDistinctPatternLines(baseRaw, additions) {
+    const seen = /* @__PURE__ */ new Set();
+    const linesOut = [];
+    for (const line of baseRaw.split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t) {
+        continue;
+      }
+      seen.add(t.toLowerCase());
+      linesOut.push(t);
+    }
+    for (const add of additions) {
+      const t = add.trim();
+      if (!t) {
+        continue;
+      }
+      const k = t.toLowerCase();
+      if (seen.has(k)) {
+        continue;
+      }
+      seen.add(k);
+      linesOut.push(t);
+    }
+    return linesOut.join("\n");
+  }
+
   // src/lib/window-tab-browser.ts
   function defaultTargetUrlForTab(url) {
     const u = url.trim();
@@ -804,7 +850,20 @@
     }
     return "";
   }
-  function tabRowsFromWindowsSnapshot(windows) {
+  function pinTabIdFirst(items, pinTabId) {
+    if (pinTabId === void 0 || pinTabId < 1 || items.length < 2) {
+      return [...items];
+    }
+    const idx = items.findIndex((t) => t.id === pinTabId);
+    if (idx <= 0) {
+      return [...items];
+    }
+    const next = [...items];
+    const [pinned] = next.splice(idx, 1);
+    next.unshift(pinned);
+    return next;
+  }
+  function tabRowsFromWindowsSnapshot(windows, pinTabId) {
     const rows = [];
     for (const w of windows) {
       const wid = w.id;
@@ -827,7 +886,17 @@
       }
     }
     rows.sort((a, b) => a.windowId - b.windowId || a.index - b.index);
-    return rows;
+    if (pinTabId === void 0 || pinTabId < 1) {
+      return rows;
+    }
+    const pinIdx = rows.findIndex((r) => r.tabId === pinTabId);
+    if (pinIdx <= 0) {
+      return rows;
+    }
+    const next = [...rows];
+    const [pinned] = next.splice(pinIdx, 1);
+    next.unshift(pinned);
+    return next;
   }
 
   // src/lib/prefs.ts
@@ -899,27 +968,6 @@
       return false;
     }
     return appStateListLayoutEqual(a, b);
-  }
-
-  // src/lib/url-glob.ts
-  var MAX_PATTERN_LEN = 200;
-  function escapeRegexLiteral(s) {
-    return s.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-  }
-  function urlMatchesGlob(url, pattern) {
-    const p = pattern.trim();
-    if (!p || p.length > MAX_PATTERN_LEN) {
-      return false;
-    }
-    if (!/^https?:\/\//i.test(url)) {
-      return false;
-    }
-    if (!p.includes("*")) {
-      return url.toLowerCase().includes(p.toLowerCase());
-    }
-    const parts = p.split("*").map(escapeRegexLiteral);
-    const re = new RegExp(`^${parts.join(".*")}$`, "i");
-    return re.test(url);
   }
 
   // src/lib/global-group-targets.ts
@@ -1294,12 +1342,37 @@
         }
       }
     }
+    function isSchedulableWebUrl(url) {
+      const u = (url ?? "").trim();
+      return u.startsWith("http://") || u.startsWith("https://");
+    }
+    async function resolvePreferredPinTabId() {
+      try {
+        const win = await chrome.windows.getLastFocused({ populate: true });
+        const tabs = win.tabs ?? [];
+        const active = tabs.find((t) => t.active);
+        if (active?.id !== void 0 && isSchedulableWebUrl(active.url)) {
+          return active.id;
+        }
+        const sorted = [...tabs].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+        for (const t of sorted) {
+          if (t.id !== void 0 && isSchedulableWebUrl(t.url)) {
+            return t.id;
+          }
+        }
+      } catch {
+      }
+      return void 0;
+    }
     async function renderGlobalTabBrowser() {
       if (!globalTabBrowser) {
         return;
       }
-      const windows = await chrome.windows.getAll({ populate: true });
-      const rows = tabRowsFromWindowsSnapshot(windows);
+      const [windows, pinId] = await Promise.all([
+        chrome.windows.getAll({ populate: true }),
+        resolvePreferredPinTabId()
+      ]);
+      const rows = tabRowsFromWindowsSnapshot(windows, pinId);
       globalTabBrowser.innerHTML = "";
       for (const row of rows) {
         const li = document.createElement("li");
@@ -1367,12 +1440,12 @@
       tabSelect.value = stillValid ? prev : "";
     }
     async function refreshCachedTabs() {
-      const tabs = await chrome.tabs.query({});
+      const [tabs, pinId] = await Promise.all([chrome.tabs.query({}), resolvePreferredPinTabId()]);
       const withIds = tabs.filter(
         (t) => typeof t.id === "number" && typeof t.windowId === "number"
       );
       withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
-      cachedIndividualTabs = withIds;
+      cachedIndividualTabs = pinTabIdFirst(withIds, pinId);
     }
     async function populateTabSelect() {
       await refreshCachedTabs();
@@ -1668,16 +1741,26 @@
             const interval = Number(row.querySelector("[data-global-edit-interval]")?.value);
             const jitter = Number(row.querySelector("[data-global-edit-jitter]")?.value);
             const targets = [];
+            const extraPatternUrls = [];
             for (const tr of row.querySelectorAll("[data-global-edit-target-row]")) {
               if (tr.hasAttribute("data-global-edit-new-target")) {
                 const sel = tr.querySelector("[data-global-edit-pick-tab]");
                 const urlIn = tr.querySelector("[data-global-edit-target-url]");
                 const raw = sel?.value?.trim() ?? "";
+                const urlRaw = (urlIn?.value ?? "").trim();
+                if (raw === "" && urlRaw === "") {
+                  continue;
+                }
                 if (raw === "") {
-                  if (errEl) {
-                    errEl.textContent = "Select a tab for each new row, or remove empty rows";
+                  const urlCheck = validateHttpUrl(urlRaw);
+                  if (!urlCheck.ok) {
+                    if (errEl) {
+                      errEl.textContent = urlCheck.error;
+                    }
+                    return;
                   }
-                  return;
+                  extraPatternUrls.push(urlCheck.value);
+                  continue;
                 }
                 const tabId = Number(raw);
                 if (!Number.isInteger(tabId) || tabId < 1) {
@@ -1718,7 +1801,8 @@
                 });
               }
             }
-            const patternsRaw = row.querySelector("[data-global-edit-url-patterns]")?.value;
+            const patternsField = row.querySelector("[data-global-edit-url-patterns]")?.value ?? "";
+            const patternsRaw = mergeDistinctPatternLines(patternsField, extraPatternUrls);
             const built = buildGlobalGroupUpdateFromForm(
               { name, baseIntervalSec: interval, jitterSec: jitter, targets, urlPatternsRaw: patternsRaw },
               existing

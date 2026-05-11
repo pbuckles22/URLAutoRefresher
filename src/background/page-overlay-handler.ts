@@ -162,12 +162,13 @@ export function attachPageOverlayMessageHandler(): void {
     if (tabId === undefined) {
       return;
     }
+    const tabUrl = sender.tab?.url;
 
     void (async () => {
       let response: PageOverlayStateResponse;
       try {
         const [state, prefs] = await Promise.all([loadAppState(), loadExtensionPrefs()]);
-        const vm = await getPageOverlayVmForTab(state, prefs, tabId);
+        const vm = await getPageOverlayVmForTab(state, prefs, tabId, tabUrl);
         const blip = getBlipWatchForTab(state, tabId);
         if (!vm.show) {
           response = blip ? { ok: true, show: false, blip } : { ok: true, show: false };

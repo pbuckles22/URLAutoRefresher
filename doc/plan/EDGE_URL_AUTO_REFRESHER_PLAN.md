@@ -1,6 +1,6 @@
-# URL Auto Refresher — product plan
+# Media Control Suite — product plan
 
-Manifest V3 Edge extension: **global groups** (shared interval policy, **per-tab** staggered refresh—not Chrome account sync) vs **individual jobs**, jittered intervals, **target URL per tab**, Side Panel + full-page **dashboard**, and a **focus-aware** toolbar badge. Unified browse/edit UI opens from the toolbar.
+Manifest V3 Edge extension (**working name;** ships as **Media Control Suite** in user-facing copy): **scheduled tab refresh** — **global groups** (shared interval policy, **per-tab** staggered refresh—not Chrome account sync) vs **individual jobs**, jittered intervals, **target URL per tab**, Side Panel + full-page **dashboard**, and a **focus-aware** toolbar badge — plus **precision in-page volume** (Web Audio; [Epic 11](#epic-11--precision-volume-web-audio)). Unified browse/edit UI opens from the toolbar.
 
 **How to use this doc:** Check off stories (`[x]`) as you ship them. Epics build top-to-bottom (see dependency diagram at the bottom).
 
@@ -23,6 +23,8 @@ Manifest V3 Edge extension: **global groups** (shared interval policy, **per-tab
 | [x] **8** | Live-aware pause (Twitch-first) | 3 |
 | [x] **9** | Blip / error-text triggered refresh | 3 |
 | [x] **Post-9** | Incremental polish (see [Post–Epic 9](#postepic-9--incremental-enhancements-shipped)) | 6 |
+| [ ] **10** | [URL-first membership](#epic-10--url-first-membership-phased) (phased migration) | 5 |
+| [ ] **11** | [Precision volume (Web Audio)](#epic-11--precision-volume-web-audio) | 7 |
 
 *(Optional: set an epic row to `[x]` when **all** its stories are done.)*
 
@@ -186,6 +188,52 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 ---
 
+## Epic 10 — URL-first membership (phased)
+
+**Goal:** Make **`targetUrl` (or a stable member key derived from it)** the durable identity for global group members and individual jobs. **Runtime** still uses `chrome.tabs.update(tabId, …)` — extensions cannot refresh without a tab — but **storage, alarms (as needed), schedule maps, pause state, and enrollment** stop depending on brittle stored **`tabId` / `windowId`**. Ship in **small steps** (commit + `npm run ci` between steps); **no obligation** to keep prior on-disk shapes—use **`schemaVersion`** bump and a single load-time migration when changing persisted fields.
+
+**Why now:** `targetUrl` is already validated everywhere (see [Data sketch](#data-sketch-illustrative)); overlay matching was improved toward URL. Remaining work is scheduler, keys (`tabNextFireAt`, `pausedTabIds`), forms, and exclusivity rules.
+
+**Product rule (decide early):** When **multiple open tabs** match the same member URL, which tab receives the refresh (e.g. last-focused in last-focused window, or lowest tab id). Document in code/tests.
+
+- [x] **10.1** — **Member URL identity (library only):** canonical key helper(s) (e.g. `memberKeyFromTargetUrl`, normalize `www`/path — align with [`page-overlay-state.ts`](../../src/lib/page-overlay-state.ts) ideas) + **pure** “pick best open tab” helper from `chrome.tabs` query results. **Vitest only**; no behavior change in background/UI. *Implemented in [`src/lib/member-url.ts`](../../src/lib/member-url.ts); `pageMatchesExplicitTarget` lives there and is re-exported from [`page-overlay-state.ts`](../../src/lib/page-overlay-state.ts).*
+
+- [ ] **10.2** — **Resolve at refresh time:** In [`scheduler.ts`](../../src/background/scheduler.ts) (global + individual paths as needed), resolve **live `tabId`** from stored **`targetUrl`/member key** before `tabs.update` (do not trust stale id as identity). **Optional:** evolve alarm names from `tabId` toward **group/job + member key** in a follow-up commit in this story if needed.
+
+- [ ] **10.3** — **Schedule + pause keys:** Key `tabNextFireAt` (and global pause list) by **member key** (or explicit per-row id), not `String(tabId)` / `pausedTabIds`. Bump **`schemaVersion`**; migrate on load in one place ([`state.ts`](../../src/lib/state.ts) path). **Checkpoint:** pause/resume, countdown persistence, alarms still aligned after reload.
+
+- [ ] **10.4** — **Schema + UI:** Drop persisted **`tabId` / `windowId` from `TargetRef`** (keep field name **`targetUrl`**); update [`global-group-form`](../../src/lib/global-group-form.ts), [`individual-job-form`](../../src/lib/individual-job-form.ts), dashboard/global edit flows, [`global-group-enrollment.ts`](../../src/lib/global-group-enrollment.ts), list row copy. **“Use this tab’s URL”** control where useful; demote/remove long tab `<select>` lists. **Tier 2:** update Playwright epics for dashboard/globals/individuals.
+
+- [ ] **10.5** — **Sweep:** [`page-overlay-schedule.ts`](../../src/lib/page-overlay-schedule.ts), [`tab-lifecycle.ts`](../../src/lib/tab-lifecycle.ts), [`badge.ts`](../../src/background/badge.ts), and any remaining **tab-id-only** checks. Remove dead UI paths.
+
+**Backlog relationship:** **[Backlog #7](#7-global-group--rebinding-when-a-tab-closes-and-reopens-same-url)** (rebind when same URL in a new tab) is **subsumed** by this epic’s URL-first model; after Epic **10** ships, treat **#7** as addressed unless a narrow residual bug remains.
+
+---
+
+## Epic 11 — Precision volume (Web Audio)
+
+**Goal:** In-page **granular volume** for `<video>` / `<audio>` via **Web Audio** (`AudioContext`, `MediaElementSource`, `GainNode`), **keyboard shortcuts**, and **dashboard/side panel** controls—without breaking the existing **page overlay** countdown ([`src/content/page-overlay.ts`](../../src/content/page-overlay.ts)).
+
+**Recommended sequencing vs Epic 10:** Ship **after [Epic 10](#epic-10--url-first-membership-phased)** (or at least **10.1–10.3**) when possible—both epics touch **content scripts**, **messaging**, and **overlay-adjacent** code. If volume must land sooner, isolate **new modules + new message types** and avoid mixing with Epic **10** migration PRs.
+
+**Requirements detail:** [doc/requirements/precision-volume-controller.md](../requirements/precision-volume-controller.md).
+
+- [ ] **11.1** — **`manifest.json` + build:** Add **`chrome.commands`** (increase / decrease / panic mute) and any **minimal** new permissions; extend [`Scripts/build.mjs`](../../Scripts/build.mjs) if a new content bundle is required. *Outcome: extension loads; commands registered.*
+
+- [ ] **11.2** — **Content hook:** On matching media, create **one** `MediaElementSource` per element (guard against double-hook), **zero-blast** initial gain, connect through `GainNode` to destination; handle **CORS** limits per [web-audio-dsp](../../.cursor/skills/web-audio-dsp/SKILL.md). *Outcome: safe attach without duplicate-source crashes.*
+
+- [ ] **11.3** — **Dynamic media:** **`MutationObserver`** (or equivalent) attaches to **new** media elements after SPA navigation. *Outcome: YouTube-style navigations pick up new players.*
+
+- [ ] **11.4** — **Messaging:** Typed messages in [`src/lib/messages.ts`](../../src/lib/messages.ts); background routes **set gain** / mute to the correct tab’s content handler; use **ramped** gain updates. *Outcome: dashboard can drive live volume.*
+
+- [ ] **11.5** — **Dashboard + side panel UI:** Log **fader** (precision at low end), **numeric** input (decimals + negative = phase invert label), **Shift** for 10× finer drags; persist prefs (extend or nest under [`prefs.ts`](../../src/lib/prefs.ts) pattern). *Outcome: unified surfaces control volume like the rest of choice **C**.*
+
+- [ ] **11.6** — **Shortcuts + OSD:** Background handles **`chrome.commands`**; content shows **transient OSD** (~2s) with current level when shortcuts fire. *Outcome: keyboard feedback without opening the dashboard.*
+
+- [ ] **11.7** — **Tests:** **Vitest** for slider ↔ gain math; **Playwright** where user-visible strings or toggles need regression cover. *Outcome: `npm run ci` stays green.*
+
+---
+
 ## Reference — goals vs approach
 
 | Requirement | Approach |
@@ -326,7 +374,7 @@ Tracked here until scheduled into an epic or story. **Normative shipped scope** 
 
 6. **Global group — edit: add / remove member URLs (tabs) after creation** — *(Shipped.)* **Edit** exposes **Member tabs** with a **green “+”** (`data-global-edit-add-target`, `aria-label="Add tab to group"`) to append an open-tab row, **red “×”** per row to remove, and **Save** collects membership in DOM order. New rows use tab picker + target URL; [`buildGlobalGroupUpdateFromForm`](../../src/lib/global-group-form.ts) accepts a variable-length target list and filters `pausedTabIds` / `tabNextFireAt` to remaining tab ids. **Tier 2:** [`e2e/epic-4-2.spec.ts`](../../e2e/epic-4-2.spec.ts) (Epic 4.2b). **Files:** [`src/dashboard/dashboard-app.ts`](../../src/dashboard/dashboard-app.ts), [`src/lib/global-group-list-row.ts`](../../src/lib/global-group-list-row.ts).
 
-7. **Global group — rebinding when a tab closes and reopens (same URL)** — Membership is stored by **`tabId`** (and `windowId`). If the user **closes** a tab that belongs to a group and **opens the same URL again**, the new tab gets a **new `tabId`**; the group still references the **old** id, so scheduled refresh no longer targets the visible tab.
+7. **Global group — rebinding when a tab closes and reopens (same URL)** — *(**Superseded by [Epic 10](#epic-10--url-first-membership-phased)** — URL-first membership removes dependence on stored `tabId` for logical identity; use Epic 10 stories instead of a one-off rebind patch.)* ~~Membership is stored by **`tabId`** (and `windowId`). If the user **closes** a tab that belongs to a group and **opens the same URL again**, the new tab gets a **new `tabId`**; the group still references the **old** id, so scheduled refresh no longer targets the visible tab.~~
 
    - **User scenario (example):** A tab for `https://www.twitch.tv/me` is in global group `twitchrefresh`. The user closes that tab and opens the same channel again (new tab). The new tab should be **treated as the same logical member**: alarms, `tabNextFireAt`, overlay, and per-tab rules (e.g. `pausedTabIds`, jitter) should apply to the **new** `tabId` without forcing the user to remove/re-add the tab or re-save the group.
 
@@ -362,9 +410,14 @@ flowchart TD
   epic7[Epic 7 Edge docs]
   epic8[Epic 8 Live pause Twitch]
   epic9[Epic 9 Error text refresh]
+  epic10[Epic 10 URL-first membership]
+  epic11[Epic 11 Precision volume]
   epic0 --> epic1 --> epic2 --> epic3 --> epic4 --> epic5 --> epic6 --> epic7
   epic7 --> epic8
   epic7 --> epic9
+  epic9 --> epic10
+  epic10 --> epic11
 ```
 
-Epic **8** and **9** follow **Epic 7** on the roadmap. **Technically** they need stable **per-tab jobs** (Epic 3) and benefit from **unified UI** (Epic 5); treat **Epic 7** as the quality gate before heavy **content-script** work.
+Epic **8** and **9** follow **Epic 7** on the roadmap. **Technically** they need stable **per-tab jobs** (Epic 3) and benefit from **unified UI** (Epic 5); treat **Epic 7** as the quality gate before heavy **content-script** work. **Epic 10** refactors stored membership toward **URL-first** identity; it **depends** on the current scheduling/UI baseline (through Epic **9** / Post–9) and **replaces** ad-hoc “rebind tab id” work ([Backlog #7](#7-global-group--rebinding-when-a-tab-closes-and-reopens-same-url)). **Epic 11** adds **Web Audio** volume and shortcuts; it **depends** on the unified UI baseline (Epic **5**) and is **recommended after Epic 10** to reduce merge risk with overlay/scheduler work.
+

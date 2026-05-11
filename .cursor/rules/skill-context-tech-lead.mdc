@@ -1,0 +1,16 @@
+---
+description: Epic and scope docs — read tech-lead for sequencing and definition of done
+alwaysApply: false
+globs:
+  - doc/plan/**/*.md
+  - PM_PLAN.md
+  - doc/requirements/**/*.md
+---
+
+# Context — tech lead
+
+These edits change **product scope**, **epic/story checklists**, or **requirements** that drive multi-file work.
+
+Before finishing, read [.cursor/skills/tech-lead/SKILL.md](.cursor/skills/tech-lead/SKILL.md): sequencing, definition of done (tests + `npm run ci` when appropriate), risks, and plan checkbox alignment.
+
+For tone and doc structure in long-form specs, use [.cursor/skills/techwriter/SKILL.md](.cursor/skills/techwriter/SKILL.md) as needed.

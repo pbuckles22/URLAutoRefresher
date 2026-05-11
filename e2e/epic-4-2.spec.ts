@@ -171,6 +171,8 @@ test('Epic 4.2b: edit global group — add second tab with + and Save', async ()
   await row.locator('[data-global-edit-add-target]').click();
 
   const newRow = row.locator('[data-global-edit-new-target]');
+  // + runs async refreshCachedTabs + populate; wait for options before selectOption (avoids flake).
+  await expect(newRow.locator(`[data-global-edit-pick-tab] option[value="${tabB}"]`)).toBeAttached({ timeout: 10_000 });
   await newRow.locator('[data-global-edit-pick-tab]').selectOption(String(tabB));
   await newRow.locator('[data-global-edit-target-url]').fill('https://example.com/e2e-b');
 
@@ -194,4 +196,66 @@ test('Epic 4.2b: edit global group — add second tab with + and Save', async ()
   await dash.close();
   await fixturePage1.close();
   await fixturePage2.close();
+});
+
+test('Epic 4.2c: edit global group — add URL-only row (pattern, no tab)', async () => {
+  const fixturePage = await context.newPage();
+  await fixturePage.goto(`${FIXTURE_ORIGIN}/`);
+
+  const dash = await context.newPage();
+  await dash.goto(dashboardUrl(extensionId));
+
+  await dash.evaluate(
+    async (storageKey) => {
+      await chrome.storage.local.set({
+        [storageKey]: { schemaVersion: 1, globalGroups: [], individualJobs: [] },
+      });
+    },
+    STORAGE_KEY
+  );
+
+  const tabId = await dash.evaluate(async () => {
+    const tabs = await chrome.tabs.query({ url: 'http://127.0.0.1:8765/*' });
+    const id = tabs[0]?.id;
+    if (id === undefined) {
+      throw new Error('fixture tab not found');
+    }
+    return id;
+  });
+
+  await expect(dash.locator(`[data-global-tab-row="${tabId}"]`)).toBeAttached({ timeout: 15_000 });
+
+  await dash.locator('[data-global-group-name]').fill('E2E url-only pattern');
+  await dash.locator(`[data-global-tab-row="${tabId}"] [data-global-tab-include]`).check();
+  await dash.locator(`[data-global-tab-row="${tabId}"] [data-global-target-url]`).fill('https://example.com/e2e-seed');
+  await dash.locator('[data-global-interval]').fill('90');
+  await dash.locator('[data-global-jitter]').fill('0');
+  await dash.locator('[data-global-group-form]').locator('[type="submit"]').click();
+
+  await expect(dash.locator('[data-global-form-error]')).toHaveText('');
+
+  const row = dash.locator('[data-global-group-row]').first();
+  await row.locator('summary').filter({ hasText: 'Edit' }).click();
+  await row.locator('[data-global-edit-add-target]').click();
+
+  const newRow = row.locator('[data-global-edit-new-target]');
+  await newRow.locator('[data-global-edit-target-url]').fill('https://example.com/e2e-url-only-exclusive');
+
+  await row.getByRole('button', { name: 'Save changes' }).click();
+  await expect(row.locator('[data-global-edit-error]')).toHaveText('');
+
+  const patterns = await dash.evaluate(
+    async (storageKey) => {
+      const data = await chrome.storage.local.get(storageKey);
+      const raw = data[storageKey as keyof typeof data] as
+        | { globalGroups?: { urlPatterns?: string[] }[] }
+        | undefined;
+      return raw?.globalGroups?.[0]?.urlPatterns ?? [];
+    },
+    STORAGE_KEY
+  );
+  expect(patterns.some((p) => p.includes('e2e-url-only-exclusive'))).toBe(true);
+
+  await dash.close();
+  await fixturePage.close();
 });

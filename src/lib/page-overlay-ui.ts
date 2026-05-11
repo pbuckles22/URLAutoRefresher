@@ -8,7 +8,8 @@ export type { PageOverlayVm };
 export async function getPageOverlayUiState(
   state: AppState,
   prefs: ExtensionPrefs,
-  tabId: number
+  tabId: number,
+  tabUrl?: string
 ): Promise<
   | { show: false }
   | {
@@ -21,7 +22,7 @@ export async function getPageOverlayUiState(
   | { show: true; mode: 'paused'; globalGroupId: string }
   | { show: true; mode: 'paused'; individualJobId: string }
 > {
-  const vm = await getPageOverlayVmForTab(state, prefs, tabId);
+  const vm = await getPageOverlayVmForTab(state, prefs, tabId, tabUrl);
   if (!vm.show) {
     return { show: false };
   }
