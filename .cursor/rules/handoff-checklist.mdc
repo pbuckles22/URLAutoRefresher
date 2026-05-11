@@ -17,7 +17,7 @@ When the user wants a handoff, or when you are writing or updating a handoff not
 
 5. **Tier 2 (integration / E2E) if needed** — If you added or changed behavior that requires integration or E2E validation, run the Tier 2 command from TEST_PLAN.md. Note in the handoff whether Tier 2 was run and the result. See `.cursor/rules/testing.mdc` and TEST_PLAN.md.
 
-6. **Git commit** — If the first four checks passed: stage the changes and run `git commit` with a short message. If any check failed or is blocking, report back and do not commit until fixed.
+6. **Git commit** — If the first four checks passed: stage the changes and run `git commit` with a short message on your **feature branch**. If any check failed or is blocking, report back and do not commit until fixed. **Merging to `main`** follows **AGENT_HANDOFF.md** → *Branch and pull request* (approved PR, green CI)—do not treat this checklist as permission to push straight to `main`.
 
 Then complete the rest of the handoff (update **PM_PLAN** / **EDGE plan** if product scope changed; **Done this session**, **Next up**, etc. in your **`doc/handoff/`** or `.cursor/handoff/` note — see **AGENT_HANDOFF.md**).
 

@@ -1,0 +1,20 @@
+---
+description: Extension layering — read extension-architect (and related skills) for these paths
+alwaysApply: false
+globs:
+  - manifest.json
+  - src/background/**/*.ts
+  - src/content/**/*.ts
+  - src/lib/messages.ts
+  - Scripts/build.mjs
+---
+
+# Context — extension architect
+
+These edits affect **MV3 boundaries**, **messaging contracts**, **content injection**, or **build outputs**. Before finishing:
+
+1. Read [.cursor/skills/extension-architect/SKILL.md](.cursor/skills/extension-architect/SKILL.md).
+2. For service worker lifecycle, async `sendResponse`, alarms, and context invalidation, read [.cursor/skills/chromium-mv3-extension/SKILL.md](.cursor/skills/chromium-mv3-extension/SKILL.md).
+3. For Web Audio graphs (`AudioContext`, `GainNode`, `MediaElementSource`, ramps, CORS on media), read [.cursor/skills/web-audio-dsp/SKILL.md](.cursor/skills/web-audio-dsp/SKILL.md).
+
+Do **not** rely on this rule for routine dashboard-only or `src/lib/**` math-only changes unless you are also touching the paths above.
