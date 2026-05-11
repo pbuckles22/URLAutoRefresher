@@ -60,6 +60,13 @@ describe('manifest.json', () => {
     expect(overlay?.run_at).toBe('document_idle');
   });
 
+  it('declares Epic 11 chrome.commands for precision volume shortcuts', () => {
+    const commands = manifest.commands as Record<string, unknown>;
+    expect(commands?.['volume-up']).toBeDefined();
+    expect(commands?.['volume-down']).toBeDefined();
+    expect(commands?.['panic-mute']).toBeDefined();
+  });
+
   it('injects Twitch live bridge on twitch.tv only (Epic 8)', () => {
     const scripts = manifest.content_scripts as Array<Record<string, unknown>>;
     const twitch = scripts.find(

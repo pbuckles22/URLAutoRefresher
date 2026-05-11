@@ -15,6 +15,7 @@ import {
   sendExtensionMessageAsync,
   sendExtensionMessageFireAndForget,
 } from '../lib/extension-runtime-send';
+import './precision-volume-bridge';
 import { PREFS_STORAGE_KEY } from '../lib/prefs';
 import { STORAGE_KEY } from '../lib/storage';
 

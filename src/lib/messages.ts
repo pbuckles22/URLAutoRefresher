@@ -53,3 +53,13 @@ export type TwitchLiveReportMessage = {
   /** `null` = could not infer (reset stored signal to unknown). */
   live: boolean | null;
 };
+
+/** Background → content: keyboard shortcut from `chrome.commands` (Epic 11). */
+export const PRECISION_VOLUME_COMMAND = 'urlAutoRefresher:precisionVolumeCommand' as const;
+
+export type PrecisionVolumeShortcutAction = 'volume-up' | 'volume-down' | 'panic-mute';
+
+export type PrecisionVolumeCommandMessage = {
+  type: typeof PRECISION_VOLUME_COMMAND;
+  action: PrecisionVolumeShortcutAction;
+};

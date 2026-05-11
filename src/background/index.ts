@@ -7,9 +7,11 @@ import { attachLiveAwareListeners } from './live-aware';
 import { attachPageOverlayMessageHandler } from './page-overlay-handler';
 import { attachSchedulingListeners, bootstrapScheduling } from './scheduler';
 import { attachTwitchFavsTabListener } from './twitch-favs-sync';
+import { attachVolumeCommandListeners } from './volume-commands';
 
 attachSchedulingListeners();
 attachTwitchFavsTabListener();
+attachVolumeCommandListeners();
 attachBadgeListeners();
 attachPageOverlayMessageHandler();
 attachLiveAwareListeners();
