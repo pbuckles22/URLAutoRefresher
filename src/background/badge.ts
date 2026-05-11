@@ -14,24 +14,28 @@ export const BADGE_TICK_ALARM = 'urlar:badge:tick' as const;
 
 const BADGE_TICK_DELAY_MIN = 1 / 60;
 
-async function collectTabIdsForWindow(windowId: number): Promise<Set<number>> {
+async function collectSchedulableTabUrlsForWindow(windowId: number): Promise<Set<string>> {
   const tabs = await chrome.tabs.query({ windowId });
-  const ids = new Set<number>();
+  const urls = new Set<string>();
   for (const t of tabs) {
-    if (t.id !== undefined) {
-      ids.add(t.id);
+    const u = t.url;
+    if (
+      typeof u === 'string' &&
+      (u.startsWith('http://') || u.startsWith('https://'))
+    ) {
+      urls.add(u);
     }
   }
-  return ids;
+  return urls;
 }
 
-async function tabIdsForLastFocusedWindow(): Promise<Set<number>> {
+async function tabUrlsForLastFocusedWindow(): Promise<Set<string>> {
   try {
     const w = await chrome.windows.getLastFocused();
     if (w.id === undefined || w.id === chrome.windows.WINDOW_ID_NONE) {
       return new Set();
     }
-    return collectTabIdsForWindow(w.id);
+    return collectSchedulableTabUrlsForWindow(w.id);
   } catch {
     return new Set();
   }
@@ -48,8 +52,8 @@ async function syncBadgeTickAlarm(comp: BadgeComputation): Promise<void> {
 export async function refreshActionBadge(): Promise<void> {
   const state = await loadAppState();
   const now = Date.now();
-  const tabIds = await tabIdsForLastFocusedWindow();
-  const comp = await computeBadgeComputation(state, now, tabIds, { fallbackWhenFocusedEmpty: true });
+  const tabUrls = await tabUrlsForLastFocusedWindow();
+  const comp = await computeBadgeComputation(state, now, tabUrls, { fallbackWhenFocusedEmpty: true });
   const text = badgeTextFromComputation(comp);
   await chrome.action.setBadgeText({ text });
   await syncBadgeTickAlarm(comp);

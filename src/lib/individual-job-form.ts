@@ -8,8 +8,6 @@ import type { Result } from './validation';
 import { validateHttpUrl, validateIntervalSec, validateJitterSec } from './validation';
 
 export type AddIndividualJobInput = {
-  tabId: number;
-  windowId: number;
   targetUrl: string;
   baseIntervalSec: number;
   jitterSec: number;
@@ -51,13 +49,6 @@ export function buildIndividualJobFromForm(
   input: AddIndividualJobInput,
   newId: () => string = () => crypto.randomUUID()
 ): Result<IndividualJob> {
-  if (!Number.isInteger(input.tabId) || input.tabId < 1) {
-    return { ok: false, error: 'Pick a tab' };
-  }
-  if (!Number.isInteger(input.windowId) || input.windowId < 0) {
-    return { ok: false, error: 'Invalid window' };
-  }
-
   const url = validateHttpUrl(input.targetUrl);
   if (!url.ok) {
     return url;
@@ -81,8 +72,6 @@ export function buildIndividualJobFromForm(
     value: {
       id: newId(),
       target: {
-        tabId: input.tabId,
-        windowId: input.windowId,
         targetUrl: url.value,
       },
       baseIntervalSec: interval.value,
@@ -110,8 +99,6 @@ export function buildIndividualJobUpdateFromForm(
 ): Result<IndividualJob> {
   const base = buildIndividualJobFromForm(
     {
-      tabId: existing.target.tabId,
-      windowId: existing.target.windowId,
       targetUrl: input.targetUrl,
       baseIntervalSec: input.baseIntervalSec,
       jitterSec: input.jitterSec,

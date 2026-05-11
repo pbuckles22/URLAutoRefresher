@@ -77,7 +77,6 @@ test('Epic 4.1: window/tab browser saves global group with per-tab target URLs',
     enabled: true,
     targets: [
       {
-        tabId: fixtureTabId,
         targetUrl: 'https://example.com/e2e-global',
       },
     ],

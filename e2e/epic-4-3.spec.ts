@@ -41,18 +41,16 @@ test('Epic 4.3: add global form shows mutual exclusion when tab has enabled indi
   const { tabId, windowId } = await fixtureTabMeta(dash);
 
   await dash.evaluate(
-    async ({ storageKey, tabId: tid, windowId: wid }) => {
+    async ({ storageKey }) => {
       await chrome.storage.local.set({
         [storageKey]: {
-          schemaVersion: 1,
+          schemaVersion: 3,
           globalGroups: [],
           individualJobs: [
             {
               id: 'e2e-ind',
               target: {
-                tabId: tid,
-                windowId: wid,
-                targetUrl: 'https://example.com/e2e-ind',
+                targetUrl: 'https://example.com/e2e-overlap',
               },
               baseIntervalSec: 60,
               jitterSec: 0,
@@ -62,7 +60,7 @@ test('Epic 4.3: add global form shows mutual exclusion when tab has enabled indi
         },
       });
     },
-    { storageKey: STORAGE_KEY, tabId, windowId }
+    { storageKey: STORAGE_KEY }
   );
 
   await expect(dash.locator('[data-global-section-heading]')).toHaveText('Global (0)', { timeout: 10_000 });
@@ -72,14 +70,19 @@ test('Epic 4.3: add global form shows mutual exclusion when tab has enabled indi
 
   await dash.locator('[data-global-group-name]').fill('E2E conflict');
   await dash.locator(`[data-global-tab-row="${tabId}"] [data-global-tab-include]`).check();
-  await dash.locator(`[data-global-tab-row="${tabId}"] [data-global-target-url]`).fill('https://example.com/e2e-g');
+  await dash.locator(`[data-global-tab-row="${tabId}"] [data-global-target-url]`).fill(
+    'https://example.com/e2e-overlap'
+  );
   await dash.locator('[data-global-interval]').fill('50');
   await dash.locator('[data-global-jitter]').fill('0');
   await dash.locator('[data-global-group-form]').locator('[type="submit"]').click();
 
-  await expect(dash.locator('[data-global-form-error]')).toContainText('has an enabled individual job', {
-    timeout: 10_000,
-  });
+  await expect(dash.locator('[data-global-form-error]')).toContainText(
+    'enabled global group and an enabled individual job',
+    {
+      timeout: 10_000,
+    }
+  );
 });
 
 test('Epic 4.3: add individual form shows mutual exclusion when tab is in enabled global group', async () => {
@@ -92,19 +95,17 @@ test('Epic 4.3: add individual form shows mutual exclusion when tab is in enable
   const { tabId, windowId } = await fixtureTabMeta(dash);
 
   await dash.evaluate(
-    async ({ storageKey, tabId: tid, windowId: wid }) => {
+    async ({ storageKey }) => {
       await chrome.storage.local.set({
         [storageKey]: {
-          schemaVersion: 1,
+          schemaVersion: 3,
           globalGroups: [
             {
               id: 'e2e-gg',
               name: 'E2E global',
               targets: [
                 {
-                  tabId: tid,
-                  windowId: wid,
-                  targetUrl: 'https://example.com/e2e-g2',
+                  targetUrl: 'https://example.com/e2e-add-ind-conflict',
                 },
               ],
               baseIntervalSec: 60,
@@ -116,19 +117,19 @@ test('Epic 4.3: add individual form shows mutual exclusion when tab is in enable
         },
       });
     },
-    { storageKey: STORAGE_KEY, tabId, windowId }
+    { storageKey: STORAGE_KEY }
   );
 
   await expect(dash.locator('[data-global-section-heading]')).toHaveText('Global (1)', { timeout: 10_000 });
 
   await dash.locator('[data-job-tab]').selectOption(String(tabId));
-  await dash.locator('[data-job-target-url]').fill('https://example.com/e2e-new-ind');
+  await dash.locator('[data-job-target-url]').fill('https://example.com/e2e-add-ind-conflict');
   await dash.locator('[data-job-interval]').fill('45');
   await dash.locator('[data-job-jitter]').fill('0');
   await dash.locator('[data-add-individual-form]').locator('[type="submit"]').click();
 
   await expect(dash.locator('[data-add-job-error]')).toContainText(
-    'cannot be in an enabled global group and an enabled individual job',
+    'enabled global group and an enabled individual job',
     { timeout: 10_000 }
   );
 });
@@ -140,22 +141,18 @@ test('Epic 4.3: Start on global row shows error when enabled individual uses the
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
 
-  const { tabId, windowId } = await fixtureTabMeta(dash);
-
   await dash.evaluate(
-    async ({ storageKey, tabId: tid, windowId: wid }) => {
+    async ({ storageKey }) => {
       await chrome.storage.local.set({
         [storageKey]: {
-          schemaVersion: 1,
+          schemaVersion: 3,
           globalGroups: [
             {
               id: 'e2e-gg-off',
               name: 'Off group',
               targets: [
                 {
-                  tabId: tid,
-                  windowId: wid,
-                  targetUrl: 'https://example.com/e2e-g3',
+                  targetUrl: 'https://example.com/e2e-start-dup',
                 },
               ],
               baseIntervalSec: 60,
@@ -167,9 +164,7 @@ test('Epic 4.3: Start on global row shows error when enabled individual uses the
             {
               id: 'e2e-ind-on',
               target: {
-                tabId: tid,
-                windowId: wid,
-                targetUrl: 'https://example.com/e2e-ind2',
+                targetUrl: 'https://example.com/e2e-start-dup',
               },
               baseIntervalSec: 60,
               jitterSec: 0,
@@ -179,7 +174,7 @@ test('Epic 4.3: Start on global row shows error when enabled individual uses the
         },
       });
     },
-    { storageKey: STORAGE_KEY, tabId, windowId }
+    { storageKey: STORAGE_KEY }
   );
 
   await expect(dash.locator('[data-global-section-heading]')).toHaveText('Global (1)', { timeout: 10_000 });
@@ -189,7 +184,7 @@ test('Epic 4.3: Start on global row shows error when enabled individual uses the
   await row.locator('[data-global-group-toggle]').click();
 
   await expect(row.locator('[data-global-group-row-error]')).toContainText(
-    'cannot be in an enabled global group and an enabled individual job',
+    'enabled global group and an enabled individual job',
     { timeout: 10_000 }
   );
 });

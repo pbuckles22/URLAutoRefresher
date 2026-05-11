@@ -9,7 +9,7 @@ describe('buildGlobalGroupFromForm', () => {
         name: '   ',
         baseIntervalSec: 60,
         jitterSec: 0,
-        targets: [{ tabId: 1, windowId: 0, targetUrl: 'https://a/' }],
+        targets: [{ targetUrl: 'https://a/' }],
       },
       () => 'fixed-id'
     );
@@ -53,15 +53,15 @@ describe('buildGlobalGroupFromForm', () => {
     }
   });
 
-  it('rejects duplicate tab ids', () => {
+  it('rejects duplicate member URLs', () => {
     const r = buildGlobalGroupFromForm(
       {
         name: 'G',
         baseIntervalSec: 60,
         jitterSec: 0,
         targets: [
-          { tabId: 1, windowId: 0, targetUrl: 'https://a/' },
-          { tabId: 1, windowId: 0, targetUrl: 'https://b/' },
+          { targetUrl: 'https://dup.example/foo' },
+          { targetUrl: 'https://dup.example/foo' },
         ],
       },
       () => 'fixed-id'
@@ -76,8 +76,8 @@ describe('buildGlobalGroupFromForm', () => {
         baseIntervalSec: 90,
         jitterSec: 3,
         targets: [
-          { tabId: 10, windowId: 2, targetUrl: 'https://example.com/a', label: ' Tab A ' },
-          { tabId: 11, windowId: 2, targetUrl: 'https://example.com/b' },
+          { targetUrl: 'https://example.com/a', label: ' Tab A ' },
+          { targetUrl: 'https://example.com/b' },
         ],
       },
       () => 'gid-1'
@@ -88,8 +88,8 @@ describe('buildGlobalGroupFromForm', () => {
         id: 'gid-1',
         name: 'Sync',
         targets: [
-          { tabId: 10, windowId: 2, targetUrl: 'https://example.com/a', label: 'Tab A' },
-          { tabId: 11, windowId: 2, targetUrl: 'https://example.com/b' },
+          { targetUrl: 'https://example.com/a', label: 'Tab A' },
+          { targetUrl: 'https://example.com/b' },
         ],
         baseIntervalSec: 90,
         jitterSec: 3,
@@ -104,8 +104,8 @@ describe('buildGlobalGroupUpdateFromForm', () => {
     id: 'gid',
     name: 'Old',
     targets: [
-      { tabId: 10, windowId: 2, targetUrl: 'https://example.com/a', label: 'A' },
-      { tabId: 11, windowId: 2, targetUrl: 'https://example.com/b' },
+      { targetUrl: 'https://example.com/a', label: 'A' },
+      { targetUrl: 'https://example.com/b' },
     ],
     baseIntervalSec: 60,
     jitterSec: 0,
@@ -120,8 +120,8 @@ describe('buildGlobalGroupUpdateFromForm', () => {
         baseIntervalSec: 60,
         jitterSec: 0,
         targets: [
-          { tabId: 10, windowId: 2, targetUrl: 'https://x/' },
-          { tabId: 11, windowId: 2, targetUrl: 'https://y/' },
+          { targetUrl: 'https://x/' },
+          { targetUrl: 'https://y/' },
         ],
         urlPatternsRaw: '',
       },
@@ -136,7 +136,7 @@ describe('buildGlobalGroupUpdateFromForm', () => {
         name: 'N',
         baseIntervalSec: 60,
         jitterSec: 0,
-        targets: [{ tabId: 10, windowId: 2, targetUrl: 'https://x/' }],
+        targets: [{ targetUrl: 'https://x/' }],
         urlPatternsRaw: '*example.com*',
       },
       existing()
@@ -144,7 +144,7 @@ describe('buildGlobalGroupUpdateFromForm', () => {
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.value.targets).toHaveLength(1);
-      expect(r.value.targets[0]?.tabId).toBe(10);
+      expect(r.value.targets[0]?.targetUrl).toBe('https://x/');
       expect(r.value.urlPatterns).toEqual(['*example.com*']);
     }
   });
@@ -159,7 +159,7 @@ describe('buildGlobalGroupUpdateFromForm', () => {
         name: 'N',
         baseIntervalSec: 60,
         jitterSec: 0,
-        targets: [{ tabId: 10, windowId: 2, targetUrl: 'https://example.com/a', label: 'A' }],
+        targets: [{ targetUrl: 'https://example.com/a', label: 'A' }],
         urlPatternsRaw: '*example.com*',
       },
       ex
@@ -178,8 +178,8 @@ describe('buildGlobalGroupUpdateFromForm', () => {
         baseIntervalSec: 90,
         jitterSec: 2,
         targets: [
-          { tabId: 11, windowId: 2, targetUrl: 'https://example.com/b2' },
-          { tabId: 10, windowId: 2, targetUrl: 'https://example.com/a2', label: ' L1 ' },
+          { targetUrl: 'https://example.com/b2' },
+          { targetUrl: 'https://example.com/a2', label: ' L1 ' },
         ],
         urlPatternsRaw: '',
       },
@@ -195,8 +195,8 @@ describe('buildGlobalGroupUpdateFromForm', () => {
         baseIntervalSec: 90,
         jitterSec: 2,
         targets: [
-          { tabId: 11, windowId: 2, targetUrl: 'https://example.com/b2' },
-          { tabId: 10, windowId: 2, targetUrl: 'https://example.com/a2', label: 'L1' },
+          { targetUrl: 'https://example.com/b2' },
+          { targetUrl: 'https://example.com/a2', label: 'L1' },
         ],
       });
     }

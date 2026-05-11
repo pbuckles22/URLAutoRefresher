@@ -1,11 +1,15 @@
 import type { PageOverlayBlipPack } from './messages';
+import { pageMatchesExplicitTarget } from './member-url';
 import type { AppState } from './types';
 import { BLIP_MAX_REGEX_LEN } from './blip-match';
 
-/** Enabled individual job on this tab with at least one blip trigger configured (Epic 9). */
-export function getBlipWatchForTab(state: AppState, tabId: number): PageOverlayBlipPack | undefined {
+/** Enabled individual job on this page URL with at least one blip trigger configured (Epic 9). */
+export function getBlipWatchForTab(state: AppState, tabUrl: string | undefined): PageOverlayBlipPack | undefined {
+  if (!tabUrl) {
+    return undefined;
+  }
   for (const j of state.individualJobs) {
-    if (!j.enabled || j.target.tabId !== tabId) {
+    if (!j.enabled || !pageMatchesExplicitTarget(tabUrl, j.target.targetUrl)) {
       continue;
     }
     const phrases = j.blipWatchPhrases ?? [];

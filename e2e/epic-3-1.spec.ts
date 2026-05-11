@@ -67,7 +67,7 @@ test('Epic 3.1: dashboard form saves individual job to storage', async () => {
 
   expect(jobs).toHaveLength(1);
   expect(jobs[0]).toMatchObject({
-    target: { tabId: fixtureTabId, targetUrl: 'https://example.com/e2e' },
+    target: { targetUrl: 'https://example.com/e2e' },
     baseIntervalSec: 45,
     jitterSec: 2,
     enabled: true,

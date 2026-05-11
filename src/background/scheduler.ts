@@ -12,7 +12,6 @@ import { computeAlarmWhen } from '../lib/alarm-schedule';
 import { memberKeyFromTargetUrl } from '../lib/member-url';
 import { computeNextDelayMs } from '../lib/schedule';
 import { LIVE_AWARE_POLL_MS } from '../lib/live-aware-constants';
-import { rebindGlobalGroupTabIds } from '../lib/global-group-tab-rebind';
 import { globalGroupHasSchedulableConfig, resolveGlobalGroupTargets } from '../lib/global-group-targets';
 import { resolveLiveTabIdForTargetUrl } from '../lib/resolve-live-tab';
 import { loadAppState, saveAppState, STORAGE_KEY } from '../lib/storage';
@@ -243,21 +242,20 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
         return;
       }
 
-      const { tabId, targetUrl } = job.target;
-      const resolvedTabId = await resolveLiveTabIdForTargetUrl(targetUrl, tabId);
-      const refreshTabId = resolvedTabId ?? tabId;
-
-      let windowId = job.target.windowId;
-      if (resolvedTabId !== undefined && resolvedTabId !== tabId) {
-        try {
-          const t = await chrome.tabs.get(resolvedTabId);
-          if (t.windowId !== undefined) {
-            windowId = t.windowId;
-          }
-        } catch {
-          /* keep stored windowId */
-        }
+      const { targetUrl } = job.target;
+      const resolvedTabId = await resolveLiveTabIdForTargetUrl(targetUrl, 0);
+      if (resolvedTabId === undefined) {
+        const nextJobs = replaceAt(state.individualJobs, idx, {
+          ...job,
+          enabled: false,
+          nextFireAt: undefined,
+        });
+        state = { ...state, individualJobs: nextJobs };
+        await saveAppState(state);
+        await syncAlarmsWithState(state);
+        return;
       }
+      const refreshTabId = resolvedTabId;
 
       const ok = await safeTabsUpdate(refreshTabId, targetUrl);
 
@@ -281,13 +279,7 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
 
       const { baseMs, jitterMs } = baseAndJitterMs(job);
       const nextFireAt = Date.now() + computeNextDelayMs(baseMs, jitterMs);
-      let nextJob = { ...job, nextFireAt };
-      if (resolvedTabId !== undefined && resolvedTabId !== tabId) {
-        nextJob = {
-          ...nextJob,
-          target: { ...job.target, tabId: resolvedTabId, windowId },
-        };
-      }
+      const nextJob = { ...job, nextFireAt };
       const nextJobs = replaceAt(state.individualJobs, idx, nextJob);
       state = { ...state, individualJobs: nextJobs };
       await saveAppState(state);
@@ -321,20 +313,15 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
     const resolved = await resolveGlobalGroupTargets(group);
     const paused = new Set(group.pausedMemberKeys ?? []);
 
-    const tref =
-      resolved.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey) ??
-      group.targets.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey);
-    const memberUrl = tref?.targetUrl;
+    const resolvedHit = resolved.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey);
+    const storedUrl = group.targets.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey)?.targetUrl;
+    const memberUrl = resolvedHit?.targetUrl ?? storedUrl;
     if (!memberUrl) {
       await syncAlarmsWithState(await loadAppState());
       return;
     }
 
-    const preferredTabId = tref?.tabId ?? group.targets.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey)?.tabId;
-    const hintTabId =
-      preferredTabId ??
-      resolved.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey)?.tabId ??
-      0;
+    const hintTabId = resolvedHit?.tabId ?? 0;
 
     const resolvedLiveTabId = await resolveLiveTabIdForTargetUrl(
       memberUrl,
@@ -365,32 +352,14 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
 
     const { baseMs, jitterMs } = baseAndJitterMs(group);
 
-    let nextGroup = group;
-    if (ok && resolvedLiveTabId !== undefined && hintTabId >= 1 && resolvedLiveTabId !== hintTabId) {
-      let newWid = 0;
-      try {
-        const t = await chrome.tabs.get(resolvedLiveTabId);
-        if (t.windowId !== undefined) {
-          newWid = t.windowId;
-        }
-      } catch {
-        /* keep 0 if unknown */
-      }
-      nextGroup = rebindGlobalGroupTabIds(group, hintTabId, resolvedLiveTabId, newWid);
-    }
-
-    let memberNextFireAt = { ...(nextGroup.memberNextFireAt ?? {}) };
+    let memberNextFireAt = { ...(group.memberNextFireAt ?? {}) };
 
     if (!ok) {
       delete memberNextFireAt[memberKey];
-      const dropTabId = hintTabId >= 1 ? hintTabId : undefined;
-      const targets =
-        dropTabId !== undefined ? group.targets.filter((t) => t.tabId !== dropTabId) : group.targets;
       const hasPatterns = group.urlPatterns?.some((p) => p.trim()) ?? false;
-      const enabled = group.enabled && (targets.length > 0 || hasPatterns);
+      const enabled = group.enabled && (group.targets.length > 0 || hasPatterns);
       const nextGroups = replaceAt(state.globalGroups, gIdx, {
         ...group,
-        targets,
         memberNextFireAt: Object.keys(memberNextFireAt).length > 0 ? memberNextFireAt : undefined,
         enabled,
         nextFireAt: undefined,
@@ -403,7 +372,7 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
 
     memberNextFireAt[memberKey] = Date.now() + computeNextDelayMs(baseMs, jitterMs);
     const nextGroups = replaceAt(state.globalGroups, gIdx, {
-      ...nextGroup,
+      ...group,
       memberNextFireAt,
       nextFireAt: undefined,
     });

@@ -16,6 +16,7 @@ import {
   replaceGlobalGroup,
   setGlobalGroupEnabled,
 } from '../lib/global-groups';
+import { memberKeyFromTargetUrl } from '../lib/member-url';
 import { validateHttpUrl } from '../lib/validation';
 import { mergeDistinctPatternLines } from '../lib/url-glob';
 import { defaultTargetUrlForTab, pinTabIdFirst, tabRowsFromWindowsSnapshot } from '../lib/window-tab-browser';
@@ -178,7 +179,7 @@ export function initDashboardApp(): void {
       const titleEl = document.createElement('span');
       titleEl.setAttribute('data-global-tab-title', '');
       const tlabel = row.title.trim() || row.url || `Tab ${row.tabId}`;
-      titleEl.textContent = `${tlabel} (${row.tabId})`;
+      titleEl.textContent = tlabel;
       titleEl.style.overflow = 'hidden';
       titleEl.style.textOverflow = 'ellipsis';
       titleEl.style.whiteSpace = 'nowrap';
@@ -257,11 +258,6 @@ export function initDashboardApp(): void {
         const v = tr.querySelector<HTMLSelectElement>('[data-global-edit-pick-tab]')?.value;
         if (v) {
           taken.add(Number(v));
-        }
-      } else {
-        const id = tr.getAttribute('data-global-edit-target-tab');
-        if (id) {
-          taken.add(Number(id));
         }
       }
     }
@@ -553,12 +549,7 @@ export function initDashboardApp(): void {
           const interval = Number(row.querySelector<HTMLInputElement>('[data-global-edit-interval]')?.value);
           const jitter = Number(row.querySelector<HTMLInputElement>('[data-global-edit-jitter]')?.value);
 
-          const targets: Array<{
-            tabId: number;
-            windowId: number;
-            targetUrl: string;
-            label?: string;
-          }> = [];
+          const targets: Array<{ targetUrl: string; label?: string }> = [];
           const extraPatternUrls: string[] = [];
 
           for (const tr of row.querySelectorAll('[data-global-edit-target-row]')) {
@@ -591,34 +582,20 @@ export function initDashboardApp(): void {
                 }
                 return;
               }
-              let windowId: number | undefined = cachedIndividualTabs.find((x) => x.id === tabId)?.windowId;
-              if (windowId === undefined) {
-                const chromeTab = await chrome.tabs.get(tabId);
-                windowId =
-                  typeof chromeTab.windowId === 'number' ? chromeTab.windowId : undefined;
-              }
-              if (windowId === undefined || !Number.isInteger(windowId) || windowId < 0) {
-                if (errEl) {
-                  errEl.textContent = 'Could not resolve tab window';
-                }
-                return;
-              }
               const tabMeta = cachedIndividualTabs.find((x) => x.id === tabId);
               const label = tabMeta?.title?.trim();
               targets.push({
-                tabId,
-                windowId,
                 targetUrl: urlIn?.value ?? '',
                 ...(label ? { label } : {}),
               });
             } else {
-              const tabId = Number(tr.getAttribute('data-global-edit-target-tab'));
-              const windowId = Number(tr.getAttribute('data-window-id'));
+              const mkAttr = tr.getAttribute('data-global-edit-member-key') ?? '';
               const urlIn = tr.querySelector<HTMLInputElement>('[data-global-edit-target-url]');
-              const prev = existing.targets.find((x) => x.tabId === tabId);
+              const prev =
+                mkAttr !== ''
+                  ? existing.targets.find((x) => memberKeyFromTargetUrl(x.targetUrl) === mkAttr)
+                  : undefined;
               targets.push({
-                tabId,
-                windowId,
                 targetUrl: urlIn?.value ?? '',
                 ...(prev?.label ? { label: prev.label } : {}),
               });
@@ -725,18 +702,7 @@ export function initDashboardApp(): void {
         if (addJobError) {
           addJobError.textContent = '';
         }
-        const tabId = Number(tabSelect.value);
-        const tabs = await chrome.tabs.query({});
-        const tab = tabs.find((t) => t.id === tabId);
-        if (!tab?.id) {
-          if (addJobError) {
-            addJobError.textContent = 'Pick a tab';
-          }
-          return;
-        }
         const built = buildIndividualJobFromForm({
-          tabId: tab.id,
-          windowId: tab.windowId,
           targetUrl: urlInput.value,
           baseIntervalSec: Number(intervalInput.value),
           jitterSec: Number(jitterInput.value),
@@ -795,26 +761,15 @@ export function initDashboardApp(): void {
         if (globalFormError) {
           globalFormError.textContent = '';
         }
-        const targets: Array<{
-          tabId: number;
-          windowId: number;
-          targetUrl: string;
-          label?: string;
-        }> = [];
+        const targets: Array<{ targetUrl: string; label?: string }> = [];
         for (const li of globalTabBrowser.querySelectorAll('[data-global-tab-row]')) {
-          const tabId = Number(li.getAttribute('data-global-tab-row'));
-          const windowId = Number(li.getAttribute('data-window-id'));
           const checked = li.querySelector<HTMLInputElement>('[data-global-tab-include]')?.checked;
           if (!checked) {
             continue;
           }
           const targetUrl = li.querySelector<HTMLInputElement>('[data-global-target-url]')?.value ?? '';
-          const titleText = li.querySelector('[data-global-tab-title]')?.textContent ?? '';
-          const m = /^(.*) \((\d+)\)\s*$/.exec(titleText);
-          const label = m?.[1]?.trim();
+          const label = li.querySelector('[data-global-tab-title]')?.textContent?.trim();
           targets.push({
-            tabId,
-            windowId,
             targetUrl,
             ...(label ? { label } : {}),
           });

@@ -1,4 +1,8 @@
-import type { GlobalGroup, TargetRef } from './types';
+import {
+  pickBestOpenTabForMemberTarget,
+  type TabPickCandidate,
+} from './member-url';
+import type { GlobalGroup, ResolvedMemberTab } from './types';
 import { urlMatchesGlob } from './url-glob';
 
 function isHttpUrl(u: string | undefined): boolean {
@@ -10,28 +14,65 @@ function isHttpUrl(u: string | undefined): boolean {
 
 export type QueryTabsFn = () => Promise<chrome.tabs.Tab[]>;
 
+function tabsToCandidates(tabs: chrome.tabs.Tab[]): TabPickCandidate[] {
+  return tabs.map((t) => ({
+    id: t.id,
+    windowId: t.windowId,
+    url: t.url,
+    active: t.active,
+    index: t.index,
+  }));
+}
+
 /**
- * Explicit targets plus any open http(s) tabs whose URL matches a stored pattern.
- * Explicit rows win when the same tabId appears both ways.
+ * Explicit targets (URL-only rows) plus any open http(s) tabs whose URL matches a stored pattern.
+ * Each explicit row picks at most one live tab via {@link pickBestOpenTabForMemberTarget}.
  */
 export async function resolveGlobalGroupTargets(
   group: GlobalGroup,
   queryTabs: QueryTabsFn = () => chrome.tabs.query({})
-): Promise<TargetRef[]> {
-  const byId = new Map<number, TargetRef>();
-  for (const t of group.targets) {
-    byId.set(t.tabId, t);
-  }
-
-  const patterns = group.urlPatterns?.filter((p) => p.trim()) ?? [];
-  if (patterns.length === 0) {
-    return [...byId.values()];
-  }
-
+): Promise<ResolvedMemberTab[]> {
   let tabs: chrome.tabs.Tab[];
   try {
     tabs = await queryTabs();
   } catch {
+    tabs = [];
+  }
+
+  const candidates = tabsToCandidates(tabs);
+
+  let lastFocusedWindowId: number | undefined;
+  try {
+    const w = await chrome.windows.getLastFocused();
+    lastFocusedWindowId = w.id;
+  } catch {
+    lastFocusedWindowId = undefined;
+  }
+
+  const byId = new Map<number, ResolvedMemberTab>();
+
+  for (const member of group.targets) {
+    const pickedId = pickBestOpenTabForMemberTarget(candidates, member.targetUrl, {
+      lastFocusedWindowId,
+    });
+    if (pickedId === undefined) {
+      continue;
+    }
+    const tab = tabs.find((x) => x.id === pickedId);
+    const wid = tab?.windowId;
+    const url = tab?.url;
+    if (wid === undefined || !isHttpUrl(url)) {
+      continue;
+    }
+    byId.set(pickedId, {
+      tabId: pickedId,
+      windowId: wid,
+      targetUrl: member.targetUrl,
+    });
+  }
+
+  const patterns = group.urlPatterns?.filter((p) => p.trim()) ?? [];
+  if (patterns.length === 0) {
     return [...byId.values()];
   }
 

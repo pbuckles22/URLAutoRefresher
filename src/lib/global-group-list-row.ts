@@ -2,7 +2,8 @@
  * DOM factory for one global-group row (dashboard — Epic 4.2).
  */
 import { formatGlobalGroupCountdown } from './dashboard-countdown';
-import type { GlobalGroup } from './types';
+import { memberKeyFromTargetUrl } from './member-url';
+import type { GlobalGroup, TargetRef } from './types';
 
 function rowStyle(): string {
   return 'list-style: none; margin: 0.75rem 0; padding: 0.75rem; border: 1px solid #5f6368; border-radius: 8px; background: #303134;';
@@ -172,29 +173,23 @@ export function createGlobalGroupListRow(g: GlobalGroup, nowMs: number): HTMLLIE
   return li;
 }
 
-/** One explicit member row in global group Edit (existing tab). */
-export function appendGlobalEditExistingTargetRow(
-  container: HTMLElement,
-  t: { tabId: number; windowId: number; targetUrl: string; label?: string }
-): void {
+/** One explicit member row in global group Edit (persisted URL + optional label). */
+export function appendGlobalEditExistingTargetRow(container: HTMLElement, t: TargetRef): void {
   const row = document.createElement('div');
   row.setAttribute('data-global-edit-target-row', '');
-  row.setAttribute('data-global-edit-target-tab', String(t.tabId));
-  row.setAttribute('data-window-id', String(t.windowId));
+  const mk = memberKeyFromTargetUrl(t.targetUrl) ?? '';
+  row.setAttribute('data-global-edit-member-key', mk);
   row.style.cssText =
     'display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; margin-top: 0.35rem';
 
   const lab = document.createElement('label');
   lab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 1 1 14rem';
   const cap = document.createElement('span');
-  cap.textContent = t.label
-    ? `Tab ${t.tabId} — ${t.label} · target URL`
-    : `Tab ${t.tabId} — target URL`;
+  cap.textContent = t.label ? `${t.label} · target URL` : 'Target URL';
   lab.appendChild(cap);
   const urlIn = document.createElement('input');
   urlIn.type = 'text';
   urlIn.setAttribute('data-global-edit-target-url', '');
-  urlIn.setAttribute('data-global-edit-target-tab', String(t.tabId));
   urlIn.value = t.targetUrl;
   urlIn.autocomplete = 'off';
   urlIn.style.cssText = inputStyle;

@@ -1,10 +1,17 @@
 /** Aligned with doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md data sketch. */
 
+/** Persisted global/individual member row — URL-first (Epic 10.4); runtime tab id comes from resolve APIs. */
 export type TargetRef = {
-  tabId: number;
-  windowId: number;
   targetUrl: string;
   label?: string;
+};
+
+/** Open-tab binding for scheduler / overlay — not persisted (built from `TargetRef` + `tabs.query`). */
+export type ResolvedMemberTab = {
+  tabId: number;
+  windowId: number;
+  /** Canonical member URL from storage (explicit row), or live tab URL for pattern matches. */
+  targetUrl: string;
 };
 
 export type GlobalGroup = {

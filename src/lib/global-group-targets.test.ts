@@ -7,7 +7,7 @@ describe('resolveGlobalGroupTargets', () => {
     const group: GlobalGroup = {
       id: 'g',
       name: 'G',
-      targets: [{ tabId: 1, windowId: 0, targetUrl: 'https://a.test/x' }],
+      targets: [{ targetUrl: 'https://a.test/x' }],
       urlPatterns: ['*twitch.tv*'],
       baseIntervalSec: 60,
       jitterSec: 0,
@@ -22,18 +22,18 @@ describe('resolveGlobalGroupTargets', () => {
     expect(got.find((t) => t.tabId === 2)?.targetUrl).toContain('twitch.tv');
   });
 
-  it('explicit target wins URL over pattern for same tab', async () => {
+  it('explicit target wins stored URL over pattern for the same tab id', async () => {
     const group: GlobalGroup = {
       id: 'g',
       name: 'G',
-      targets: [{ tabId: 2, windowId: 0, targetUrl: 'https://saved.example/' }],
-      urlPatterns: ['*twitch.tv*'],
+      targets: [{ targetUrl: 'https://saved.example/' }],
+      urlPatterns: ['*saved.example*'],
       baseIntervalSec: 60,
       jitterSec: 0,
       enabled: true,
     };
     const queryTabs = vi.fn().mockResolvedValue([
-      { id: 2, windowId: 0, url: 'https://www.twitch.tv/foo' },
+      { id: 2, windowId: 0, url: 'https://saved.example/video' },
     ]);
     const got = await resolveGlobalGroupTargets(group, queryTabs);
     expect(got).toHaveLength(1);

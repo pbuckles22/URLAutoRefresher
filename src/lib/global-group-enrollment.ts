@@ -1,3 +1,4 @@
+import { memberKeyFromTargetUrl } from './member-url';
 import { resolveGlobalGroupTargets } from './global-group-targets';
 import type { AppState, GlobalGroup } from './types';
 import type { Result } from './validation';
@@ -20,13 +21,23 @@ export async function validateGlobalGroupResolvedEnrollment(
   excludeGroupId?: string
 ): Promise<Result<void>> {
   const resolved = await resolveGlobalGroupTargets(candidate);
-  const tabIds = new Set(resolved.map((t) => t.tabId));
+  const resolvedTabIds = new Set(resolved.map((t) => t.tabId));
 
   for (const j of state.individualJobs) {
-    if (j.enabled && tabIds.has(j.target.tabId)) {
-      return err(
-        `Tab ${j.target.tabId} has an enabled individual job. Disable that job or remove it before this group can use that tab.`
-      );
+    if (!j.enabled) {
+      continue;
+    }
+    const jmk = memberKeyFromTargetUrl(j.target.targetUrl);
+    if (!jmk) {
+      continue;
+    }
+    for (const t of resolved) {
+      const tmk = memberKeyFromTargetUrl(t.targetUrl);
+      if (tmk === jmk) {
+        return err(
+          `This URL has an enabled individual job. Disable that job or remove it before this group can use the same URL.`
+        );
+      }
     }
   }
 
@@ -36,9 +47,9 @@ export async function validateGlobalGroupResolvedEnrollment(
     }
     const other = await resolveGlobalGroupTargets(g);
     for (const t of other) {
-      if (tabIds.has(t.tabId)) {
+      if (resolvedTabIds.has(t.tabId)) {
         return err(
-          `Tab ${t.tabId} already belongs to enabled global group "${g.name}". Disable that group or adjust patterns.`
+          `A tab in this selection already belongs to enabled global group "${g.name}". Disable that group or adjust patterns.`
         );
       }
     }

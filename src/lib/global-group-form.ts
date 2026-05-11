@@ -7,8 +7,8 @@ export type GlobalGroupFormInput = {
   name: string;
   baseIntervalSec: number;
   jitterSec: number;
-  /** One entry per selected tab; duplicate tabId rejected. */
-  targets: Array<{ tabId: number; windowId: number; targetUrl: string; label?: string }>;
+  /** Member rows (URL-first); duplicate member URLs rejected. */
+  targets: Array<{ targetUrl: string; label?: string }>;
   /** Newline-separated URL patterns with * wildcards (optional). */
   urlPatternsRaw?: string;
 };
@@ -18,8 +18,8 @@ export type GlobalGroupUpdateFormInput = {
   name: string;
   baseIntervalSec: number;
   jitterSec: number;
-  /** Full membership after edit — order preserved; must not contain duplicate tabIds. */
-  targets: Array<{ tabId: number; windowId: number; targetUrl: string; label?: string }>;
+  /** Full membership after edit — order preserved; duplicate member URLs rejected. */
+  targets: Array<{ targetUrl: string; label?: string }>;
   urlPatternsRaw?: string;
 };
 
@@ -67,20 +67,6 @@ export function buildGlobalGroupFromForm(
     return { ok: false, error: 'Select at least one tab or add at least one URL pattern' };
   }
 
-  const seen = new Set<number>();
-  for (const t of input.targets) {
-    if (!Number.isInteger(t.tabId) || t.tabId < 1) {
-      return { ok: false, error: 'Invalid tab' };
-    }
-    if (!Number.isInteger(t.windowId) || t.windowId < 0) {
-      return { ok: false, error: 'Invalid window' };
-    }
-    if (seen.has(t.tabId)) {
-      return { ok: false, error: `Duplicate tab ${t.tabId} in selection` };
-    }
-    seen.add(t.tabId);
-  }
-
   const interval = validateIntervalSec(input.baseIntervalSec);
   if (!interval.ok) {
     return interval;
@@ -90,16 +76,23 @@ export function buildGlobalGroupFromForm(
     return jitter;
   }
 
+  const seenMk = new Set<string>();
   const targets: TargetRef[] = [];
   for (const t of input.targets) {
     const url = validateHttpUrl(t.targetUrl);
     if (!url.ok) {
       return url;
     }
+    const mk = memberKeyFromTargetUrl(url.value);
+    if (!mk) {
+      return { ok: false, error: 'Invalid member URL' };
+    }
+    if (seenMk.has(mk)) {
+      return { ok: false, error: 'Duplicate member URL in selection' };
+    }
+    seenMk.add(mk);
     const label = t.label?.trim();
     targets.push({
-      tabId: t.tabId,
-      windowId: t.windowId,
       targetUrl: url.value,
       ...(label ? { label } : {}),
     });
@@ -178,27 +171,23 @@ export function buildGlobalGroupUpdateFromForm(
     return jitter;
   }
 
-  const seen = new Set<number>();
+  const seenMk = new Set<string>();
   const targets: TargetRef[] = [];
   for (const t of input.targets) {
-    if (!Number.isInteger(t.tabId) || t.tabId < 1) {
-      return { ok: false, error: 'Invalid tab' };
-    }
-    if (!Number.isInteger(t.windowId) || t.windowId < 0) {
-      return { ok: false, error: 'Invalid window' };
-    }
-    if (seen.has(t.tabId)) {
-      return { ok: false, error: `Duplicate tab ${t.tabId} in form` };
-    }
-    seen.add(t.tabId);
     const url = validateHttpUrl(t.targetUrl);
     if (!url.ok) {
       return url;
     }
+    const mk = memberKeyFromTargetUrl(url.value);
+    if (!mk) {
+      return { ok: false, error: 'Invalid member URL' };
+    }
+    if (seenMk.has(mk)) {
+      return { ok: false, error: 'Duplicate member URL in form' };
+    }
+    seenMk.add(mk);
     const label = t.label?.trim();
     targets.push({
-      tabId: t.tabId,
-      windowId: t.windowId,
       targetUrl: url.value,
       ...(label ? { label } : {}),
     });

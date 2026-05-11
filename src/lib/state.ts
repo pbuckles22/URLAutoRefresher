@@ -1,12 +1,12 @@
 import { BLIP_MAX_PHRASE_LEN, BLIP_MAX_PHRASES, BLIP_MAX_REGEX_LEN, compileBlipRegex } from './blip-match';
 import { memberKeyFromTargetUrl } from './member-url';
-import type { AppState, GlobalGroup } from './types';
+import type { AppState, GlobalGroup, IndividualJob, TargetRef } from './types';
 import type { Err, Ok, Result } from './validation';
 import { validateHttpUrl, validateIntervalSec, validateJitterSec } from './validation';
 
-export type { AppState, GlobalGroup, IndividualJob, TargetRef } from './types';
+export type { AppState, GlobalGroup, IndividualJob, ResolvedMemberTab, TargetRef } from './types';
 
-const CURRENT_SCHEMA = 2;
+const CURRENT_SCHEMA = 3;
 
 export const DEFAULT_STATE: AppState = {
   schemaVersion: CURRENT_SCHEMA,
@@ -31,13 +31,34 @@ type LegacyGlobalGroup = GlobalGroup & {
   tabNextFireAt?: Record<string, number>;
 };
 
+/** Epic 10.4: persist URL (+ optional label) only; strip legacy tab ids from disk. */
+export function normalizeTargetRef(raw: Record<string, unknown>): TargetRef {
+  const url = typeof raw.targetUrl === 'string' ? raw.targetUrl.trim() : '';
+  const labelRaw = raw.label;
+  const label =
+    typeof labelRaw === 'string' && labelRaw.trim().length > 0 ? labelRaw.trim() : undefined;
+  return label !== undefined ? { targetUrl: url, label } : { targetUrl: url };
+}
+
+function migrateIndividualJobRecord(raw: Record<string, unknown>): IndividualJob {
+  const t = raw.target;
+  const target =
+    t && typeof t === 'object' && t !== null && !Array.isArray(t)
+      ? normalizeTargetRef(t as Record<string, unknown>)
+      : { targetUrl: '' };
+  return { ...raw, target } as IndividualJob;
+}
+
 /**
- * Epic 10.3: merge legacy tab-id `tabNextFireAt` / `pausedTabIds` into member-key fields; strip legacy keys.
+ * Epic 10.3–10.4: merge legacy tab-id schedule/pause into member-key fields; strip legacy keys;
+ * normalize targets to URL-only {@link TargetRef}.
  * Exported for unit tests.
  */
 export function normalizeGlobalGroup(raw: Record<string, unknown>): GlobalGroup {
   const g = raw as LegacyGlobalGroup;
-  const targets = Array.isArray(raw.targets) ? (raw.targets as GlobalGroup['targets']) : [];
+  const rawTargetObjs = Array.isArray(raw.targets)
+    ? (raw.targets as Record<string, unknown>[])
+    : [];
 
   const memberNextFireAt: Record<string, number> = { ...(g.memberNextFireAt ?? {}) };
 
@@ -47,9 +68,10 @@ export function normalizeGlobalGroup(raw: Record<string, unknown>): GlobalGroup 
     }
     if (/^\d+$/.test(k)) {
       const tid = Number(k);
-      const target = targets.find((t) => t.tabId === tid);
-      if (target) {
-        const mk = memberKeyFromTargetUrl(target.targetUrl);
+      const legacy = rawTargetObjs.find((t) => Number(t.tabId) === tid);
+      const url = typeof legacy?.targetUrl === 'string' ? legacy.targetUrl : '';
+      if (url) {
+        const mk = memberKeyFromTargetUrl(url);
         if (mk) {
           mergeMemberFireAt(memberNextFireAt, mk, v);
         }
@@ -67,14 +89,17 @@ export function normalizeGlobalGroup(raw: Record<string, unknown>): GlobalGroup 
     if (!Number.isInteger(id) || id < 1) {
       continue;
     }
-    const target = targets.find((t) => t.tabId === id);
-    if (target) {
-      const mk = memberKeyFromTargetUrl(target.targetUrl);
+    const legacy = rawTargetObjs.find((t) => Number(t.tabId) === id);
+    const url = typeof legacy?.targetUrl === 'string' ? legacy.targetUrl : '';
+    if (url) {
+      const mk = memberKeyFromTargetUrl(url);
       if (mk) {
         pausedMemberKeys.add(mk);
       }
     }
   }
+
+  const targets: TargetRef[] = rawTargetObjs.map((row) => normalizeTargetRef(row));
 
   const {
     pausedTabIds: _pt,
@@ -100,7 +125,7 @@ export function parseStoredPayload(value: unknown): AppState {
   }
   const o = value as Record<string, unknown>;
   const sv = o.schemaVersion;
-  if (typeof sv !== 'number' || (sv !== 1 && sv !== CURRENT_SCHEMA)) {
+  if (typeof sv !== 'number' || (sv !== 1 && sv !== 2 && sv !== CURRENT_SCHEMA)) {
     return { ...DEFAULT_STATE };
   }
   if (!Array.isArray(o.globalGroups) || !Array.isArray(o.individualJobs)) {
@@ -109,10 +134,13 @@ export function parseStoredPayload(value: unknown): AppState {
   const globalGroups = (o.globalGroups as unknown[]).map((g) =>
     normalizeGlobalGroup(g as Record<string, unknown>)
   );
+  const individualJobs = (o.individualJobs as unknown[]).map((j) =>
+    migrateIndividualJobRecord(j as Record<string, unknown>)
+  );
   return {
     schemaVersion: CURRENT_SCHEMA,
     globalGroups,
-    individualJobs: o.individualJobs as AppState['individualJobs'],
+    individualJobs,
   };
 }
 
@@ -134,22 +162,26 @@ export function validateUniqueIds(state: AppState): Result<void> {
 }
 
 export function validateGlobalGroupTargets(group: GlobalGroup): Result<void> {
-  const tabs = new Set<number>();
+  const keys = new Set<string>();
   for (const t of group.targets) {
-    if (tabs.has(t.tabId)) {
-      return err(`Duplicate tabId ${t.tabId} in global group ${group.id}`);
+    const mk = memberKeyFromTargetUrl(t.targetUrl);
+    if (!mk) {
+      return err(`Invalid member URL in global group ${group.id}`);
     }
-    tabs.add(t.tabId);
+    if (keys.has(mk)) {
+      return err(`Duplicate member URL in global group ${group.id}`);
+    }
+    keys.add(mk);
   }
   return ok(undefined);
 }
 
 /**
- * Enabled jobs only: a tab may appear in at most one enabled global group
- * or one enabled individual job, never both.
+ * Enabled jobs only: same member URL may appear in at most one enabled global group
+ * or one enabled individual job.
  */
 export function validateEnabledEnrollment(state: AppState): Result<void> {
-  const map = new Map<number, string>();
+  const map = new Map<string, string>();
 
   for (const g of state.globalGroups) {
     if (!g.enabled) {
@@ -160,13 +192,17 @@ export function validateEnabledEnrollment(state: AppState): Result<void> {
       return inner;
     }
     for (const t of g.targets) {
-      const prev = map.get(t.tabId);
+      const mk = memberKeyFromTargetUrl(t.targetUrl);
+      if (!mk) {
+        continue;
+      }
+      const prev = map.get(mk);
       if (prev) {
         return err(
-          `Tab ${t.tabId} is already in another enabled global group. Disable or remove the other group, or remove this tab from one of the groups.`
+          `This URL is already used in ${prev}. Disable or remove the other group, or remove this URL from one of the groups.`
         );
       }
-      map.set(t.tabId, `global "${g.id}"`);
+      map.set(mk, `global group "${g.id}"`);
     }
   }
 
@@ -174,18 +210,22 @@ export function validateEnabledEnrollment(state: AppState): Result<void> {
     if (!j.enabled) {
       continue;
     }
-    const prev = map.get(j.target.tabId);
+    const mk = memberKeyFromTargetUrl(j.target.targetUrl);
+    if (!mk) {
+      continue;
+    }
+    const prev = map.get(mk);
     if (prev) {
       if (prev.startsWith('global')) {
         return err(
-          `Tab ${j.target.tabId} cannot be in an enabled global group and an enabled individual job at the same time. Stop or delete one of them, or turn off one schedule, before enabling the other.`
+          `This URL cannot be in an enabled global group and an enabled individual job at the same time. Stop or delete one of them, or turn off one schedule, before enabling the other.`
         );
       }
       return err(
-        `Tab ${j.target.tabId} already has another enabled individual refresh job. Stop or delete the other job first.`
+        `This URL already has another enabled individual refresh job. Stop or delete the other job first.`
       );
     }
-    map.set(j.target.tabId, `individual "${j.id}"`);
+    map.set(mk, `individual "${j.id}"`);
   }
 
   return ok(undefined);
