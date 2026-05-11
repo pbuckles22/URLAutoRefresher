@@ -21,7 +21,7 @@ describe('getPageOverlayVmForTab', () => {
           id: 'g1',
           name: 'G',
           targets: [{ tabId: 4, windowId: 1, targetUrl: 'https://b.test' }],
-          pausedTabIds: [4],
+          pausedMemberKeys: ['b.test'],
           baseIntervalSec: 30,
           jitterSec: 0,
           enabled: true,

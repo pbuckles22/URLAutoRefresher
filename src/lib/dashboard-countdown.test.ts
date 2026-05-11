@@ -86,19 +86,19 @@ describe('formatGlobalGroupCountdown', () => {
     expect(formatGlobalGroupCountdown(now, group({ nextFireAt }))).toBe('2:05');
   });
 
-  it('shows per-tab range when tabNextFireAt differs', () => {
+  it('shows per-member range when memberNextFireAt differs', () => {
     const now = 1_000_000;
     const g = group({
       nextFireAt: undefined,
-      tabNextFireAt: { '1': now + 60_000, '2': now + 180_000 },
+      memberNextFireAt: { 'x.com': now + 60_000, 'y.com': now + 180_000 },
     });
     expect(formatGlobalGroupCountdown(now, g)).toBe('1:00–3:00');
   });
 
-  it('shows single m:ss when per-tab schedules match', () => {
+  it('shows single m:ss when per-member schedules match', () => {
     const now = 1_000_000;
     const g = group({
-      tabNextFireAt: { '1': now + 90_000, '2': now + 90_000 },
+      memberNextFireAt: { 'x.com': now + 90_000, 'y.com': now + 90_000 },
     });
     expect(formatGlobalGroupCountdown(now, g)).toBe('1:30');
   });

@@ -1,7 +1,7 @@
 import type { ExtensionPrefs } from './prefs';
 import { resolveGlobalGroupTargets } from './global-group-targets';
 import type { AppState } from './types';
-import { pageMatchesExplicitTarget } from './member-url';
+import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url';
 
 export { pageMatchesExplicitTarget } from './member-url';
 
@@ -47,21 +47,26 @@ export async function getPageOverlayVmForTab(
       continue;
     }
     const resolved = await resolveGlobalGroupTargets(g);
-    const directMember = resolved.some((t) => t.tabId === tabId);
-    let scheduleTabId = tabId;
 
-    if (!directMember) {
+    let memberKey: string | null = null;
+    const hitResolved = resolved.find((t) => t.tabId === tabId);
+    if (hitResolved) {
+      memberKey = memberKeyFromTargetUrl(hitResolved.targetUrl);
+    } else {
       const hit = g.targets.find((t) => pageMatchesExplicitTarget(tabUrl, t.targetUrl));
       if (!hit) {
         continue;
       }
-      scheduleTabId = hit.tabId;
+      memberKey = memberKeyFromTargetUrl(hit.targetUrl);
+    }
+    if (!memberKey) {
+      continue;
     }
 
-    if (g.pausedTabIds?.includes(tabId) || g.pausedTabIds?.includes(scheduleTabId)) {
+    if (g.pausedMemberKeys?.includes(memberKey)) {
       return { show: true, mode: 'paused', globalGroupId: g.id };
     }
-    const next = g.tabNextFireAt?.[String(scheduleTabId)] ?? g.nextFireAt;
+    const next = g.memberNextFireAt?.[memberKey] ?? g.nextFireAt;
     return { show: true, mode: 'timer', nextFireAt: next, globalGroupId: g.id };
   }
 

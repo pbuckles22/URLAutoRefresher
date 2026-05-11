@@ -3,7 +3,7 @@ import { appStateListLayoutEqual, onlyNonLayoutAppStateDiff } from './app-state-
 import type { AppState } from './types';
 
 const base: AppState = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   globalGroups: [],
   individualJobs: [
     {

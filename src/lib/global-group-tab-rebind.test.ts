@@ -10,12 +10,13 @@ describe('rebindGlobalGroupTabIds', () => {
       baseIntervalSec: 1,
       jitterSec: 0,
       enabled: true,
-      tabNextFireAt: { '1': 100 },
+      memberNextFireAt: { x: 100 },
+      pausedMemberKeys: ['x'],
     };
     expect(rebindGlobalGroupTabIds(g, 1, 1, 0)).toEqual(g);
   });
 
-  it('moves tabNextFireAt and updates targets and pausedTabIds', () => {
+  it('updates targets only; member-key schedule and pause unchanged (Epic 10.3)', () => {
     const g = {
       id: 'a',
       name: 'G',
@@ -26,26 +27,12 @@ describe('rebindGlobalGroupTabIds', () => {
       baseIntervalSec: 1,
       jitterSec: 0,
       enabled: true,
-      tabNextFireAt: { '10': 5000, '20': 6000 },
-      pausedTabIds: [10],
+      memberNextFireAt: { 'twitch.tv/a': 5000, 'twitch.tv/b': 6000 },
+      pausedMemberKeys: ['twitch.tv/a'],
     };
     const out = rebindGlobalGroupTabIds(g, 10, 99, 2);
     expect(out.targets[0]).toMatchObject({ tabId: 99, windowId: 2 });
-    expect(out.tabNextFireAt).toEqual({ '99': 5000, '20': 6000 });
-    expect(out.pausedTabIds).toEqual([99]);
-  });
-
-  it('merges tabNextFireAt when new key already exists', () => {
-    const g = {
-      id: 'a',
-      name: 'G',
-      targets: [{ tabId: 10, windowId: 0, targetUrl: 'https://x/' }],
-      baseIntervalSec: 1,
-      jitterSec: 0,
-      enabled: true,
-      tabNextFireAt: { '10': 9000, '99': 8000 },
-    };
-    const out = rebindGlobalGroupTabIds(g, 10, 99, 0);
-    expect(out.tabNextFireAt?.['99']).toBe(8000);
+    expect(out.memberNextFireAt).toEqual(g.memberNextFireAt);
+    expect(out.pausedMemberKeys).toEqual(g.pausedMemberKeys);
   });
 });

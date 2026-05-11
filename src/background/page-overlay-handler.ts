@@ -9,6 +9,7 @@ import {
 } from '../lib/messages';
 import { getBlipWatchForTab } from '../lib/blip-tab-state';
 import { resolveGlobalGroupTargets } from '../lib/global-group-targets';
+import { memberKeyFromTargetUrl } from '../lib/member-url';
 import { getPageOverlayVmForTab } from '../lib/page-overlay-state';
 import { loadExtensionPrefs } from '../lib/prefs';
 import { loadAppState, saveAppState } from '../lib/storage';
@@ -100,22 +101,28 @@ async function handleGlobalGroupTabPause(tabId: number, groupId: string, paused:
     return false;
   }
   const resolved = await resolveGlobalGroupTargets(g);
-  if (!resolved.some((t) => t.tabId === tabId)) {
+  const hit = resolved.find((t) => t.tabId === tabId);
+  if (!hit) {
     return false;
   }
-  const set = new Set(g.pausedTabIds ?? []);
-  if (paused) {
-    set.add(tabId);
-  } else {
-    set.delete(tabId);
+  const mk = memberKeyFromTargetUrl(hit.targetUrl);
+  if (!mk) {
+    return false;
   }
-  const pausedTabIds = [...set];
+  const set = new Set(g.pausedMemberKeys ?? []);
+  if (paused) {
+    set.add(mk);
+  } else {
+    set.delete(mk);
+  }
+  const pausedMemberKeys = [...set].sort();
   const nextG = replaceAt(state.globalGroups, gIdx, {
     ...g,
-    pausedTabIds: pausedTabIds.length > 0 ? pausedTabIds : undefined,
+    pausedMemberKeys: pausedMemberKeys.length > 0 ? pausedMemberKeys : undefined,
   });
   state = { ...state, globalGroups: nextG };
   await saveAppState(state);
+  await syncAlarmsWithState(state);
   await refreshActionBadge();
   return true;
 }

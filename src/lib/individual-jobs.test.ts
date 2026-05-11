@@ -19,7 +19,7 @@ function sampleJob(overrides: Partial<IndividualJob> = {}): IndividualJob {
 }
 
 function emptyState(): AppState {
-  return { schemaVersion: 1, globalGroups: [], individualJobs: [] };
+  return { schemaVersion: 2, globalGroups: [], individualJobs: [] };
 }
 
 describe('individual-jobs (Epic 3.2)', () => {

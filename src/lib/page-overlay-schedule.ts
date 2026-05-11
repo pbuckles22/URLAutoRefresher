@@ -1,4 +1,5 @@
 import type { AppState } from './types';
+import { memberKeyFromTargetUrl } from './member-url';
 
 /** Tab has at least one enabled individual or global refresh targeting it. */
 export function tabHasActiveRefreshJob(state: AppState, tabId: number): boolean {
@@ -25,8 +26,13 @@ export function getNextFireAtForTab(state: AppState, tabId: number): number | un
     if (!group.enabled || group.targets.length === 0) {
       continue;
     }
-    if (group.targets.some((t) => t.tabId === tabId)) {
-      return group.tabNextFireAt?.[String(tabId)] ?? group.nextFireAt;
+    const target = group.targets.find((t) => t.tabId === tabId);
+    if (target) {
+      const mk = memberKeyFromTargetUrl(target.targetUrl);
+      if (!mk) {
+        continue;
+      }
+      return group.memberNextFireAt?.[mk] ?? group.nextFireAt;
     }
   }
   return undefined;

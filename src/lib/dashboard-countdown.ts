@@ -36,7 +36,7 @@ export function formatGlobalGroupCountdown(nowMs: number, group: GlobalGroup): s
   if (!group.enabled) {
     return '—';
   }
-  const map = group.tabNextFireAt;
+  const map = group.memberNextFireAt;
   if (map && Object.keys(map).length > 0) {
     const secList = Object.values(map).map((nf) => Math.ceil((nf - nowMs) / 1000));
     const minS = Math.min(...secList);

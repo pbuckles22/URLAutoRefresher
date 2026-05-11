@@ -17,7 +17,7 @@ describe('parseStoredPayload', () => {
 
   it('accepts minimal valid payload', () => {
     const raw = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       globalGroups: [],
       individualJobs: [],
     };
@@ -30,7 +30,30 @@ describe('parseStoredPayload', () => {
       globalGroups: [],
       individualJobs: [],
     });
-    expect(r).toMatchObject({ schemaVersion: 1, globalGroups: [], individualJobs: [] });
+    expect(r).toMatchObject({ schemaVersion: 2, globalGroups: [], individualJobs: [] });
+  });
+
+  it('migrates v1 tab-id schedule and pause to member keys', () => {
+    const raw = {
+      schemaVersion: 1,
+      globalGroups: [
+        {
+          id: 'g1',
+          name: 'G',
+          targets: [{ tabId: 1, windowId: 1, targetUrl: 'https://a.com/x' }],
+          tabNextFireAt: { '1': 999 },
+          pausedTabIds: [1],
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: true,
+        },
+      ],
+      individualJobs: [],
+    };
+    const out = parseStoredPayload(raw);
+    expect(out.schemaVersion).toBe(2);
+    expect(out.globalGroups[0].memberNextFireAt?.['a.com/x']).toBe(999);
+    expect(out.globalGroups[0].pausedMemberKeys).toEqual(['a.com/x']);
   });
 });
 
@@ -104,7 +127,7 @@ describe('validateGlobalGroupTargets', () => {
 describe('validateStateFields (Epic 1.2)', () => {
   it('accepts valid global and individual URLs and intervals', () => {
     const r = validateStateFields({
-      schemaVersion: 1,
+      schemaVersion: 2,
       globalGroups: [
         {
           id: 'g1',
@@ -181,7 +204,7 @@ describe('validateStateFields (Epic 1.2)', () => {
 describe('validateEnabledEnrollment', () => {
   it('allows same tab disabled in both places', () => {
     const r = validateEnabledEnrollment({
-      schemaVersion: 1,
+      schemaVersion: 2,
       globalGroups: [
         {
           id: 'g1',
@@ -207,7 +230,7 @@ describe('validateEnabledEnrollment', () => {
 
   it('fails when tab is enabled in global and individual', () => {
     const r = validateEnabledEnrollment({
-      schemaVersion: 1,
+      schemaVersion: 2,
       globalGroups: [
         {
           id: 'g1',
@@ -236,7 +259,7 @@ describe('validateEnabledEnrollment', () => {
 
   it('fails when two enabled individual jobs target the same tab', () => {
     const r = validateEnabledEnrollment({
-      schemaVersion: 1,
+      schemaVersion: 2,
       globalGroups: [],
       individualJobs: [
         {
@@ -263,7 +286,7 @@ describe('validateEnabledEnrollment', () => {
 
   it('fails when tab is in two enabled globals', () => {
     const r = validateEnabledEnrollment({
-      schemaVersion: 1,
+      schemaVersion: 2,
       globalGroups: [
         {
           id: 'g1',

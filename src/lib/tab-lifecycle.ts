@@ -1,3 +1,4 @@
+import { memberKeyFromTargetUrl } from './member-url';
 import type { AppState } from './types';
 
 /**
@@ -10,28 +11,34 @@ export function applyTabRemoved(state: AppState, removedTabId: number): AppState
   );
 
   const globalGroups = state.globalGroups.map((g) => {
+    const removedExplicit = g.targets.filter((t) => t.tabId === removedTabId);
+    const dropMemberKeys = new Set(
+      removedExplicit
+        .map((t) => memberKeyFromTargetUrl(t.targetUrl))
+        .filter((x): x is string => x != null)
+    );
+
     const targets = g.targets.filter((t) => t.tabId !== removedTabId);
-    const nextPaused =
-      g.pausedTabIds === undefined
-        ? undefined
-        : g.pausedTabIds.filter((id) => id !== removedTabId);
+
+    let pausedMemberKeys = g.pausedMemberKeys?.filter((mk) => !dropMemberKeys.has(mk));
+
+    let memberNextFireAt = g.memberNextFireAt;
+    if (memberNextFireAt && dropMemberKeys.size > 0) {
+      const copy = { ...memberNextFireAt };
+      for (const k of dropMemberKeys) {
+        delete copy[k];
+      }
+      memberNextFireAt = Object.keys(copy).length > 0 ? copy : undefined;
+    }
+
     const hasPatterns = g.urlPatterns?.some((p) => p.trim()) ?? false;
     const stillHasTabs = targets.length > 0 || hasPatterns;
     const enabled = stillHasTabs ? g.enabled : false;
-    const rm = String(removedTabId);
-    const tabNextFireAt =
-      g.tabNextFireAt === undefined
-        ? undefined
-        : (() => {
-            const copy = { ...g.tabNextFireAt };
-            delete copy[rm];
-            return Object.keys(copy).length > 0 ? copy : undefined;
-          })();
     return {
       ...g,
       targets,
-      tabNextFireAt,
-      pausedTabIds: nextPaused && nextPaused.length > 0 ? nextPaused : undefined,
+      memberNextFireAt,
+      pausedMemberKeys: pausedMemberKeys && pausedMemberKeys.length > 0 ? pausedMemberKeys : undefined,
       enabled,
     };
   });

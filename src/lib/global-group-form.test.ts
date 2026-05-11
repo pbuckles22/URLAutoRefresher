@@ -149,24 +149,24 @@ describe('buildGlobalGroupUpdateFromForm', () => {
     }
   });
 
-  it('filters pausedTabIds when a tab is removed', () => {
+  it('filters pausedMemberKeys when a tab is removed', () => {
     const ex: GlobalGroup = {
       ...existing(),
-      pausedTabIds: [10, 11],
+      pausedMemberKeys: ['example.com/a', 'example.com/b'],
     };
     const r = buildGlobalGroupUpdateFromForm(
       {
         name: 'N',
         baseIntervalSec: 60,
         jitterSec: 0,
-        targets: [{ tabId: 10, windowId: 2, targetUrl: 'https://x/' }],
+        targets: [{ tabId: 10, windowId: 2, targetUrl: 'https://example.com/a', label: 'A' }],
         urlPatternsRaw: '*example.com*',
       },
       ex
     );
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.value.pausedTabIds).toEqual([10]);
+      expect(r.value.pausedMemberKeys).toEqual(['example.com/a']);
     }
   });
 

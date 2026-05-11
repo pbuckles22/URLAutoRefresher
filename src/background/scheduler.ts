@@ -4,11 +4,12 @@
 
 import { BADGE_TICK_ALARM, refreshActionBadge } from './badge';
 import {
-  alarmNameGlobalTab,
+  alarmNameGlobalMember,
   alarmNameIndividual,
   parseAlarmName,
 } from '../lib/alarm-names';
 import { computeAlarmWhen } from '../lib/alarm-schedule';
+import { memberKeyFromTargetUrl } from '../lib/member-url';
 import { computeNextDelayMs } from '../lib/schedule';
 import { LIVE_AWARE_POLL_MS } from '../lib/live-aware-constants';
 import { rebindGlobalGroupTabIds } from '../lib/global-group-tab-rebind';
@@ -29,12 +30,12 @@ function baseAndJitterMs(thing: { baseIntervalSec: number; jitterSec: number }) 
   };
 }
 
-function tabNextFireAtSig(m: Record<string, number> | undefined): string {
+function memberNextFireAtSig(m: Record<string, number> | undefined): string {
   if (!m || Object.keys(m).length === 0) {
     return '';
   }
   return Object.keys(m)
-    .sort((a, b) => Number(a) - Number(b))
+    .sort((a, b) => a.localeCompare(b))
     .map((k) => `${k}:${m[k]}`)
     .join('|');
 }
@@ -60,47 +61,56 @@ async function alignGlobalGroupsState(state: AppState, now: number): Promise<App
     if (!g.enabled || !globalGroupHasSchedulableConfig(g)) {
       const clean =
         g.nextFireAt === undefined &&
-        (g.tabNextFireAt === undefined || Object.keys(g.tabNextFireAt).length === 0)
+        (g.memberNextFireAt === undefined || Object.keys(g.memberNextFireAt).length === 0)
           ? g
-          : { ...g, nextFireAt: undefined, tabNextFireAt: undefined };
+          : { ...g, nextFireAt: undefined, memberNextFireAt: undefined };
       globalGroups.push(clean);
       continue;
     }
 
     const { baseMs, jitterMs } = baseAndJitterMs(g);
     const resolved = await resolveGlobalGroupTargets(g);
-    const paused = new Set(g.pausedTabIds ?? []);
-    const tabIds = resolved.map((t) => t.tabId).filter((id) => !paused.has(id));
+    const paused = new Set(g.pausedMemberKeys ?? []);
+    const activeMemberKeys = new Set<string>();
+    for (const t of resolved) {
+      const mk = memberKeyFromTargetUrl(t.targetUrl);
+      if (!mk || paused.has(mk)) {
+        continue;
+      }
+      activeMemberKeys.add(mk);
+    }
 
-    let tabNextFireAt: Record<string, number> = { ...(g.tabNextFireAt ?? {}) };
+    let memberNextFireAt: Record<string, number> = { ...(g.memberNextFireAt ?? {}) };
 
+    const schedulableMemberKeys = [...activeMemberKeys];
     const legacyOnly =
-      Object.keys(tabNextFireAt).length === 0 && g.nextFireAt != null && tabIds.length > 0;
+      Object.keys(memberNextFireAt).length === 0 &&
+      g.nextFireAt != null &&
+      schedulableMemberKeys.length > 0;
     if (legacyOnly) {
-      tabNextFireAt = {};
-      for (const id of tabIds) {
-        tabNextFireAt[String(id)] = now + computeNextDelayMs(baseMs, jitterMs);
+      memberNextFireAt = {};
+      for (const mk of schedulableMemberKeys) {
+        memberNextFireAt[mk] = now + computeNextDelayMs(baseMs, jitterMs);
       }
     }
 
-    for (const id of tabIds) {
-      const key = String(id);
-      if (tabNextFireAt[key] === undefined) {
-        tabNextFireAt[key] = now + computeNextDelayMs(baseMs, jitterMs);
+    for (const mk of schedulableMemberKeys) {
+      if (memberNextFireAt[mk] === undefined) {
+        memberNextFireAt[mk] = now + computeNextDelayMs(baseMs, jitterMs);
       } else {
-        tabNextFireAt[key] = computeAlarmWhen(now, tabNextFireAt[key], baseMs, jitterMs);
+        memberNextFireAt[mk] = computeAlarmWhen(now, memberNextFireAt[mk], baseMs, jitterMs);
       }
     }
 
-    for (const key of Object.keys(tabNextFireAt)) {
-      if (!tabIds.includes(Number(key))) {
-        delete tabNextFireAt[key];
+    for (const key of Object.keys(memberNextFireAt)) {
+      if (!activeMemberKeys.has(key)) {
+        delete memberNextFireAt[key];
       }
     }
 
     globalGroups.push({
       ...g,
-      tabNextFireAt: Object.keys(tabNextFireAt).length > 0 ? tabNextFireAt : undefined,
+      memberNextFireAt: Object.keys(memberNextFireAt).length > 0 ? memberNextFireAt : undefined,
       nextFireAt: undefined,
     });
   }
@@ -126,7 +136,7 @@ function stateSchedulingEqual(a: AppState, b: AppState): boolean {
         id: g.id,
         enabled: g.enabled,
         nf: g.nextFireAt,
-        tnf: tabNextFireAtSig(g.tabNextFireAt),
+        tnf: memberNextFireAtSig(g.memberNextFireAt),
         tc: g.targets.length,
         pc: g.urlPatterns?.length ?? 0,
       })),
@@ -167,16 +177,15 @@ export async function syncAlarmsWithState(state: AppState): Promise<void> {
     if (!group.enabled || !globalGroupHasSchedulableConfig(group)) {
       continue;
     }
-    const tabMap = group.tabNextFireAt;
+    const tabMap = group.memberNextFireAt;
     if (!tabMap || Object.keys(tabMap).length === 0) {
       continue;
     }
-    for (const [tabIdStr, when] of Object.entries(tabMap)) {
-      const tabId = Number(tabIdStr);
-      if (!Number.isInteger(tabId) || tabId < 1) {
+    for (const [memberKey, when] of Object.entries(tabMap)) {
+      if (typeof memberKey !== 'string' || memberKey.length === 0) {
         continue;
       }
-      await chrome.alarms.create(alarmNameGlobalTab(group.id, tabId), { when });
+      await chrome.alarms.create(alarmNameGlobalMember(group.id, memberKey), { when });
     }
   }
 }
@@ -291,10 +300,15 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
       return;
     }
 
-    if (parsed.kind !== 'globalTab') {
+    if (parsed.kind === 'globalTab') {
+      await syncAlarmsWithState(await loadAppState());
       return;
     }
-    const { groupId, tabId } = parsed;
+
+    if (parsed.kind !== 'globalMember') {
+      return;
+    }
+    const { groupId, memberKey } = parsed;
     let gIdx = state.globalGroups.findIndex((g) => g.id === groupId);
     if (gIdx < 0) {
       return;
@@ -305,23 +319,34 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
     }
 
     const resolved = await resolveGlobalGroupTargets(group);
-    const paused = new Set(group.pausedTabIds ?? []);
+    const paused = new Set(group.pausedMemberKeys ?? []);
 
-    let memberUrl: string | undefined;
-    const tref = resolved.find((t) => t.tabId === tabId);
-    if (tref) {
-      memberUrl = tref.targetUrl;
-    } else {
-      memberUrl = group.targets.find((t) => t.tabId === tabId)?.targetUrl;
-    }
+    const tref =
+      resolved.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey) ??
+      group.targets.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey);
+    const memberUrl = tref?.targetUrl;
     if (!memberUrl) {
       await syncAlarmsWithState(await loadAppState());
       return;
     }
 
-    const resolvedLiveTabId = await resolveLiveTabIdForTargetUrl(memberUrl, tabId);
-    const refreshTabId = resolvedLiveTabId ?? tabId;
-    if (paused.has(tabId) || paused.has(refreshTabId)) {
+    const preferredTabId = tref?.tabId ?? group.targets.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey)?.tabId;
+    const hintTabId =
+      preferredTabId ??
+      resolved.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey)?.tabId ??
+      0;
+
+    const resolvedLiveTabId = await resolveLiveTabIdForTargetUrl(
+      memberUrl,
+      hintTabId >= 1 ? hintTabId : 0
+    );
+    const refreshTabId = resolvedLiveTabId ?? (hintTabId >= 1 ? hintTabId : undefined);
+    if (refreshTabId === undefined) {
+      await syncAlarmsWithState(await loadAppState());
+      return;
+    }
+
+    if (paused.has(memberKey)) {
       await syncAlarmsWithState(await loadAppState());
       return;
     }
@@ -341,7 +366,7 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
     const { baseMs, jitterMs } = baseAndJitterMs(group);
 
     let nextGroup = group;
-    if (ok && resolvedLiveTabId !== undefined && resolvedLiveTabId !== tabId) {
+    if (ok && resolvedLiveTabId !== undefined && hintTabId >= 1 && resolvedLiveTabId !== hintTabId) {
       let newWid = 0;
       try {
         const t = await chrome.tabs.get(resolvedLiveTabId);
@@ -351,21 +376,22 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
       } catch {
         /* keep 0 if unknown */
       }
-      nextGroup = rebindGlobalGroupTabIds(group, tabId, resolvedLiveTabId, newWid);
+      nextGroup = rebindGlobalGroupTabIds(group, hintTabId, resolvedLiveTabId, newWid);
     }
 
-    const key = String(tabId);
-    let tabNextFireAt = { ...(nextGroup.tabNextFireAt ?? {}) };
+    let memberNextFireAt = { ...(nextGroup.memberNextFireAt ?? {}) };
 
     if (!ok) {
-      delete tabNextFireAt[key];
-      const targets = group.targets.filter((t) => t.tabId !== tabId);
+      delete memberNextFireAt[memberKey];
+      const dropTabId = hintTabId >= 1 ? hintTabId : undefined;
+      const targets =
+        dropTabId !== undefined ? group.targets.filter((t) => t.tabId !== dropTabId) : group.targets;
       const hasPatterns = group.urlPatterns?.some((p) => p.trim()) ?? false;
       const enabled = group.enabled && (targets.length > 0 || hasPatterns);
       const nextGroups = replaceAt(state.globalGroups, gIdx, {
         ...group,
         targets,
-        tabNextFireAt: Object.keys(tabNextFireAt).length > 0 ? tabNextFireAt : undefined,
+        memberNextFireAt: Object.keys(memberNextFireAt).length > 0 ? memberNextFireAt : undefined,
         enabled,
         nextFireAt: undefined,
       });
@@ -375,10 +401,10 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
       return;
     }
 
-    tabNextFireAt[String(refreshTabId)] = Date.now() + computeNextDelayMs(baseMs, jitterMs);
+    memberNextFireAt[memberKey] = Date.now() + computeNextDelayMs(baseMs, jitterMs);
     const nextGroups = replaceAt(state.globalGroups, gIdx, {
       ...nextGroup,
-      tabNextFireAt,
+      memberNextFireAt,
       nextFireAt: undefined,
     });
     state = { ...state, globalGroups: nextGroups };

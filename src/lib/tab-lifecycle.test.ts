@@ -59,15 +59,18 @@ describe('applyTabRemoved', () => {
     expect(next.globalGroups[0].enabled).toBe(true);
   });
 
-  it('removes closed tab from pausedTabIds', () => {
+  it('removes closed tab member from pausedMemberKeys', () => {
     const state = {
       ...DEFAULT_STATE,
       globalGroups: [
         {
           id: 'g1',
           name: 'G',
-          targets: [{ tabId: 9, windowId: 1, targetUrl: 'https://b.com' }],
-          pausedTabIds: [9, 10],
+          targets: [
+            { tabId: 9, windowId: 1, targetUrl: 'https://b.com' },
+            { tabId: 10, windowId: 1, targetUrl: 'https://c.com' },
+          ],
+          pausedMemberKeys: ['b.com', 'c.com'],
           baseIntervalSec: 60,
           jitterSec: 0,
           enabled: true,
@@ -75,7 +78,7 @@ describe('applyTabRemoved', () => {
       ],
     };
     const next = applyTabRemoved(state, 9);
-    expect(next.globalGroups[0].pausedTabIds).toEqual([10]);
+    expect(next.globalGroups[0].pausedMemberKeys).toEqual(['c.com']);
   });
 
   it('removes one tab from multi-target global and keeps group enabled (Epic 2.3)', () => {

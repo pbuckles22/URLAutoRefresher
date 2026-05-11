@@ -1,3 +1,4 @@
+import { memberKeyFromTargetUrl } from './member-url';
 import type { GlobalGroup, TargetRef } from './types';
 import type { Result } from './validation';
 import { validateHttpUrl, validateIntervalSec, validateJitterSec } from './validation';
@@ -120,30 +121,38 @@ export function buildGlobalGroupFromForm(
 
 function filterPausedStateForTabs(
   existing: GlobalGroup,
-  newTabIds: Set<number>
-): Pick<GlobalGroup, 'pausedTabIds' | 'tabNextFireAt'> {
-  let pausedTabIds = existing.pausedTabIds?.filter((id) => newTabIds.has(id));
-  if (pausedTabIds?.length === 0) {
-    pausedTabIds = undefined;
+  newTargets: TargetRef[]
+): Pick<GlobalGroup, 'pausedMemberKeys' | 'memberNextFireAt'> {
+  const remainingKeys = new Set<string>();
+  for (const t of newTargets) {
+    const mk = memberKeyFromTargetUrl(t.targetUrl);
+    if (mk) {
+      remainingKeys.add(mk);
+    }
   }
 
-  let tabNextFireAt = existing.tabNextFireAt;
-  if (tabNextFireAt) {
+  let pausedMemberKeys = existing.pausedMemberKeys?.filter((mk) => remainingKeys.has(mk));
+  if (pausedMemberKeys?.length === 0) {
+    pausedMemberKeys = undefined;
+  }
+
+  let memberNextFireAt = existing.memberNextFireAt;
+  if (memberNextFireAt) {
     const next: Record<string, number> = {};
-    for (const [k, v] of Object.entries(tabNextFireAt)) {
-      if (newTabIds.has(Number(k))) {
+    for (const [k, v] of Object.entries(memberNextFireAt)) {
+      if (remainingKeys.has(k)) {
         next[k] = v;
       }
     }
-    tabNextFireAt = Object.keys(next).length > 0 ? next : undefined;
+    memberNextFireAt = Object.keys(next).length > 0 ? next : undefined;
   }
 
-  return { pausedTabIds, tabNextFireAt };
+  return { pausedMemberKeys, memberNextFireAt };
 }
 
 /**
  * Re-validates fields for an existing group (Epic 4.2 edit + backlog 6 add/remove members).
- * Preserves `id`, `enabled`, `nextFireAt` (legacy); filters `pausedTabIds` / `tabNextFireAt` to remaining tab ids.
+ * Preserves `id`, `enabled`, `nextFireAt` (legacy); filters member-key pause/schedule to remaining targets.
  */
 export function buildGlobalGroupUpdateFromForm(
   input: GlobalGroupUpdateFormInput,
@@ -199,7 +208,7 @@ export function buildGlobalGroupUpdateFromForm(
     return { ok: false, error: 'Keep at least one tab or one URL pattern' };
   }
 
-  const { pausedTabIds, tabNextFireAt } = filterPausedStateForTabs(existing, seen);
+  const { pausedMemberKeys, memberNextFireAt } = filterPausedStateForTabs(existing, targets);
 
   const next: GlobalGroup = {
     ...existing,
@@ -215,16 +224,16 @@ export function buildGlobalGroupUpdateFromForm(
     delete next.urlPatterns;
   }
 
-  if (pausedTabIds !== undefined) {
-    next.pausedTabIds = pausedTabIds;
+  if (pausedMemberKeys !== undefined) {
+    next.pausedMemberKeys = pausedMemberKeys;
   } else {
-    delete next.pausedTabIds;
+    delete next.pausedMemberKeys;
   }
 
-  if (tabNextFireAt !== undefined) {
-    next.tabNextFireAt = tabNextFireAt;
+  if (memberNextFireAt !== undefined) {
+    next.memberNextFireAt = memberNextFireAt;
   } else {
-    delete next.tabNextFireAt;
+    delete next.memberNextFireAt;
   }
 
   return { ok: true, value: next };

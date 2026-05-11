@@ -49,7 +49,7 @@ export async function refreshActionBadge(): Promise<void> {
   const state = await loadAppState();
   const now = Date.now();
   const tabIds = await tabIdsForLastFocusedWindow();
-  const comp = computeBadgeComputation(state, now, tabIds, { fallbackWhenFocusedEmpty: true });
+  const comp = await computeBadgeComputation(state, now, tabIds, { fallbackWhenFocusedEmpty: true });
   const text = badgeTextFromComputation(comp);
   await chrome.action.setBadgeText({ text });
   await syncBadgeTickAlarm(comp);

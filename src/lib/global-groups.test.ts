@@ -16,7 +16,7 @@ function sampleGroup(overrides: Partial<GlobalGroup> = {}): GlobalGroup {
 }
 
 function emptyState(): AppState {
-  return { schemaVersion: 1, globalGroups: [], individualJobs: [] };
+  return { schemaVersion: 2, globalGroups: [], individualJobs: [] };
 }
 
 describe('global-groups (Epic 4.2)', () => {
@@ -32,13 +32,19 @@ describe('global-groups (Epic 4.2)', () => {
   });
 
   it('setGlobalGroupEnabled toggles enabled and clears schedule when stopping', () => {
-    const g = sampleGroup({ tabNextFireAt: { '1': 100, '2': 200 } });
+    const g = sampleGroup({
+      targets: [
+        { tabId: 1, windowId: 0, targetUrl: 'https://example.com' },
+        { tabId: 2, windowId: 0, targetUrl: 'https://b.com' },
+      ],
+      memberNextFireAt: { 'example.com': 100, 'b.com': 200 },
+    });
     const state: AppState = { ...emptyState(), globalGroups: [g] };
     const stopped = setGlobalGroupEnabled(state, 'g-a', false);
     expect(stopped.globalGroups[0]).toMatchObject({
       enabled: false,
       nextFireAt: undefined,
-      tabNextFireAt: undefined,
+      memberNextFireAt: undefined,
     });
     const started = setGlobalGroupEnabled(stopped, 'g-a', true);
     expect(started.globalGroups[0]).toMatchObject({ enabled: true });

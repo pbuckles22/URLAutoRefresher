@@ -9,13 +9,13 @@ import {
 import type { AppState } from './types';
 
 const emptyState = (): AppState => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   globalGroups: [],
   individualJobs: [],
 });
 
 describe('collectNextFireTimesForTabSet', () => {
-  it('includes individual job when tab is in set', () => {
+  it('includes individual job when tab is in set', async () => {
     const state: AppState = {
       ...emptyState(),
       individualJobs: [
@@ -29,11 +29,11 @@ describe('collectNextFireTimesForTabSet', () => {
         },
       ],
     };
-    expect(collectNextFireTimesForTabSet(state, new Set([5]))).toEqual([1000]);
-    expect(collectNextFireTimesForTabSet(state, new Set([9]))).toEqual([]);
+    await expect(collectNextFireTimesForTabSet(state, new Set([5]))).resolves.toEqual([1000]);
+    await expect(collectNextFireTimesForTabSet(state, new Set([9]))).resolves.toEqual([]);
   });
 
-  it('includes global group per-tab next fire when tab is in set', () => {
+  it('includes global group per-member next fire when tab is in set', async () => {
     const state: AppState = {
       ...emptyState(),
       globalGroups: [
@@ -47,12 +47,12 @@ describe('collectNextFireTimesForTabSet', () => {
           baseIntervalSec: 10,
           jitterSec: 0,
           enabled: true,
-          tabNextFireAt: { '1': 400, '2': 500 },
+          memberNextFireAt: { a: 400, b: 500 },
         },
       ],
     };
-    expect(collectNextFireTimesForTabSet(state, new Set([2]))).toEqual([500]);
-    expect(collectNextFireTimesForTabSet(state, new Set([3]))).toEqual([]);
+    await expect(collectNextFireTimesForTabSet(state, new Set([2]))).resolves.toEqual([500]);
+    await expect(collectNextFireTimesForTabSet(state, new Set([3]))).resolves.toEqual([]);
   });
 });
 
@@ -63,7 +63,7 @@ describe('nearestTime', () => {
 });
 
 describe('computeBadgeComputation', () => {
-  it('picks nearest nextFire in focused window', () => {
+  it('picks nearest nextFire in focused window', async () => {
     const state: AppState = {
       ...emptyState(),
       individualJobs: [
@@ -85,11 +85,11 @@ describe('computeBadgeComputation', () => {
         },
       ],
     };
-    const c = computeBadgeComputation(state, 0, new Set([1]), { fallbackWhenFocusedEmpty: true });
+    const c = await computeBadgeComputation(state, 0, new Set([1]), { fallbackWhenFocusedEmpty: true });
     expect(c).toEqual({ kind: 'countdown', remainMs: 10_000, source: 'focused' });
   });
 
-  it('uses fallback when focused window has no jobs', () => {
+  it('uses fallback when focused window has no jobs', async () => {
     const state: AppState = {
       ...emptyState(),
       individualJobs: [
@@ -103,17 +103,17 @@ describe('computeBadgeComputation', () => {
         },
       ],
     };
-    const c = computeBadgeComputation(state, 0, new Set([99]), { fallbackWhenFocusedEmpty: true });
+    const c = await computeBadgeComputation(state, 0, new Set([99]), { fallbackWhenFocusedEmpty: true });
     expect(c).toEqual({ kind: 'countdown', remainMs: 8000, source: 'fallback' });
   });
 
-  it('idle when nothing scheduled and no fallback match', () => {
-    expect(
+  it('idle when nothing scheduled and no fallback match', async () => {
+    await expect(
       computeBadgeComputation(emptyState(), 0, new Set([1]), { fallbackWhenFocusedEmpty: true })
-    ).toEqual({ kind: 'idle' });
+    ).resolves.toEqual({ kind: 'idle' });
   });
 
-  it('idle when focused empty and fallback disabled', () => {
+  it('idle when focused empty and fallback disabled', async () => {
     const state: AppState = {
       ...emptyState(),
       individualJobs: [
@@ -127,7 +127,7 @@ describe('computeBadgeComputation', () => {
         },
       ],
     };
-    const c = computeBadgeComputation(state, 0, new Set([99]), { fallbackWhenFocusedEmpty: false });
+    const c = await computeBadgeComputation(state, 0, new Set([99]), { fallbackWhenFocusedEmpty: false });
     expect(c).toEqual({ kind: 'idle' });
   });
 });

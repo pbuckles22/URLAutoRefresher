@@ -13,15 +13,15 @@ export type GlobalGroup = {
   targets: TargetRef[];
   /** Lines with * wildcards; any open tab whose URL matches is included (including new tabs). */
   urlPatterns?: string[];
-  /** Tab IDs in this group that skip scheduled refresh until resumed (overlay pause). */
-  pausedTabIds?: number[];
+  /** Member rows paused from overlay; keys match `memberKeyFromTargetUrl(targetUrl)` (Epic 10.3). */
+  pausedMemberKeys?: string[];
   baseIntervalSec: number;
   jitterSec: number;
   enabled: boolean;
-  /** @deprecated Prefer tabNextFireAt; kept for migration from older saves. */
+  /** @deprecated Prefer memberNextFireAt; kept for migration from older saves. */
   nextFireAt?: number;
-  /** Per-tab next refresh (ms). Jitter is applied independently per tab. Keys are String(tabId). */
-  tabNextFireAt?: Record<string, number>;
+  /** Per-member next refresh (ms). Keys match `memberKeyFromTargetUrl(targetUrl)` (Epic 10.3). */
+  memberNextFireAt?: Record<string, number>;
 };
 
 export type IndividualJob = {

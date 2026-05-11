@@ -1,11 +1,12 @@
 import { BLIP_MAX_PHRASE_LEN, BLIP_MAX_PHRASES, BLIP_MAX_REGEX_LEN, compileBlipRegex } from './blip-match';
+import { memberKeyFromTargetUrl } from './member-url';
 import type { AppState, GlobalGroup } from './types';
 import type { Err, Ok, Result } from './validation';
 import { validateHttpUrl, validateIntervalSec, validateJitterSec } from './validation';
 
 export type { AppState, GlobalGroup, IndividualJob, TargetRef } from './types';
 
-const CURRENT_SCHEMA = 1;
+const CURRENT_SCHEMA = 2;
 
 export const DEFAULT_STATE: AppState = {
   schemaVersion: CURRENT_SCHEMA,
@@ -20,6 +21,78 @@ function err(error: string): Err {
   return { ok: false, error };
 }
 
+function mergeMemberFireAt(map: Record<string, number>, key: string, val: number): void {
+  const p = map[key];
+  map[key] = p === undefined ? val : Math.min(p, val);
+}
+
+type LegacyGlobalGroup = GlobalGroup & {
+  pausedTabIds?: number[];
+  tabNextFireAt?: Record<string, number>;
+};
+
+/**
+ * Epic 10.3: merge legacy tab-id `tabNextFireAt` / `pausedTabIds` into member-key fields; strip legacy keys.
+ * Exported for unit tests.
+ */
+export function normalizeGlobalGroup(raw: Record<string, unknown>): GlobalGroup {
+  const g = raw as LegacyGlobalGroup;
+  const targets = Array.isArray(raw.targets) ? (raw.targets as GlobalGroup['targets']) : [];
+
+  const memberNextFireAt: Record<string, number> = { ...(g.memberNextFireAt ?? {}) };
+
+  for (const [k, v] of Object.entries(g.tabNextFireAt ?? {})) {
+    if (typeof v !== 'number' || !Number.isFinite(v)) {
+      continue;
+    }
+    if (/^\d+$/.test(k)) {
+      const tid = Number(k);
+      const target = targets.find((t) => t.tabId === tid);
+      if (target) {
+        const mk = memberKeyFromTargetUrl(target.targetUrl);
+        if (mk) {
+          mergeMemberFireAt(memberNextFireAt, mk, v);
+        }
+      }
+    }
+  }
+
+  const pausedMemberKeys = new Set<string>();
+  for (const s of g.pausedMemberKeys ?? []) {
+    if (typeof s === 'string' && s.length > 0 && s.length <= 2048) {
+      pausedMemberKeys.add(s);
+    }
+  }
+  for (const id of g.pausedTabIds ?? []) {
+    if (!Number.isInteger(id) || id < 1) {
+      continue;
+    }
+    const target = targets.find((t) => t.tabId === id);
+    if (target) {
+      const mk = memberKeyFromTargetUrl(target.targetUrl);
+      if (mk) {
+        pausedMemberKeys.add(mk);
+      }
+    }
+  }
+
+  const {
+    pausedTabIds: _pt,
+    tabNextFireAt: _tnf,
+    memberNextFireAt: _mn0,
+    pausedMemberKeys: _pm0,
+    targets: _tg,
+    ...rest
+  } = g;
+
+  return {
+    ...rest,
+    targets,
+    ...(Object.keys(memberNextFireAt).length > 0 ? { memberNextFireAt } : {}),
+    ...(pausedMemberKeys.size > 0 ? { pausedMemberKeys: [...pausedMemberKeys].sort() } : {}),
+  } as GlobalGroup;
+}
+
 /** Normalize and validate persisted JSON from chrome.storage. */
 export function parseStoredPayload(value: unknown): AppState {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -27,15 +100,18 @@ export function parseStoredPayload(value: unknown): AppState {
   }
   const o = value as Record<string, unknown>;
   const sv = o.schemaVersion;
-  if (typeof sv !== 'number' || sv !== CURRENT_SCHEMA) {
+  if (typeof sv !== 'number' || (sv !== 1 && sv !== CURRENT_SCHEMA)) {
     return { ...DEFAULT_STATE };
   }
   if (!Array.isArray(o.globalGroups) || !Array.isArray(o.individualJobs)) {
     return { ...DEFAULT_STATE };
   }
+  const globalGroups = (o.globalGroups as unknown[]).map((g) =>
+    normalizeGlobalGroup(g as Record<string, unknown>)
+  );
   return {
     schemaVersion: CURRENT_SCHEMA,
-    globalGroups: o.globalGroups as AppState['globalGroups'],
+    globalGroups,
     individualJobs: o.individualJobs as AppState['individualJobs'],
   };
 }
@@ -143,25 +219,28 @@ export function validateStateFields(state: AppState): Result<void> {
         }
       }
     }
-    const paused = g.pausedTabIds;
+    const paused = g.pausedMemberKeys;
     if (paused !== undefined) {
       if (!Array.isArray(paused)) {
-        return err('Invalid paused tab list');
+        return err('Invalid paused member key list');
       }
-      for (const id of paused) {
-        if (!Number.isInteger(id) || id < 1) {
-          return err('Invalid paused tab id');
+      for (const key of paused) {
+        if (typeof key !== 'string' || key.length === 0 || key.length > 2048) {
+          return err('Invalid paused member key');
         }
       }
     }
-    const tnf = g.tabNextFireAt;
+    const tnf = g.memberNextFireAt;
     if (tnf !== undefined) {
       if (typeof tnf !== 'object' || tnf === null || Array.isArray(tnf)) {
-        return err('Invalid global group tab schedule');
+        return err('Invalid global group member schedule');
       }
       for (const [k, v] of Object.entries(tnf)) {
-        if (!/^\d+$/.test(k) || typeof v !== 'number' || !Number.isFinite(v)) {
-          return err('Invalid global group tab schedule entry');
+        if (typeof k !== 'string' || k.length === 0 || k.length > 2048) {
+          return err('Invalid global group member schedule entry key');
+        }
+        if (typeof v !== 'number' || !Number.isFinite(v)) {
+          return err('Invalid global group member schedule entry');
         }
       }
     }

@@ -33,7 +33,7 @@
     if (!group.enabled) {
       return "\u2014";
     }
-    const map = group.tabNextFireAt;
+    const map = group.memberNextFireAt;
     if (map && Object.keys(map).length > 0) {
       const secList = Object.values(map).map((nf) => Math.ceil((nf - nowMs) / 1e3));
       const minS = Math.min(...secList);
@@ -57,6 +57,67 @@
     }
     const totalSec = Math.ceil(remain / 1e3);
     return formatRemainSec(totalSec);
+  }
+
+  // src/lib/url-glob.ts
+  var MAX_PATTERN_LEN = 200;
+  function escapeRegexLiteral(s) {
+    return s.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  }
+  function urlMatchesGlob(url, pattern) {
+    const p = pattern.trim();
+    if (!p || p.length > MAX_PATTERN_LEN) {
+      return false;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      return false;
+    }
+    if (!p.includes("*")) {
+      return url.toLowerCase().includes(p.toLowerCase());
+    }
+    const parts = p.split("*").map(escapeRegexLiteral);
+    const re = new RegExp(`^${parts.join(".*")}$`, "i");
+    return re.test(url);
+  }
+  function mergeDistinctPatternLines(baseRaw, additions) {
+    const seen = /* @__PURE__ */ new Set();
+    const linesOut = [];
+    for (const line of baseRaw.split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t) {
+        continue;
+      }
+      seen.add(t.toLowerCase());
+      linesOut.push(t);
+    }
+    for (const add of additions) {
+      const t = add.trim();
+      if (!t) {
+        continue;
+      }
+      const k = t.toLowerCase();
+      if (seen.has(k)) {
+        continue;
+      }
+      seen.add(k);
+      linesOut.push(t);
+    }
+    return linesOut.join("\n");
+  }
+
+  // src/lib/member-url.ts
+  function memberKeyFromTargetUrl(url) {
+    try {
+      const u = new URL(url.trim());
+      if (u.protocol !== "http:" && u.protocol !== "https:") {
+        return null;
+      }
+      const host = u.hostname.replace(/^www\./i, "").toLowerCase();
+      const path = u.pathname.replace(/\/$/, "").toLowerCase();
+      return `${host}${path}`;
+    } catch {
+      return null;
+    }
   }
 
   // src/lib/validation.ts
@@ -172,22 +233,29 @@
       }
     };
   }
-  function filterPausedStateForTabs(existing, newTabIds) {
-    let pausedTabIds = existing.pausedTabIds?.filter((id) => newTabIds.has(id));
-    if (pausedTabIds?.length === 0) {
-      pausedTabIds = void 0;
+  function filterPausedStateForTabs(existing, newTargets) {
+    const remainingKeys = /* @__PURE__ */ new Set();
+    for (const t of newTargets) {
+      const mk = memberKeyFromTargetUrl(t.targetUrl);
+      if (mk) {
+        remainingKeys.add(mk);
+      }
     }
-    let tabNextFireAt = existing.tabNextFireAt;
-    if (tabNextFireAt) {
+    let pausedMemberKeys = existing.pausedMemberKeys?.filter((mk) => remainingKeys.has(mk));
+    if (pausedMemberKeys?.length === 0) {
+      pausedMemberKeys = void 0;
+    }
+    let memberNextFireAt = existing.memberNextFireAt;
+    if (memberNextFireAt) {
       const next = {};
-      for (const [k, v] of Object.entries(tabNextFireAt)) {
-        if (newTabIds.has(Number(k))) {
+      for (const [k, v] of Object.entries(memberNextFireAt)) {
+        if (remainingKeys.has(k)) {
           next[k] = v;
         }
       }
-      tabNextFireAt = Object.keys(next).length > 0 ? next : void 0;
+      memberNextFireAt = Object.keys(next).length > 0 ? next : void 0;
     }
-    return { pausedTabIds, tabNextFireAt };
+    return { pausedMemberKeys, memberNextFireAt };
   }
   function buildGlobalGroupUpdateFromForm(input, existing) {
     const name = input.name.trim();
@@ -235,7 +303,7 @@
     if (targets.length < 1 && urlPatterns.length < 1) {
       return { ok: false, error: "Keep at least one tab or one URL pattern" };
     }
-    const { pausedTabIds, tabNextFireAt } = filterPausedStateForTabs(existing, seen);
+    const { pausedMemberKeys, memberNextFireAt } = filterPausedStateForTabs(existing, targets);
     const next = {
       ...existing,
       name,
@@ -248,15 +316,15 @@
     } else {
       delete next.urlPatterns;
     }
-    if (pausedTabIds !== void 0) {
-      next.pausedTabIds = pausedTabIds;
+    if (pausedMemberKeys !== void 0) {
+      next.pausedMemberKeys = pausedMemberKeys;
     } else {
-      delete next.pausedTabIds;
+      delete next.pausedMemberKeys;
     }
-    if (tabNextFireAt !== void 0) {
-      next.tabNextFireAt = tabNextFireAt;
+    if (memberNextFireAt !== void 0) {
+      next.memberNextFireAt = memberNextFireAt;
     } else {
-      delete next.tabNextFireAt;
+      delete next.memberNextFireAt;
     }
     return { ok: true, value: next };
   }
@@ -780,7 +848,7 @@
           return g;
         }
         if (!enabled) {
-          return { ...g, enabled: false, nextFireAt: void 0, tabNextFireAt: void 0 };
+          return { ...g, enabled: false, nextFireAt: void 0, memberNextFireAt: void 0 };
         }
         return { ...g, enabled: true };
       })
@@ -794,52 +862,6 @@
     const next = [...state.globalGroups];
     next[idx] = updated;
     return { ...state, globalGroups: next };
-  }
-
-  // src/lib/url-glob.ts
-  var MAX_PATTERN_LEN = 200;
-  function escapeRegexLiteral(s) {
-    return s.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-  }
-  function urlMatchesGlob(url, pattern) {
-    const p = pattern.trim();
-    if (!p || p.length > MAX_PATTERN_LEN) {
-      return false;
-    }
-    if (!/^https?:\/\//i.test(url)) {
-      return false;
-    }
-    if (!p.includes("*")) {
-      return url.toLowerCase().includes(p.toLowerCase());
-    }
-    const parts = p.split("*").map(escapeRegexLiteral);
-    const re = new RegExp(`^${parts.join(".*")}$`, "i");
-    return re.test(url);
-  }
-  function mergeDistinctPatternLines(baseRaw, additions) {
-    const seen = /* @__PURE__ */ new Set();
-    const linesOut = [];
-    for (const line of baseRaw.split(/\r?\n/)) {
-      const t = line.trim();
-      if (!t) {
-        continue;
-      }
-      seen.add(t.toLowerCase());
-      linesOut.push(t);
-    }
-    for (const add of additions) {
-      const t = add.trim();
-      if (!t) {
-        continue;
-      }
-      const k = t.toLowerCase();
-      if (seen.has(k)) {
-        continue;
-      }
-      seen.add(k);
-      linesOut.push(t);
-    }
-    return linesOut.join("\n");
   }
 
   // src/lib/window-tab-browser.ts
@@ -1043,7 +1065,7 @@
   }
 
   // src/lib/state.ts
-  var CURRENT_SCHEMA = 1;
+  var CURRENT_SCHEMA = 2;
   var DEFAULT_STATE = {
     schemaVersion: CURRENT_SCHEMA,
     globalGroups: [],
@@ -1055,21 +1077,80 @@
   function err2(error) {
     return { ok: false, error };
   }
+  function mergeMemberFireAt(map, key, val) {
+    const p = map[key];
+    map[key] = p === void 0 ? val : Math.min(p, val);
+  }
+  function normalizeGlobalGroup(raw) {
+    const g = raw;
+    const targets = Array.isArray(raw.targets) ? raw.targets : [];
+    const memberNextFireAt = { ...g.memberNextFireAt ?? {} };
+    for (const [k, v] of Object.entries(g.tabNextFireAt ?? {})) {
+      if (typeof v !== "number" || !Number.isFinite(v)) {
+        continue;
+      }
+      if (/^\d+$/.test(k)) {
+        const tid = Number(k);
+        const target = targets.find((t) => t.tabId === tid);
+        if (target) {
+          const mk = memberKeyFromTargetUrl(target.targetUrl);
+          if (mk) {
+            mergeMemberFireAt(memberNextFireAt, mk, v);
+          }
+        }
+      }
+    }
+    const pausedMemberKeys = /* @__PURE__ */ new Set();
+    for (const s of g.pausedMemberKeys ?? []) {
+      if (typeof s === "string" && s.length > 0 && s.length <= 2048) {
+        pausedMemberKeys.add(s);
+      }
+    }
+    for (const id of g.pausedTabIds ?? []) {
+      if (!Number.isInteger(id) || id < 1) {
+        continue;
+      }
+      const target = targets.find((t) => t.tabId === id);
+      if (target) {
+        const mk = memberKeyFromTargetUrl(target.targetUrl);
+        if (mk) {
+          pausedMemberKeys.add(mk);
+        }
+      }
+    }
+    const {
+      pausedTabIds: _pt,
+      tabNextFireAt: _tnf,
+      memberNextFireAt: _mn0,
+      pausedMemberKeys: _pm0,
+      targets: _tg,
+      ...rest
+    } = g;
+    return {
+      ...rest,
+      targets,
+      ...Object.keys(memberNextFireAt).length > 0 ? { memberNextFireAt } : {},
+      ...pausedMemberKeys.size > 0 ? { pausedMemberKeys: [...pausedMemberKeys].sort() } : {}
+    };
+  }
   function parseStoredPayload(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       return { ...DEFAULT_STATE };
     }
     const o = value;
     const sv = o.schemaVersion;
-    if (typeof sv !== "number" || sv !== CURRENT_SCHEMA) {
+    if (typeof sv !== "number" || sv !== 1 && sv !== CURRENT_SCHEMA) {
       return { ...DEFAULT_STATE };
     }
     if (!Array.isArray(o.globalGroups) || !Array.isArray(o.individualJobs)) {
       return { ...DEFAULT_STATE };
     }
+    const globalGroups = o.globalGroups.map(
+      (g) => normalizeGlobalGroup(g)
+    );
     return {
       schemaVersion: CURRENT_SCHEMA,
-      globalGroups: o.globalGroups,
+      globalGroups,
       individualJobs: o.individualJobs
     };
   }
@@ -1165,25 +1246,28 @@
           }
         }
       }
-      const paused = g.pausedTabIds;
+      const paused = g.pausedMemberKeys;
       if (paused !== void 0) {
         if (!Array.isArray(paused)) {
-          return err2("Invalid paused tab list");
+          return err2("Invalid paused member key list");
         }
-        for (const id of paused) {
-          if (!Number.isInteger(id) || id < 1) {
-            return err2("Invalid paused tab id");
+        for (const key of paused) {
+          if (typeof key !== "string" || key.length === 0 || key.length > 2048) {
+            return err2("Invalid paused member key");
           }
         }
       }
-      const tnf = g.tabNextFireAt;
+      const tnf = g.memberNextFireAt;
       if (tnf !== void 0) {
         if (typeof tnf !== "object" || tnf === null || Array.isArray(tnf)) {
-          return err2("Invalid global group tab schedule");
+          return err2("Invalid global group member schedule");
         }
         for (const [k, v] of Object.entries(tnf)) {
-          if (!/^\d+$/.test(k) || typeof v !== "number" || !Number.isFinite(v)) {
-            return err2("Invalid global group tab schedule entry");
+          if (typeof k !== "string" || k.length === 0 || k.length > 2048) {
+            return err2("Invalid global group member schedule entry key");
+          }
+          if (typeof v !== "number" || !Number.isFinite(v)) {
+            return err2("Invalid global group member schedule entry");
           }
         }
       }

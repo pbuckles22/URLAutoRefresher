@@ -37,7 +37,7 @@ describe('getPageOverlayVmForTab URL drift', () => {
           baseIntervalSec: 300,
           jitterSec: 30,
           enabled: true,
-          tabNextFireAt: { '111': 9_999_000 },
+          memberNextFireAt: { 'twitch.tv/sandmansoundfactory': 9_999_000 },
         },
       ],
     };

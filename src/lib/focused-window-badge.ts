@@ -1,10 +1,12 @@
+import { memberKeyFromTargetUrl } from './member-url';
+import { resolveGlobalGroupTargets } from './global-group-targets';
 import type { AppState } from './types';
 
 /** Collect `nextFireAt` for enabled jobs whose targets include a tab in `tabIds`. */
-export function collectNextFireTimesForTabSet(
+export async function collectNextFireTimesForTabSet(
   state: AppState,
   tabIds: ReadonlySet<number>
-): number[] {
+): Promise<number[]> {
   const out: number[] = [];
   for (const job of state.individualJobs) {
     if (!job.enabled || job.nextFireAt === undefined) {
@@ -18,10 +20,20 @@ export function collectNextFireTimesForTabSet(
     if (!g.enabled) {
       continue;
     }
-    const tnf = g.tabNextFireAt;
+    const tnf = g.memberNextFireAt;
     if (tnf && Object.keys(tnf).length > 0) {
-      for (const tid of tabIds) {
-        const nf = tnf[String(tid)];
+      const resolved = await resolveGlobalGroupTargets(g);
+      const keysForFocused = new Set<string>();
+      for (const t of resolved) {
+        if (tabIds.has(t.tabId)) {
+          const mk = memberKeyFromTargetUrl(t.targetUrl);
+          if (mk) {
+            keysForFocused.add(mk);
+          }
+        }
+      }
+      for (const mk of keysForFocused) {
+        const nf = tnf[mk];
         if (nf !== undefined) {
           out.push(nf);
         }
@@ -47,7 +59,7 @@ export function collectAllScheduledNextFireTimes(state: AppState): number[] {
     if (!g.enabled) {
       continue;
     }
-    const tnf = g.tabNextFireAt;
+    const tnf = g.memberNextFireAt;
     if (tnf && Object.keys(tnf).length > 0) {
       out.push(...Object.values(tnf));
     } else if (g.nextFireAt !== undefined) {
@@ -68,13 +80,13 @@ export type BadgeComputation =
   | { kind: 'idle' }
   | { kind: 'countdown'; remainMs: number; source: 'focused' | 'fallback' };
 
-export function computeBadgeComputation(
+export async function computeBadgeComputation(
   state: AppState,
   nowMs: number,
   tabIdsInFocusedWindow: ReadonlySet<number>,
   options: { fallbackWhenFocusedEmpty: boolean }
-): BadgeComputation {
-  const focusedTimes = collectNextFireTimesForTabSet(state, tabIdsInFocusedWindow);
+): Promise<BadgeComputation> {
+  const focusedTimes = await collectNextFireTimesForTabSet(state, tabIdsInFocusedWindow);
   let next = nearestTime(focusedTimes);
   if (next !== undefined) {
     return { kind: 'countdown', remainMs: next - nowMs, source: 'focused' };
