@@ -4,9 +4,41 @@
 import { applyTwitchFavsUpsertFromTabUrl } from '../lib/twitch-favs';
 import { isTwitchChannelRootUrl } from '../lib/twitch-live-detect';
 import { loadAppState, saveAppState } from '../lib/storage';
+import type { AppState } from '../lib/types';
 import { bootstrapScheduling } from './scheduler';
 
 let twitchFavsDebounce: ReturnType<typeof setTimeout> | undefined;
+
+/** Injected in tests; production uses `defaultTwitchFavsPersistDeps`. */
+export type TwitchFavsPersistDeps = {
+  loadAppState: () => Promise<AppState>;
+  saveAppState: (state: AppState) => Promise<void>;
+  bootstrapScheduling: () => Promise<void>;
+};
+
+export const defaultTwitchFavsPersistDeps: TwitchFavsPersistDeps = {
+  loadAppState,
+  saveAppState,
+  bootstrapScheduling,
+};
+
+/**
+ * Load → upsert from tab URL → save + reschedule when membership changed.
+ * @returns whether storage was updated
+ */
+export async function persistTwitchFavsUpsertFromTabUrl(
+  tabUrl: string,
+  deps: TwitchFavsPersistDeps
+): Promise<boolean> {
+  const state = await deps.loadAppState();
+  const { next, changed } = applyTwitchFavsUpsertFromTabUrl(state, tabUrl);
+  if (!changed) {
+    return false;
+  }
+  await deps.saveAppState(next);
+  await deps.bootstrapScheduling();
+  return true;
+}
 
 export function attachTwitchFavsTabListener(): void {
   chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
@@ -19,13 +51,7 @@ export function attachTwitchFavsTabListener(): void {
     twitchFavsDebounce = setTimeout(() => {
       void (async () => {
         try {
-          const state = await loadAppState();
-          const { next, changed } = applyTwitchFavsUpsertFromTabUrl(state, url);
-          if (!changed) {
-            return;
-          }
-          await saveAppState(next);
-          await bootstrapScheduling();
+          await persistTwitchFavsUpsertFromTabUrl(url, defaultTwitchFavsPersistDeps);
         } catch {
           /* storage or alarm APIs may fail transiently */
         }
