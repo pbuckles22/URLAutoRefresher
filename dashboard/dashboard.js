@@ -1112,28 +1112,6 @@
     return next;
   }
 
-  // src/lib/prefs.ts
-  var PREFS_STORAGE_KEY = "urlAutoRefresher_prefs_v1";
-  var DEFAULT_PREFS = {
-    showPageOverlayTimer: true
-  };
-  function parsePrefs(raw) {
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-      return { ...DEFAULT_PREFS };
-    }
-    const o = raw;
-    const show = typeof o.showPageOverlayTimer === "boolean" ? o.showPageOverlayTimer : DEFAULT_PREFS.showPageOverlayTimer;
-    return { showPageOverlayTimer: show };
-  }
-  async function loadExtensionPrefs() {
-    const data = await chrome.storage.local.get(PREFS_STORAGE_KEY);
-    const raw = data[PREFS_STORAGE_KEY];
-    return parsePrefs(raw);
-  }
-  async function saveExtensionPrefs(prefs) {
-    await chrome.storage.local.set({ [PREFS_STORAGE_KEY]: prefs });
-  }
-
   // src/lib/app-state-list-layout.ts
   function individualJobsLayoutSignature(s) {
     return JSON.stringify(
@@ -1613,11 +1591,54 @@
     await chrome.storage.local.set({ [STORAGE_KEY]: state });
   }
 
-  // src/dashboard/dashboard-app.ts
-  function wireCrossSurfaceLinks() {
-    const openSide = document.querySelector("[data-open-side-panel]");
-    if (openSide) {
-      openSide.addEventListener("click", () => {
+  // src/lib/prefs.ts
+  var PREFS_STORAGE_KEY = "urlAutoRefresher_prefs_v1";
+  var DEFAULT_PREFS = {
+    showPageOverlayTimer: true
+  };
+  function parsePrefs(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return { ...DEFAULT_PREFS };
+    }
+    const o = raw;
+    const show = typeof o.showPageOverlayTimer === "boolean" ? o.showPageOverlayTimer : DEFAULT_PREFS.showPageOverlayTimer;
+    return { showPageOverlayTimer: show };
+  }
+  async function loadExtensionPrefs() {
+    const data = await chrome.storage.local.get(PREFS_STORAGE_KEY);
+    const raw = data[PREFS_STORAGE_KEY];
+    return parsePrefs(raw);
+  }
+  async function saveExtensionPrefs(prefs) {
+    await chrome.storage.local.set({ [PREFS_STORAGE_KEY]: prefs });
+  }
+
+  // src/dashboard/dashboard-shell.ts
+  function createDashboardContext() {
+    return {
+      dom: {
+        openSidePanel: document.querySelector("[data-open-side-panel]"),
+        openDashboardInTab: document.querySelector("[data-open-in-tab]"),
+        overlayPreference: document.querySelector("[data-pref-overlay]")
+      }
+    };
+  }
+  function bindOverlayPreference(ctx) {
+    const overlayPref = ctx.dom.overlayPreference;
+    if (!overlayPref) {
+      return;
+    }
+    void loadExtensionPrefs().then((p) => {
+      overlayPref.checked = p.showPageOverlayTimer;
+    });
+    overlayPref.addEventListener("change", () => {
+      void saveExtensionPrefs({ showPageOverlayTimer: overlayPref.checked });
+    });
+  }
+  function wireCrossSurfaceLinks(ctx) {
+    const { openSidePanel, openDashboardInTab } = ctx.dom;
+    if (openSidePanel) {
+      openSidePanel.addEventListener("click", () => {
         void chrome.windows.getCurrent().then((w) => {
           if (w.id !== void 0) {
             void chrome.sidePanel.open({ windowId: w.id });
@@ -1625,27 +1646,21 @@
         });
       });
     }
-    const openDashInTab = document.querySelector("[data-open-in-tab]");
-    if (openDashInTab) {
-      openDashInTab.addEventListener("click", () => {
+    if (openDashboardInTab) {
+      openDashboardInTab.addEventListener("click", () => {
         void chrome.tabs.create({ url: chrome.runtime.getURL("dashboard/dashboard.html") });
       });
     }
   }
+
+  // src/dashboard/dashboard-app.ts
   function initDashboardApp() {
+    const dashboardContext = createDashboardContext();
     const title = document.querySelector("[data-app-title]");
     if (title) {
       title.textContent = chrome.runtime.getManifest().name;
     }
-    const overlayPref = document.querySelector("[data-pref-overlay]");
-    if (overlayPref) {
-      void loadExtensionPrefs().then((p) => {
-        overlayPref.checked = p.showPageOverlayTimer;
-      });
-      overlayPref.addEventListener("change", () => {
-        void saveExtensionPrefs({ showPageOverlayTimer: overlayPref.checked });
-      });
-    }
+    bindOverlayPreference(dashboardContext);
     const tabSelect = document.querySelector("[data-job-tab]");
     const jobTabSearch = document.querySelector("[data-job-tab-search]");
     const jobTabRefresh = document.querySelector("[data-job-tab-refresh]");
@@ -2266,7 +2281,7 @@
     });
     bindJobsListEvents();
     bindGlobalGroupsListEvents();
-    wireCrossSurfaceLinks();
+    wireCrossSurfaceLinks(dashboardContext);
     window.setInterval(() => void tickCountdowns(), 1e3);
     if (addJobForm && tabSelect && urlInput && intervalInput && jitterInput) {
       addJobForm.addEventListener("submit", (e) => {

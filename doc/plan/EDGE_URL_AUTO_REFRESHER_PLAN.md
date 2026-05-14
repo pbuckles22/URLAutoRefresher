@@ -366,6 +366,10 @@ flowchart LR
 
 ### Phase B — Dashboard
 
+**Shipped:**
+
+- [x] **13.B1** — Shell: [`src/dashboard/dashboard-shell.ts`](../../src/dashboard/dashboard-shell.ts) (`DashboardDom`, `DashboardContext`, `createDashboardContext`, `bindOverlayPreference`, `wireCrossSurfaceLinks`); Tier 1 [`src/dashboard/dashboard-shell.test.ts`](../../src/dashboard/dashboard-shell.test.ts) (jsdom); [`dashboard-app.ts`](../../src/dashboard/dashboard-app.ts) owns one **`dashboardContext`** for shell wiring.
+
 `initDashboardApp` is one large closure over DOM nodes and `cachedIndividualTabs`. Refactors should introduce a **single context object** (or small module-level registry) passed into binders so extracted files do not rely on implicit outer scope. After each **13.B** slice: keep **Tier 2** [`e2e/epic-3-2.spec.ts`](../../e2e/epic-3-2.spec.ts), [`e2e/epic-4-3.spec.ts`](../../e2e/epic-4-3.spec.ts) green.
 
 | Story     | Extract                                                                                                                                  | Notes                                                                                                          |

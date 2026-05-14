@@ -35,45 +35,24 @@ import {
   pinTabIdFirst,
   tabRowsFromWindowsSnapshot,
 } from '../lib/window-tab-browser';
-import { loadExtensionPrefs, saveExtensionPrefs } from '../lib/prefs';
 import { onlyNonLayoutAppStateDiff } from '../lib/app-state-list-layout';
 import { validateGlobalGroupResolvedEnrollment } from '../lib/global-group-enrollment';
 import { loadAppState, saveAppState, STORAGE_KEY } from '../lib/storage';
-
-function wireCrossSurfaceLinks(): void {
-  const openSide = document.querySelector<HTMLElement>('[data-open-side-panel]');
-  if (openSide) {
-    openSide.addEventListener('click', () => {
-      void chrome.windows.getCurrent().then((w) => {
-        if (w.id !== undefined) {
-          void chrome.sidePanel.open({ windowId: w.id });
-        }
-      });
-    });
-  }
-  const openDashInTab = document.querySelector<HTMLElement>('[data-open-in-tab]');
-  if (openDashInTab) {
-    openDashInTab.addEventListener('click', () => {
-      void chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
-    });
-  }
-}
+import {
+  bindOverlayPreference,
+  createDashboardContext,
+  wireCrossSurfaceLinks,
+} from './dashboard-shell';
 
 export function initDashboardApp(): void {
+  const dashboardContext = createDashboardContext();
+
   const title = document.querySelector<HTMLElement>('[data-app-title]');
   if (title) {
     title.textContent = chrome.runtime.getManifest().name;
   }
 
-  const overlayPref = document.querySelector<HTMLInputElement>('[data-pref-overlay]');
-  if (overlayPref) {
-    void loadExtensionPrefs().then((p) => {
-      overlayPref.checked = p.showPageOverlayTimer;
-    });
-    overlayPref.addEventListener('change', () => {
-      void saveExtensionPrefs({ showPageOverlayTimer: overlayPref.checked });
-    });
-  }
+  bindOverlayPreference(dashboardContext);
 
   const tabSelect = document.querySelector<HTMLSelectElement>('[data-job-tab]');
   const jobTabSearch = document.querySelector<HTMLInputElement>('[data-job-tab-search]');
@@ -754,7 +733,7 @@ export function initDashboardApp(): void {
 
   bindJobsListEvents();
   bindGlobalGroupsListEvents();
-  wireCrossSurfaceLinks();
+  wireCrossSurfaceLinks(dashboardContext);
   window.setInterval(() => void tickCountdowns(), 1000);
 
   if (addJobForm && tabSelect && urlInput && intervalInput && jitterInput) {
