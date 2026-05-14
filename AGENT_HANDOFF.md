@@ -56,7 +56,7 @@ This repo is **not** using a mandatory GitHub **pull-request / approval** gate�
 3. **Review (optional):** Use **code-reviewer**, **tech-debt-evaluator**, or **extension-architect** / **tech-lead** when useful—tools for you and agents, not a merge blocker.
 4. **Lint + format:** **`npm run lint`** and **`npm run format:check`** are the first two steps of **`npm run ci`**. **`eslint-config-prettier`** disables ESLint rules that fight Prettier. After `npm install`, **Husky** runs **`lint-staged`** on **`git commit`** (Prettier write + ESLint `--fix` on staged files). For **change-aware** review, use **code-quality-gate** (`.cursor/skills/code-quality-gate/SKILL.md`) with **code-reviewer**. To install dependencies without Git hooks (e.g. tarball extract), set **`HUSKY=0`** for that `npm install`.
 
-**GitHub:** Optional PRs or **`gh`** still work if you want a diff view; they are **not** required to ship.
+**GitHub:** Optional PRs or **`gh`** still work if you want a diff view; they are **not** required to ship. **Agents:** do not treat “open a PR” as the default completion step—**`npm run ci` green**, then **commit** and **push / merge** per above; see [.cursor/skills/github-feature-workflow/SKILL.md](.cursor/skills/github-feature-workflow/SKILL.md).
 
 ---
 
