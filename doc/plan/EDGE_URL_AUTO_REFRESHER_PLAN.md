@@ -354,6 +354,7 @@ flowchart LR
 **Shipped:**
 
 - [x] **13.A1** — State alignment in [`src/background/scheduler-align-state.ts`](../../src/background/scheduler-align-state.ts); Tier 1 [`src/background/scheduler-align-state.test.ts`](../../src/background/scheduler-align-state.test.ts).
+- [x] **13.A2** — Alarm sync in [`src/background/scheduler-sync-alarms.ts`](../../src/background/scheduler-sync-alarms.ts); Tier 1 [`src/background/scheduler-sync-alarms.test.ts`](../../src/background/scheduler-sync-alarms.test.ts); [`scheduler.ts`](../../src/background/scheduler.ts) re-exports **`syncAlarmsWithState`** for existing callers.
 
 | Story     | Extract (suggested new module under `src/background/` or `src/lib/`)                                                                                                   | Notes                                                                                                                                           |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
