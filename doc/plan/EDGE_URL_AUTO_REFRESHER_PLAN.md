@@ -10,23 +10,27 @@ Manifest V3 Edge extension (**working name;** ships as **Media Control Suite** i
 
 ## Progress overview
 
-| Epic           | Theme                                                                                 | Stories |
-| -------------- | ------------------------------------------------------------------------------------- | ------- |
-| [x] **0**      | Extension shell & entry                                                               | 3       |
-| [x] **1**      | Data model & persistence                                                              | 3       |
-| [x] **2**      | Scheduling (service worker)                                                           | 4       |
-| [x] **3**      | Individual jobs (vertical slice)                                                      | 4       |
-| [x] **4**      | Global groups                                                                         | 3       |
-| [x] **5**      | Unified UI (choice C)                                                                 | 4       |
-| [x] **6**      | Toolbar badge (focus-aware)                                                           | 3       |
-| [x] **7**      | Ship notes for Edge                                                                   | 2       |
-| [x] **8**      | Live-aware pause (Twitch-first)                                                       | 3       |
-| [x] **9**      | Blip / error-text triggered refresh                                                   | 3       |
-| [x] **Post-9** | Incremental polish (see [Post–Epic 9](#postepic-9--incremental-enhancements-shipped)) | 6       |
-| [ ] **10**     | [URL-first membership](#epic-10--url-first-membership-phased) (phased migration)      | 6       |
-| [ ] **11**     | [Precision volume (Web Audio)](#epic-11--precision-volume-web-audio)                  | 7       |
+| Epic           | Theme                                                                                          | Stories                         |
+| -------------- | ---------------------------------------------------------------------------------------------- | ------------------------------- |
+| [x] **0**      | Extension shell & entry                                                                        | 3                               |
+| [x] **1**      | Data model & persistence                                                                       | 3                               |
+| [x] **2**      | Scheduling (service worker)                                                                    | 4                               |
+| [x] **3**      | Individual jobs (vertical slice)                                                               | 4                               |
+| [x] **4**      | Global groups                                                                                  | 3                               |
+| [x] **5**      | Unified UI (choice C)                                                                          | 4                               |
+| [x] **6**      | Toolbar badge (focus-aware)                                                                    | 3                               |
+| [x] **7**      | Ship notes for Edge                                                                            | 2                               |
+| [x] **8**      | Live-aware pause (Twitch-first)                                                                | 3                               |
+| [x] **9**      | Blip / error-text triggered refresh                                                            | 3                               |
+| [x] **Post-9** | Incremental polish (see [Post–Epic 9](#postepic-9--incremental-enhancements-shipped))          | 6                               |
+| [x] **10**     | [URL-first membership](#epic-10--url-first-membership-phased) (phased migration)               | 6                               |
+| [ ] **11**     | [Precision volume (Web Audio)](#epic-11--precision-volume-web-audio)                           | 7                               |
+| [ ] **12**     | [TwitchFavs / URL-first QA & CI confidence](#epic-12--twitchfavs--url-first-qa--ci-confidence) | 4                               |
+| [ ] **13**     | [Scheduler + dashboard modularization](#epic-13--scheduler--dashboard-modularization)          | 13.A1–A3, B1–B5 (+ optional A4) |
 
 _(Optional: set an epic row to `[x]` when **all** its stories are done.)_
+
+**Parallel work (Epics 11–13):** Lanes **L12** ∥ **L13A** ∥ **L113** may run together (distinct paths); **Epic 13.B** and **Epic 11.4+** are **serial** (one PR at a time on hot files). **Epic 11.4–11.7** start only **after Epic 13.B** is complete. See [Parallel work — Epics 11–13](#parallel-work--epics-11-13).
 
 ---
 
@@ -218,6 +222,8 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** In-page **granular volume** for `<video>` / `<audio>` via **Web Audio** (`AudioContext`, `MediaElementSource`, `GainNode`), **keyboard shortcuts**, and **dashboard/side panel** controls—without breaking the existing **page overlay** countdown ([`src/content/page-overlay.ts`](../../src/content/page-overlay.ts)).
 
+**Execution order vs [Epics 12–13](#parallel-work--epics-11-13):** Hold **11.4–11.7** until **[Epic 13.B](#epic-13--scheduler--dashboard-modularization)** is complete so volume messaging and dashboard UI land on the **post-refactor** dashboard. **11.3** (dynamic media) may run in parallel lane **L113** with **L12** / **L13A** if paths stay isolated—do not grow [`dashboard-app.ts`](../../src/dashboard/dashboard-app.ts) for **11.5** until **13.B** ships (**G3**). Do not renumber Epic 11; only **execution order** changes.
+
 **Recommended sequencing vs Epic 10:** Ship **after [Epic 10](#epic-10--url-first-membership-phased)** (or at least **10.1–10.3**) when possible—both epics touch **content scripts**, **messaging**, and **overlay-adjacent** code. If volume must land sooner, isolate **new modules + new message types** and avoid mixing with Epic **10** migration PRs.
 
 **Requirements detail:** [doc/requirements/precision-volume-controller.md](../requirements/precision-volume-controller.md).
@@ -235,6 +241,111 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 - [ ] **11.6** — **Shortcuts + OSD:** Background handles **`chrome.commands`**; content shows **transient OSD** (~2s) with current level when shortcuts fire. _Outcome: keyboard feedback without opening the dashboard._
 
 - [ ] **11.7** — **Tests:** **Vitest** for slider ↔ gain math; **Playwright** where user-visible strings or toggles need regression cover. _Outcome: `npm run ci` stays green._
+
+---
+
+## Parallel work — Epics 11–13
+
+**Goal:** Ship **Epic 12** and **Epic 13** without merge roulette on [`dashboard-app.ts`](../../src/dashboard/dashboard-app.ts) or [`scheduler.ts`](../../src/background/scheduler.ts), while still allowing **parallel work** where paths do not overlap.
+
+### Hard merge gates
+
+| Gate   | Rule                                                                                                                                                                                                                                                         |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **G1** | **Epic 13.B** starts only after **Epic 13.A** is complete (through **13.A3**; **13.A4** optional before or during early **13.B1** if tiny).                                                                                                                  |
+| **G2** | **Epic 11.4 → 11.7** start only after **Epic 13.B** is complete (all slices merged). Volume work lands on the **post-refactor** dashboard layout.                                                                                                            |
+| **G3** | **Never** have two open PRs that both edit **[`dashboard-app.ts`](../../src/dashboard/dashboard-app.ts)** for **different epics** (e.g. one **13.B** + one **11.5**). **One owner** for that file at a time.                                                 |
+| **G4** | **Never** parallel **Epic 13.B** stories: run **13.B1 → … → 13.B5** as **one PR at a time** (serial).                                                                                                                                                        |
+| **G5** | **Within L13A**, at most **one** open PR that edits [`scheduler.ts`](../../src/background/scheduler.ts) (or new `scheduler-*.ts` extracts) at a time—ship **13.A1 → 13.A2 → 13.A3** **serial**. **L12** / **L113** may still merge **between** those merges. |
+
+### Approved parallel lanes
+
+| Lane     | Epic / scope       | Typical paths                                                                                                                                       | Branch prefix example |
+| -------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **L12**  | Epic **12**        | `doc/**`, [`e2e/`](../../e2e/), [`doc/requirements/`](../../doc/requirements/)                                                                      | `feature/epic-12-…`   |
+| **L13A** | Epic **13.A**      | [`src/background/scheduler.ts`](../../src/background/scheduler.ts) + new `scheduler-*.ts`                                                           | `feature/epic-13a-…`  |
+| **L113** | Epic **11.3** only | [`precision-volume-bridge.ts`](../../src/content/precision-volume-bridge.ts), [`page-overlay.ts`](../../src/content/page-overlay.ts) wiring, Vitest | `feature/epic-11-3-…` |
+
+**Lanes L12, L13A, and L113** may run in parallel from the first mergeable slice onward. **Within L13A**, still run **13.A1 → 13.A2 → 13.A3** one PR at a time (**G5**). **Merge to `main` one PR at a time** through CI (rebases are normal—avoid two PRs touching the same file).
+
+**Optional:** If parallel still feels noisy for your team, **park L113** and ship **11.3** after **13.A**; gates above stay the same.
+
+### Single agent / single stream
+
+Use a **linear** order: **12.1–12.3 → 13.A1 → 12.4 → 13.A2 → 13.A3 → (optional 11.3) → 13.B1 → … → 13.B5 → 11.4 → … → 11.7**. Parallel lanes are optional when only one contributor is active.
+
+**Quality:** After each **13.B** slice, run ESLint complexity on touched files; optionally tighten caps in [`eslint.config.mjs`](../../eslint.config.mjs) when functions drop under thresholds (see [.cursor/skills/code-quality-gate/SKILL.md](../../.cursor/skills/code-quality-gate/SKILL.md)).
+
+```mermaid
+flowchart TB
+  subgraph wave1 [Parallel wave G1 satisfied]
+    e12[Lane L12 Epic 12]
+    e13A[Lane L13A Epic 13A]
+    e113[Lane L113 Epic 11.3 optional]
+  end
+  e13B[Epic 13B serial B1 to B5]
+  e114[Epic 11.4 to 11.7 serial]
+  wave1 --> e13B
+  e13B --> e114
+```
+
+---
+
+## Epic 12 — TwitchFavs / URL-first QA & CI confidence
+
+**Goal:** Make TwitchFavs behavior **observable and testable** for real profiles and for **CI** (deterministic). Epic **12** does not require Epic **11**; lane **L12** may parallel **L13A** / **L113** (see [Parallel work — Epics 11–13](#parallel-work--epics-11-13)).
+
+**Tester context (align with product):** After **[Epic 10.4](#epic-10--url-first-membership-phased)**, [`TargetRef`](../../src/lib/types.ts) persists **`targetUrl` only** (no stored `tabId`). **Live `tabId`** is resolved at runtime ([`resolveGlobalGroupTargets`](../../src/lib/global-group-targets.ts), [`resolveLiveTabIdForTargetUrl`](../../src/lib/resolve-live-tab.ts)). **[`applyTwitchFavsUpsertFromTabUrl`](../../src/lib/twitch-favs.ts)** updates **`globalGroups[].targets`** (canonical channel URLs) when a Twitch channel tab updates; **[`attachTwitchFavsTabListener`](../../src/background/twitch-favs-sync.ts)** debounces `tabs.onUpdated` → `saveAppState` → `bootstrapScheduling()`. **[`doc/requirements/twitch-favs-managed-membership.md`](../requirements/twitch-favs-managed-membership.md)** section **TF.6** still mixed legacy `tabId`/`windowId` language in places—correct to **URL-first** as part of **12.3** so manual steps match the product.
+
+**What “tab id changed” means for manual QA:** After close/reopen, the **new** tab gets a new Chrome `tabId`, but **storage** should still show the **same channel `targetUrl` row**; refresh/overlay should follow the **new** tab because resolution re-runs from URLs + open tabs—not because `tabId` was rewritten in `chrome.storage.local`.
+
+- [ ] **12.1** — **Docs — tester mental model:** What to inspect under **Application → Storage → Extension** (`urlAutoRefresher_state_v1`); what **not** to expect (no `tabId` on `targets`); how to infer the “right” tab (overlay on channel, scheduled refresh hitting the visible tab, or temporary `chrome.storage.onChanged` logging during dev). _May mirror a short bullet in [TEST_PLAN.md](../../TEST_PLAN.md) Tier 2 manual area._
+- [ ] **12.2** — **Manual checklist (your browser, cookies):** Step-by-step: create **TwitchFavs** group + patterns; open a favorite; confirm **targets** / keys evolve per TF; **close** tab, **open** same channel in a **new** tab; confirm scheduling/overlay still attach to the live tab. Link from [Testing checklist (manual)](#testing-checklist-manual) when written.
+- [ ] **12.3** — **Requirements hygiene:** Update **TF.6** in [`twitch-favs-managed-membership.md`](../requirements/twitch-favs-managed-membership.md) for **URL-first** rebinding (canonical `targetUrl` per channel; no persisted tab id on `TargetRef`).
+- [ ] **12.4** — **Deeper Playwright (CI-safe):** Prefer **no** logged-in Twitch dependency in default CI. Options (pick one primary; others backlog): **(a)** Playwright **route interception** so a tab navigates to `https://www.twitch.tv/{login}` but **body is served locally**; **(b)** strengthen **Vitest** around `applyTwitchFavsUpsertFromTabUrl` + a small exported orchestration wrapper if [`twitch-favs-sync.ts`](../../src/background/twitch-favs-sync.ts) is hard to hit from E2E; **(c)** optional **`E2E_TWITCH_LIVE=1`** gated spec against real Twitch (**not for CI**—document). Re-read [.cursor/skills/chromium-mv3-extension/SKILL.md](../../.cursor/skills/chromium-mv3-extension/SKILL.md) before changing manifest, service worker wiring, or messaging.
+
+**Dependency note:** Epic **12** is orthogonal to **11.3** (content) and **13.A** (scheduler).
+
+```mermaid
+flowchart LR
+  subgraph epic12 [Epic 12]
+    docs[12.1 docs]
+    manual[12.2 manual QA]
+    req[12.3 requirements]
+    pw[12.4 playwright]
+  end
+  docs --> manual
+  req --> pw
+```
+
+---
+
+## Epic 13 — Scheduler + dashboard modularization
+
+**Goal:** Reduce complexity and file size of [`initDashboardApp`](../../src/dashboard/dashboard-app.ts) (~800+ lines) and [`onAlarmFired`](../../src/background/scheduler.ts) / surrounding scheduler (~400+ lines in one file) **without behavior change**—each story ends with **`npm run ci` green** and preferably **one focused PR**. See [Parallel work — Epics 11–13](#parallel-work--epics-11-13) for **G1–G5** and lanes.
+
+### Phase A — Scheduler
+
+| Story     | Extract (suggested new module under `src/background/` or `src/lib/`)                                                                                                   | Notes                                                                                                                                           |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **13.A1** | **State alignment:** `alignIndividualJobsState`, `alignGlobalGroupsState`, `alignAppState`, `baseAndJitterMs`, `memberNextFireAtSig` → e.g. `scheduler-align-state.ts` | Mostly deterministic; `alignGlobalGroupsState` calls `resolveGlobalGroupTargets`—Vitest can mock `chrome.tabs.query` if needed.                 |
+| **13.A2** | **Alarm sync:** `clearOurAlarms`, `stateSchedulingEqual`, loop in `syncAlarmsWithState` → e.g. `scheduler-sync-alarms.ts`                                              | Keep public **`syncAlarmsWithState`** stable for callers.                                                                                       |
+| **13.A3** | **Alarm handlers:** split `onAlarmFired` into e.g. `handleIndividualJobAlarm`, `handleGlobalMemberAlarm` in `scheduler-alarm-handlers.ts`                              | Keep [`scheduler.ts`](../../src/background/scheduler.ts) as thin router + exports `bootstrapScheduling`, `onAlarmFired`, `syncAlarmsWithState`. |
+| **13.A4** | **Tab lifecycle entrypoints** (`onTabRemoved`, etc.) if still colocated                                                                                                | Optional if already small after A1–A3.                                                                                                          |
+
+### Phase B — Dashboard
+
+`initDashboardApp` is one large closure over DOM nodes and `cachedIndividualTabs`. Refactors should introduce a **single context object** (or small module-level registry) passed into binders so extracted files do not rely on implicit outer scope. After each **13.B** slice: keep **Tier 2** [`e2e/epic-3-2.spec.ts`](../../e2e/epic-3-2.spec.ts), [`e2e/epic-4-3.spec.ts`](../../e2e/epic-4-3.spec.ts) green.
+
+| Story     | Extract                                                                                                                                  | Notes                                                                                                          |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **13.B1** | **Shell:** `wireCrossSurfaceLinks`, overlay pref block                                                                                   | Establishes `DashboardDom` / `DashboardContext` type pattern.                                                  |
+| **13.B2** | **Individual list + jobs events:** `renderIndividualJobs`, `tickCountdowns` (partial), `bindJobsListEvents`, add-job form submit         | Largest user-visible risk.                                                                                     |
+| **13.B3** | **Tab browser + individual selectors:** `refreshCachedTabs`, `populateTabSelect`, filters, `syncIndividualTargetUrlFromSelectedTab`      | Extract shared **tab cache** helpers if duplication appears.                                                   |
+| **13.B4** | **Global groups:** `renderGlobalGroupsList`, `bindGlobalGroupsListEvents`, global form submit, `renderGlobalTabBrowser` / search filters | Heavy; consider **13.B4a** / **13.B4b** if one PR is too large.                                                |
+| **13.B5** | **Storage listener + interval tick wiring** in e.g. `dashboard-storage-sync.ts`                                                          | Centralizes `onlyNonLayoutAppStateDiff` with `renderIndividualJobs` / `tickCountdowns`—avoid circular imports. |
+
+**Definition of done (roadmap doc):** EDGE + PM_PLAN list Epics **12** and **13**, gates, and lanes; dependency [diagram below](#dependency-diagram) includes the **parallel wave** then **serial 13.B** then **serial 11.4+**. Each merged story: **`npm run ci`** per [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md). No product behavior change for Epic **13** unless a bug is fixed in isolation with a test.
 
 ---
 
@@ -349,6 +460,7 @@ Enforce **non-overlap:** same `tabId` cannot be enabled in two places.
 
 ## Testing checklist (manual)
 
+- [ ] **Epic 12.2 — TwitchFavs / URL-first:** When [12.2](#epic-12--twitchfavs--url-first-qa--ci-confidence) is written, follow that checklist (close channel tab → reopen same channel in a **new** tab; overlay/schedule follow **live** tab; storage stays **URL-first**).
 - [ ] Two windows, two different `targetUrl`s in **one global group** → both refresh **together**; live URL may differ until refresh.
 - [ ] **Individual** in window A while **global** runs in B/C → independent timers.
 - [ ] Service worker restarts → alarms still fire; `nextFireAt` matches alarms.
@@ -400,6 +512,8 @@ Tracked here until scheduled into an epic or story. **Normative shipped scope** 
 
 ## Dependency diagram
 
+**Shipped sequence (Epics 0–10):**
+
 ```mermaid
 flowchart TD
   epic0[Epic 0 Shell]
@@ -422,3 +536,5 @@ flowchart TD
 ```
 
 Epic **8** and **9** follow **Epic 7** on the roadmap. **Technically** they need stable **per-tab jobs** (Epic 3) and benefit from **unified UI** (Epic 5); treat **Epic 7** as the quality gate before heavy **content-script** work. **Epic 10** refactors stored membership toward **URL-first** identity; it **depends** on the current scheduling/UI baseline (through Epic **9** / Post–9) and **replaces** ad-hoc “rebind tab id” work ([Backlog #7](#7-global-group--rebinding-when-a-tab-closes-and-reopens-same-url)). **Epic 11** adds **Web Audio** volume and shortcuts; it **depends** on the unified UI baseline (Epic **5**) and is **recommended after Epic 10** to reduce merge risk with overlay/scheduler work.
+
+**Execution after Epic 10 (Epics 11–13 — parallel wave, then serial 13.B, then serial 11.4+):** same diagram as [Parallel work — Epics 11–13](#parallel-work--epics-11-13) (mermaid **flowchart TB** with `wave1` → **Epic 13.B** → **Epic 11.4–11.7**). Epic **12** runs in lane **L12** in the first wave; **Epic 13.A** in **L13A**; **Epic 11.3** optionally in **L113**.
