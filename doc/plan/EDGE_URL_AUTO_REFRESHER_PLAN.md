@@ -351,6 +351,10 @@ flowchart LR
 
 ### Phase A — Scheduler
 
+**Shipped:**
+
+- [x] **13.A1** — State alignment in [`src/background/scheduler-align-state.ts`](../../src/background/scheduler-align-state.ts); Tier 1 [`src/background/scheduler-align-state.test.ts`](../../src/background/scheduler-align-state.test.ts).
+
 | Story     | Extract (suggested new module under `src/background/` or `src/lib/`)                                                                                                   | Notes                                                                                                                                           |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | **13.A1** | **State alignment:** `alignIndividualJobsState`, `alignGlobalGroupsState`, `alignAppState`, `baseAndJitterMs`, `memberNextFireAtSig` → e.g. `scheduler-align-state.ts` | Mostly deterministic; `alignGlobalGroupsState` calls `resolveGlobalGroupTargets`—Vitest can mock `chrome.tabs.query` if needed.                 |
