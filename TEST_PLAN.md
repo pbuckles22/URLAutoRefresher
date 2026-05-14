@@ -76,7 +76,8 @@ Use when behavior spans a real browser, extension APIs, or the content script / 
 
 ### Option A — Manual (always valid)
 
-- **Epic 12 (TwitchFavs / URL-first):** Tester mental model, Extension Storage expectations, and TwitchFavs close-tab → reopen steps live under [EDGE plan — Epic 12](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-12--twitchfavs--url-first-qa--ci-confidence) (**12.1–12.2**); add Tier 2 cases when **12.4** lands.
+- **Epic 12 (TwitchFavs / URL-first) — mental model:** In **Application → Storage → Extension**, inspect **`urlAutoRefresher_state_v1`**: `globalGroups[].targets` rows are **`{ targetUrl, label? }` only** (no persisted `tabId`). Schedule/pause maps use **member keys** (`memberNextFireAt`, `pausedMemberKeys`). Prefs: **`urlAutoRefresher_prefs_v1`**. Full detail: [EDGE plan — Epic 12.1](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-121--tester-mental-model-extension-storage-url-first).
+- **Epic 12 — TwitchFavs manual run:** Step-by-step checklist (real Twitch profile): [EDGE plan — Epic 12.2](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-122--manual-checklist-twitchfavs-real-profile). Normative IDs: [doc/requirements/twitch-favs-managed-membership.md](doc/requirements/twitch-favs-managed-membership.md). Add Playwright / Vitest coverage when **Epic 12.4** lands.
 - Load unpacked in **Edge** from the repo root after `npm run build`.
 - Smoke: dashboard opens, service worker has no startup errors, toggle overlay pref, confirm overlay on a tab with an enabled job (see `AGENT_HANDOFF.md`).
 

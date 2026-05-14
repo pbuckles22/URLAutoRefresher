@@ -295,13 +295,38 @@ flowchart TB
 
 **Goal:** Make TwitchFavs behavior **observable and testable** for real profiles and for **CI** (deterministic). Epic **12** does not require Epic **11**; lane **L12** may parallel **L13A** / **L113** (see [Parallel work — Epics 11–13](#parallel-work--epics-11-13)).
 
-**Tester context (align with product):** After **[Epic 10.4](#epic-10--url-first-membership-phased)**, [`TargetRef`](../../src/lib/types.ts) persists **`targetUrl` only** (no stored `tabId`). **Live `tabId`** is resolved at runtime ([`resolveGlobalGroupTargets`](../../src/lib/global-group-targets.ts), [`resolveLiveTabIdForTargetUrl`](../../src/lib/resolve-live-tab.ts)). **[`applyTwitchFavsUpsertFromTabUrl`](../../src/lib/twitch-favs.ts)** updates **`globalGroups[].targets`** (canonical channel URLs) when a Twitch channel tab updates; **[`attachTwitchFavsTabListener`](../../src/background/twitch-favs-sync.ts)** debounces `tabs.onUpdated` → `saveAppState` → `bootstrapScheduling()`. **[`doc/requirements/twitch-favs-managed-membership.md`](../requirements/twitch-favs-managed-membership.md)** section **TF.6** still mixed legacy `tabId`/`windowId` language in places—correct to **URL-first** as part of **12.3** so manual steps match the product.
+**Tester context (align with product):** After **[Epic 10.4](#epic-10--url-first-membership-phased)**, [`TargetRef`](../../src/lib/types.ts) persists **`targetUrl` only** (no stored `tabId`). **Live `tabId`** is resolved at runtime ([`resolveGlobalGroupTargets`](../../src/lib/global-group-targets.ts), [`resolveLiveTabIdForTargetUrl`](../../src/lib/resolve-live-tab.ts)). **[`applyTwitchFavsUpsertFromTabUrl`](../../src/lib/twitch-favs.ts)** collapses **`globalGroups[].targets`** to **one canonical row per channel** when a matching Twitch tab updates; **[`attachTwitchFavsTabListener`](../../src/background/twitch-favs-sync.ts)** debounces `tabs.onUpdated` → `saveAppState` → `bootstrapScheduling()`. Normative TF behavior: [doc/requirements/twitch-favs-managed-membership.md](../requirements/twitch-favs-managed-membership.md) (**TF.5–TF.7** updated for URL-first in **12.3**).
 
 **What “tab id changed” means for manual QA:** After close/reopen, the **new** tab gets a new Chrome `tabId`, but **storage** should still show the **same channel `targetUrl` row**; refresh/overlay should follow the **new** tab because resolution re-runs from URLs + open tabs—not because `tabId` was rewritten in `chrome.storage.local`.
 
-- [ ] **12.1** — **Docs — tester mental model:** What to inspect under **Application → Storage → Extension** (`urlAutoRefresher_state_v1`); what **not** to expect (no `tabId` on `targets`); how to infer the “right” tab (overlay on channel, scheduled refresh hitting the visible tab, or temporary `chrome.storage.onChanged` logging during dev). _May mirror a short bullet in [TEST_PLAN.md](../../TEST_PLAN.md) Tier 2 manual area._
-- [ ] **12.2** — **Manual checklist (your browser, cookies):** Step-by-step: create **TwitchFavs** group + patterns; open a favorite; confirm **targets** / keys evolve per TF; **close** tab, **open** same channel in a **new** tab; confirm scheduling/overlay still attach to the live tab. Link from [Testing checklist (manual)](#testing-checklist-manual) when written.
-- [ ] **12.3** — **Requirements hygiene:** Update **TF.6** in [`twitch-favs-managed-membership.md`](../requirements/twitch-favs-managed-membership.md) for **URL-first** rebinding (canonical `targetUrl` per channel; no persisted tab id on `TargetRef`).
+### Epic 12.1 — Tester mental model (Extension Storage, URL-first)
+
+Use **Edge DevTools** on a profile where the extension is loaded (**Application** → **Storage** → **Extension** → this extension).
+
+1. **App state key:** Open **`urlAutoRefresher_state_v1`** (see [`STORAGE_KEY`](../../src/lib/storage.ts)). Parsed JSON includes **`globalGroups`** and **`individualJobs`**.
+2. **TwitchFavs `targets`:** Each member row is a **`TargetRef`**: **`targetUrl`** (canonical `https://www.twitch.tv/{login}` for managed channels) and optional **`label`**. Do **not** expect persisted **`tabId`** / **`windowId`** on those rows after Epic **10.4**.
+3. **Per-member schedule / pause:** For globals, keys under **`memberNextFireAt`** and **`pausedMemberKeys`** use the same **member key** as `memberKeyFromTargetUrl(targetUrl)` (not Chrome tab ids). Legacy fields may still appear until a save/migration path rewrites them; trust the types in [`src/lib/types.ts`](../../src/lib/types.ts) for new writes.
+4. **Prefs:** Overlay and other UI prefs live under **`urlAutoRefresher_prefs_v1`** ([`PREFS_STORAGE_KEY`](../../src/lib/prefs.ts))—separate from job state.
+5. **Inferring the “right” tab:** If a channel tab is open and the group is **enabled**, the **page overlay** (when the pref is on) and **scheduled refresh** should attach to the **live** tab that resolves for that **`targetUrl`** (see product rule for multiple matching tabs in [Epic 10](#epic-10--url-first-membership-phased)). During development, re-read **`urlAutoRefresher_state_v1`** after Twitch navigations, or add temporary logging on `chrome.storage.onChanged` in the service worker.
+
+### Epic 12.2 — Manual checklist (TwitchFavs, real profile)
+
+**Prereq:** `npm run build`, load **unpacked** extension, use a normal Edge profile (cookies / Twitch login as you usually would).
+
+1. **Create the managed group:** On the dashboard, add a **global** group whose **name** is **`TwitchFavs`** (any casing, e.g. `twitchfavs`). In **Auto-include URL patterns**, enter **streamer logins** (comma or newline) for channels you can open. Set interval/jitter, **Save**, then **Start** the group (**enabled**).
+2. **Open a favorite channel:** Open `https://www.twitch.tv/{login}` in a tab for one of those logins. Wait a moment or trigger navigation so `tabs.onUpdated` runs.
+3. **Inspect storage:** In DevTools, confirm under **`urlAutoRefresher_state_v1`** → `globalGroups[]` for this group: **`targets`** contains **one** object for that channel with **`targetUrl`** = canonical Twitch URL and **no** stored tab id on the row (per **12.1**).
+4. **Overlay + schedule:** With overlay pref on and the group running, confirm the **large countdown overlay** appears on that tab (or use dashboard row countdown). Note **`memberNextFireAt`** keys if you want to correlate schedule state.
+5. **Close the channel tab completely** (tab closed, not only navigating away).
+6. **Open the same channel again** in a **new** tab (new `tabId`).
+7. **Re-verify:** Storage should still show the **same** canonical **`targetUrl`** row (not duplicate rows for the same channel). Overlay and refresh behavior should apply to the **new** tab without re-saving the group manually.
+8. **Optional:** Remove a streamer from the pattern list, **Save**, and confirm **TF.5** pruning (row disappears for that channel).
+
+Regression pointers: [doc/requirements/twitch-favs-managed-membership.md](../requirements/twitch-favs-managed-membership.md) **TF.5–TF.7**; Tier 2 automation for this flow is **12.4**.
+
+- [x] **12.1** — **Docs — tester mental model:** [§ Epic 12.1](#epic-121--tester-mental-model-extension-storage-url-first); mirrored in [TEST_PLAN.md](../../TEST_PLAN.md) Tier 2 manual.
+- [x] **12.2** — **Manual checklist:** [§ Epic 12.2](#epic-122--manual-checklist-twitchfavs-real-profile); linked from [Testing checklist (manual)](#testing-checklist-manual).
+- [x] **12.3** — **Requirements hygiene:** **TF.5** / **TF.6** (and TF.7 unchanged) in [`twitch-favs-managed-membership.md`](../requirements/twitch-favs-managed-membership.md) aligned with URL-first storage and upsert behavior.
 - [ ] **12.4** — **Deeper Playwright (CI-safe):** Prefer **no** logged-in Twitch dependency in default CI. Options (pick one primary; others backlog): **(a)** Playwright **route interception** so a tab navigates to `https://www.twitch.tv/{login}` but **body is served locally**; **(b)** strengthen **Vitest** around `applyTwitchFavsUpsertFromTabUrl` + a small exported orchestration wrapper if [`twitch-favs-sync.ts`](../../src/background/twitch-favs-sync.ts) is hard to hit from E2E; **(c)** optional **`E2E_TWITCH_LIVE=1`** gated spec against real Twitch (**not for CI**—document). Re-read [.cursor/skills/chromium-mv3-extension/SKILL.md](../../.cursor/skills/chromium-mv3-extension/SKILL.md) before changing manifest, service worker wiring, or messaging.
 
 **Dependency note:** Epic **12** is orthogonal to **11.3** (content) and **13.A** (scheduler).
@@ -460,7 +485,7 @@ Enforce **non-overlap:** same `tabId` cannot be enabled in two places.
 
 ## Testing checklist (manual)
 
-- [ ] **Epic 12.2 — TwitchFavs / URL-first:** When [12.2](#epic-12--twitchfavs--url-first-qa--ci-confidence) is written, follow that checklist (close channel tab → reopen same channel in a **new** tab; overlay/schedule follow **live** tab; storage stays **URL-first**).
+- [ ] **TwitchFavs URL-first (Epic 12.2):** Run the steps in [Epic 12 — § Epic 12.2](#epic-122--manual-checklist-twitchfavs-real-profile) (close channel tab → reopen same channel in a **new** tab; overlay + schedule on **live** tab; storage stays URL-first per **TF.5–TF.7**). Requirements: [twitch-favs-managed-membership.md](../requirements/twitch-favs-managed-membership.md).
 - [ ] Two windows, two different `targetUrl`s in **one global group** → both refresh **together**; live URL may differ until refresh.
 - [ ] **Individual** in window A while **global** runs in B/C → independent timers.
 - [ ] Service worker restarts → alarms still fire; `nextFireAt` matches alarms.
