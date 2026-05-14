@@ -2,15 +2,25 @@
  * Shared dashboard + side panel UI (Epic 5): prefs, global groups, individual jobs,
  * countdown ticks, cross-surface links.
  */
-import { formatGlobalGroupCountdown, formatIndividualJobCountdown } from '../lib/dashboard-countdown';
+import {
+  formatGlobalGroupCountdown,
+  formatIndividualJobCountdown,
+} from '../lib/dashboard-countdown';
 import { buildGlobalGroupFromForm, buildGlobalGroupUpdateFromForm } from '../lib/global-group-form';
 import {
   appendGlobalEditNewTargetRow,
   createGlobalGroupListRow,
 } from '../lib/global-group-list-row';
 import { createIndividualJobListRow } from '../lib/individual-job-list-row';
-import { buildIndividualJobFromForm, buildIndividualJobUpdateFromForm } from '../lib/individual-job-form';
-import { removeIndividualJobById, replaceIndividualJob, setIndividualJobEnabled } from '../lib/individual-jobs';
+import {
+  buildIndividualJobFromForm,
+  buildIndividualJobUpdateFromForm,
+} from '../lib/individual-job-form';
+import {
+  removeIndividualJobById,
+  replaceIndividualJob,
+  setIndividualJobEnabled,
+} from '../lib/individual-jobs';
 import {
   removeGlobalGroupById,
   replaceGlobalGroup,
@@ -20,7 +30,11 @@ import { memberKeyFromTargetUrl } from '../lib/member-url';
 import { isTwitchFavsGroupName, TWITCH_FAVS_PATTERN_HINT } from '../lib/twitch-favs';
 import { validateHttpUrl } from '../lib/validation';
 import { mergeDistinctPatternLines } from '../lib/url-glob';
-import { defaultTargetUrlForTab, pinTabIdFirst, tabRowsFromWindowsSnapshot } from '../lib/window-tab-browser';
+import {
+  defaultTargetUrlForTab,
+  pinTabIdFirst,
+  tabRowsFromWindowsSnapshot,
+} from '../lib/window-tab-browser';
 import { loadExtensionPrefs, saveExtensionPrefs } from '../lib/prefs';
 import { onlyNonLayoutAppStateDiff } from '../lib/app-state-list-layout';
 import { validateGlobalGroupResolvedEnrollment } from '../lib/global-group-enrollment';
@@ -81,11 +95,17 @@ export function initDashboardApp(): void {
   const globalTabSearch = document.querySelector<HTMLInputElement>('[data-global-tab-search]');
   const globalIntervalInput = document.querySelector<HTMLInputElement>('[data-global-interval]');
   const globalJitterInput = document.querySelector<HTMLInputElement>('[data-global-jitter]');
-  const globalUrlPatterns = document.querySelector<HTMLTextAreaElement>('[data-global-url-patterns]');
-  const globalTwitchFavsHint = document.querySelector<HTMLElement>('[data-global-twitch-favs-hint]');
+  const globalUrlPatterns = document.querySelector<HTMLTextAreaElement>(
+    '[data-global-url-patterns]'
+  );
+  const globalTwitchFavsHint = document.querySelector<HTMLElement>(
+    '[data-global-twitch-favs-hint]'
+  );
   const globalFormError = document.querySelector<HTMLElement>('[data-global-form-error]');
   const globalSectionHeading = document.querySelector<HTMLElement>('[data-global-section-heading]');
-  const individualSectionHeading = document.querySelector<HTMLElement>('[data-individual-section-heading]');
+  const individualSectionHeading = document.querySelector<HTMLElement>(
+    '[data-individual-section-heading]'
+  );
   const globalGroupsList = document.querySelector<HTMLUListElement>('[data-global-groups-list]');
 
   if (globalTwitchFavsHint) {
@@ -93,7 +113,9 @@ export function initDashboardApp(): void {
   }
   if (globalGroupName && globalTwitchFavsHint) {
     const syncGlobalTwitchFavsHint = (): void => {
-      globalTwitchFavsHint.style.display = isTwitchFavsGroupName(globalGroupName.value) ? 'block' : 'none';
+      globalTwitchFavsHint.style.display = isTwitchFavsGroupName(globalGroupName.value)
+        ? 'block'
+        : 'none';
     };
     globalGroupName.addEventListener('input', syncGlobalTwitchFavsHint);
     syncGlobalTwitchFavsHint();
@@ -121,9 +143,7 @@ export function initDashboardApp(): void {
     const q = (globalTabSearch?.value ?? '').trim().toLowerCase();
     for (const li of globalTabBrowser.querySelectorAll<HTMLLIElement>('[data-global-tab-row]')) {
       const title = li.querySelector('[data-global-tab-title]')?.textContent ?? '';
-      const url =
-        li.querySelector<HTMLInputElement>('[data-global-target-url]')?.value ??
-        '';
+      const url = li.querySelector<HTMLInputElement>('[data-global-target-url]')?.value ?? '';
       const hay = `${title} ${url}`.toLowerCase();
       if (q === '' || hay.includes(q)) {
         li.style.display = 'grid';
@@ -260,7 +280,10 @@ export function initDashboardApp(): void {
   }
 
   /** Options for a new global-group member row: exclude tabs already chosen on other rows. */
-  function populateGlobalEditNewTabSelect(selectEl: HTMLSelectElement, groupRow: HTMLElement): void {
+  function populateGlobalEditNewTabSelect(
+    selectEl: HTMLSelectElement,
+    groupRow: HTMLElement
+  ): void {
     const selfRow = selectEl.closest('[data-global-edit-target-row]');
     const taken = new Set<number>();
     for (const tr of groupRow.querySelectorAll('[data-global-edit-target-row]')) {
@@ -428,11 +451,20 @@ export function initDashboardApp(): void {
             return;
           }
           const url = row.querySelector<HTMLInputElement>('[data-job-edit-url]')?.value ?? '';
-          const interval = Number(row.querySelector<HTMLInputElement>('[data-job-edit-interval]')?.value);
-          const jitter = Number(row.querySelector<HTMLInputElement>('[data-job-edit-jitter]')?.value);
-          const liveAware = row.querySelector<HTMLInputElement>('[data-job-edit-live-aware]')?.checked === true;
-          const blipPhrases = row.querySelector<HTMLTextAreaElement>('[data-job-edit-blip-phrases]')?.value;
-          const blipRegex = row.querySelector<HTMLInputElement>('[data-job-edit-blip-regex]')?.value;
+          const interval = Number(
+            row.querySelector<HTMLInputElement>('[data-job-edit-interval]')?.value
+          );
+          const jitter = Number(
+            row.querySelector<HTMLInputElement>('[data-job-edit-jitter]')?.value
+          );
+          const liveAware =
+            row.querySelector<HTMLInputElement>('[data-job-edit-live-aware]')?.checked === true;
+          const blipPhrases = row.querySelector<HTMLTextAreaElement>(
+            '[data-job-edit-blip-phrases]'
+          )?.value;
+          const blipRegex = row.querySelector<HTMLInputElement>(
+            '[data-job-edit-blip-regex]'
+          )?.value;
           const built = buildIndividualJobUpdateFromForm(
             {
               targetUrl: url,
@@ -559,8 +591,12 @@ export function initDashboardApp(): void {
           }
 
           const name = row.querySelector<HTMLInputElement>('[data-global-edit-name]')?.value ?? '';
-          const interval = Number(row.querySelector<HTMLInputElement>('[data-global-edit-interval]')?.value);
-          const jitter = Number(row.querySelector<HTMLInputElement>('[data-global-edit-jitter]')?.value);
+          const interval = Number(
+            row.querySelector<HTMLInputElement>('[data-global-edit-interval]')?.value
+          );
+          const jitter = Number(
+            row.querySelector<HTMLInputElement>('[data-global-edit-jitter]')?.value
+          );
 
           const targets: Array<{ targetUrl: string; label?: string }> = [];
           const extraPatternUrls: string[] = [];
@@ -615,10 +651,17 @@ export function initDashboardApp(): void {
             }
           }
 
-          const patternsField = row.querySelector<HTMLTextAreaElement>('[data-global-edit-url-patterns]')?.value ?? '';
+          const patternsField =
+            row.querySelector<HTMLTextAreaElement>('[data-global-edit-url-patterns]')?.value ?? '';
           const patternsRaw = mergeDistinctPatternLines(patternsField, extraPatternUrls);
           const built = buildGlobalGroupUpdateFromForm(
-            { name, baseIntervalSec: interval, jitterSec: jitter, targets, urlPatternsRaw: patternsRaw },
+            {
+              name,
+              baseIntervalSec: interval,
+              jitterSec: jitter,
+              targets,
+              urlPatternsRaw: patternsRaw,
+            },
             existing
           );
           if (!built.ok) {
@@ -627,7 +670,11 @@ export function initDashboardApp(): void {
             }
             return;
           }
-          const enroll = await validateGlobalGroupResolvedEnrollment(state, built.value, existing.id);
+          const enroll = await validateGlobalGroupResolvedEnrollment(
+            state,
+            built.value,
+            existing.id
+          );
           if (!enroll.ok) {
             if (errEl) {
               errEl.textContent = enroll.error;
@@ -681,7 +728,9 @@ export function initDashboardApp(): void {
             urlIn.value = defaultTargetUrlForTab(ct.url ?? '');
           });
         }
-        for (const other of groupRow.querySelectorAll<HTMLSelectElement>('[data-global-edit-pick-tab]')) {
+        for (const other of groupRow.querySelectorAll<HTMLSelectElement>(
+          '[data-global-edit-pick-tab]'
+        )) {
           if (other !== sel) {
             populateGlobalEditNewTabSelect(other, groupRow as HTMLElement);
           }
@@ -767,7 +816,13 @@ export function initDashboardApp(): void {
     tabSelect.addEventListener('change', () => syncIndividualTargetUrlFromSelectedTab());
   }
 
-  if (globalGroupForm && globalGroupName && globalTabBrowser && globalIntervalInput && globalJitterInput) {
+  if (
+    globalGroupForm &&
+    globalGroupName &&
+    globalTabBrowser &&
+    globalIntervalInput &&
+    globalJitterInput
+  ) {
     globalGroupForm.addEventListener('submit', (e) => {
       e.preventDefault();
       void (async () => {
@@ -780,7 +835,8 @@ export function initDashboardApp(): void {
           if (!checked) {
             continue;
           }
-          const targetUrl = li.querySelector<HTMLInputElement>('[data-global-target-url]')?.value ?? '';
+          const targetUrl =
+            li.querySelector<HTMLInputElement>('[data-global-target-url]')?.value ?? '';
           const label = li.querySelector('[data-global-tab-title]')?.textContent?.trim();
           targets.push({
             targetUrl,
@@ -827,7 +883,7 @@ export function initDashboardApp(): void {
     });
   }
 
-  void Promise.all([populateTabSelect(), renderGlobalTabBrowser(), renderGlobalGroupsList()]).then(() =>
-    renderIndividualJobs()
+  void Promise.all([populateTabSelect(), renderGlobalTabBrowser(), renderGlobalGroupsList()]).then(
+    () => renderIndividualJobs()
   );
 }

@@ -286,7 +286,9 @@ function buildTimerHtml(showPause: boolean): string {
   const pauseBtn = showPause
     ? `<button type="button" class="pause-btn" data-overlay-pause title="Pause auto-refresh for this tab">Pause</button>`
     : '';
-  const rowClass = showPause ? 'timer-compact-row timer-compact-row--with-pause' : 'timer-compact-row';
+  const rowClass = showPause
+    ? 'timer-compact-row timer-compact-row--with-pause'
+    : 'timer-compact-row';
   return `
     <div class="${rowClass}">
       ${pauseBtn}
@@ -453,7 +455,9 @@ function showPaused(
 }
 
 async function syncFromBackground(): Promise<void> {
-  const res = await sendExtensionMessageAsync<PageOverlayStateResponse>({ type: PAGE_OVERLAY_GET_STATE });
+  const res = await sendExtensionMessageAsync<PageOverlayStateResponse>({
+    type: PAGE_OVERLAY_GET_STATE,
+  });
   if (!res?.ok) {
     clearUi();
     clearBlipWatcher();

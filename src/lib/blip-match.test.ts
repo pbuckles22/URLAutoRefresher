@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  normalizeBlipPhrasesFromTextarea,
-  textMatchesBlip,
-  compileBlipRegex,
-} from './blip-match';
+import { normalizeBlipPhrasesFromTextarea, textMatchesBlip, compileBlipRegex } from './blip-match';
 
 describe('normalizeBlipPhrasesFromTextarea', () => {
   it('splits lines, trims, dedupes case-insensitively, and caps count', () => {

@@ -38,7 +38,7 @@ test('Epic 4.3: add global form shows mutual exclusion when tab has enabled indi
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
 
-  const { tabId, windowId } = await fixtureTabMeta(dash);
+  const { tabId } = await fixtureTabMeta(dash);
 
   await dash.evaluate(
     async ({ storageKey }) => {
@@ -63,16 +63,18 @@ test('Epic 4.3: add global form shows mutual exclusion when tab has enabled indi
     { storageKey: STORAGE_KEY }
   );
 
-  await expect(dash.locator('[data-global-section-heading]')).toHaveText('Global (0)', { timeout: 10_000 });
+  await expect(dash.locator('[data-global-section-heading]')).toHaveText('Global (0)', {
+    timeout: 10_000,
+  });
 
   await dash.locator('[data-global-refresh-tabs]').click();
   await expect(dash.locator(`[data-global-tab-row="${tabId}"]`)).toBeAttached({ timeout: 15_000 });
 
   await dash.locator('[data-global-group-name]').fill('E2E conflict');
   await dash.locator(`[data-global-tab-row="${tabId}"] [data-global-tab-include]`).check();
-  await dash.locator(`[data-global-tab-row="${tabId}"] [data-global-target-url]`).fill(
-    'https://example.com/e2e-overlap'
-  );
+  await dash
+    .locator(`[data-global-tab-row="${tabId}"] [data-global-target-url]`)
+    .fill('https://example.com/e2e-overlap');
   await dash.locator('[data-global-interval]').fill('50');
   await dash.locator('[data-global-jitter]').fill('0');
   await dash.locator('[data-global-group-form]').locator('[type="submit"]').click();
@@ -92,7 +94,7 @@ test('Epic 4.3: add individual form shows mutual exclusion when tab is in enable
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
 
-  const { tabId, windowId } = await fixtureTabMeta(dash);
+  const { tabId } = await fixtureTabMeta(dash);
 
   await dash.evaluate(
     async ({ storageKey }) => {
@@ -120,7 +122,9 @@ test('Epic 4.3: add individual form shows mutual exclusion when tab is in enable
     { storageKey: STORAGE_KEY }
   );
 
-  await expect(dash.locator('[data-global-section-heading]')).toHaveText('Global (1)', { timeout: 10_000 });
+  await expect(dash.locator('[data-global-section-heading]')).toHaveText('Global (1)', {
+    timeout: 10_000,
+  });
 
   await dash.locator('[data-job-tab]').selectOption(String(tabId));
   await dash.locator('[data-job-target-url]').fill('https://example.com/e2e-add-ind-conflict');
@@ -177,7 +181,9 @@ test('Epic 4.3: Start on global row shows error when enabled individual uses the
     { storageKey: STORAGE_KEY }
   );
 
-  await expect(dash.locator('[data-global-section-heading]')).toHaveText('Global (1)', { timeout: 10_000 });
+  await expect(dash.locator('[data-global-section-heading]')).toHaveText('Global (1)', {
+    timeout: 10_000,
+  });
 
   const row = dash.locator('[data-global-group-row="e2e-gg-off"]');
   await expect(row.locator('[data-global-group-toggle]')).toHaveText('Start');

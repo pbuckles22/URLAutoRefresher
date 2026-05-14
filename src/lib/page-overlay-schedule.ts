@@ -14,9 +14,7 @@ export function tabHasActiveRefreshJob(state: AppState, tabUrl?: string): boolea
     return true;
   }
   return state.globalGroups.some(
-    (g) =>
-      g.enabled &&
-      g.targets.some((t) => pageMatchesExplicitTarget(tabUrl, t.targetUrl))
+    (g) => g.enabled && g.targets.some((t) => pageMatchesExplicitTarget(tabUrl, t.targetUrl))
   );
 }
 

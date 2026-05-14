@@ -19,10 +19,7 @@ async function collectSchedulableTabUrlsForWindow(windowId: number): Promise<Set
   const urls = new Set<string>();
   for (const t of tabs) {
     const u = t.url;
-    if (
-      typeof u === 'string' &&
-      (u.startsWith('http://') || u.startsWith('https://'))
-    ) {
+    if (typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://'))) {
       urls.add(u);
     }
   }
@@ -53,7 +50,9 @@ export async function refreshActionBadge(): Promise<void> {
   const state = await loadAppState();
   const now = Date.now();
   const tabUrls = await tabUrlsForLastFocusedWindow();
-  const comp = await computeBadgeComputation(state, now, tabUrls, { fallbackWhenFocusedEmpty: true });
+  const comp = await computeBadgeComputation(state, now, tabUrls, {
+    fallbackWhenFocusedEmpty: true,
+  });
   const text = badgeTextFromComputation(comp);
   await chrome.action.setBadgeText({ text });
   await syncBadgeTickAlarm(comp);
@@ -75,7 +74,10 @@ export function attachBadgeListeners(): void {
     }
     void (async () => {
       try {
-        const [tab, last] = await Promise.all([chrome.tabs.get(tabId), chrome.windows.getLastFocused()]);
+        const [tab, last] = await Promise.all([
+          chrome.tabs.get(tabId),
+          chrome.windows.getLastFocused(),
+        ]);
         if (
           tab.windowId !== undefined &&
           last.id !== undefined &&

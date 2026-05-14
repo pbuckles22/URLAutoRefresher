@@ -4,7 +4,10 @@ import type { AppState } from './types';
 import { BLIP_MAX_REGEX_LEN } from './blip-match';
 
 /** Enabled individual job on this page URL with at least one blip trigger configured (Epic 9). */
-export function getBlipWatchForTab(state: AppState, tabUrl: string | undefined): PageOverlayBlipPack | undefined {
+export function getBlipWatchForTab(
+  state: AppState,
+  tabUrl: string | undefined
+): PageOverlayBlipPack | undefined {
   if (!tabUrl) {
     return undefined;
   }

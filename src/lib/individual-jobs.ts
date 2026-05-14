@@ -10,7 +10,11 @@ export function removeIndividualJobById(state: AppState, jobId: string): AppStat
   };
 }
 
-export function setIndividualJobEnabled(state: AppState, jobId: string, enabled: boolean): AppState {
+export function setIndividualJobEnabled(
+  state: AppState,
+  jobId: string,
+  enabled: boolean
+): AppState {
   return {
     ...state,
     individualJobs: state.individualJobs.map((j) => {
@@ -18,7 +22,13 @@ export function setIndividualJobEnabled(state: AppState, jobId: string, enabled:
         return j;
       }
       if (!enabled) {
-        return { ...j, enabled: false, nextFireAt: undefined, streamLive: undefined, overlayPaused: undefined };
+        return {
+          ...j,
+          enabled: false,
+          nextFireAt: undefined,
+          streamLive: undefined,
+          overlayPaused: undefined,
+        };
       }
       return { ...j, enabled: true };
     }),

@@ -17,10 +17,19 @@ export type PrimaryMediaPickFields = {
 };
 
 /** Positive if `a` should win over `b` (higher priority). */
-export function comparePrimaryMediaPriority(a: PrimaryMediaPickFields, b: PrimaryMediaPickFields): number {
+export function comparePrimaryMediaPriority(
+  a: PrimaryMediaPickFields,
+  b: PrimaryMediaPickFields
+): number {
   const key = (m: PrimaryMediaPickFields) => {
     const playing = !m.paused && !m.ended && m.readyState >= 2;
-    return [playing ? 1 : 0, m.displayArea, m.kind === 'video' ? 1 : 0, m.intrinsicSize, -m.docIndex] as const;
+    return [
+      playing ? 1 : 0,
+      m.displayArea,
+      m.kind === 'video' ? 1 : 0,
+      m.intrinsicSize,
+      -m.docIndex,
+    ] as const;
   };
   const ka = key(a);
   const kb = key(b);

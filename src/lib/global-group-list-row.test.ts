@@ -35,21 +35,23 @@ describe('createGlobalGroupListRow', () => {
     const summaryLine = li.querySelector('span:not([data-global-group-countdown])');
     expect(summaryLine?.textContent).toBe('Sync set · 2 explicit · every 55s ±4s');
 
-    expect(li.querySelector<HTMLButtonElement>('[data-global-group-toggle]')?.textContent).toBe('Stop');
+    expect(li.querySelector<HTMLButtonElement>('[data-global-group-toggle]')?.textContent).toBe(
+      'Stop'
+    );
     expect(li.querySelector('[data-global-group-delete]')).toBeTruthy();
 
-    expect((li.querySelector<HTMLInputElement>('[data-global-edit-name]'))?.value).toBe('Sync set');
-    expect((li.querySelector<HTMLInputElement>('[data-global-edit-interval]'))?.value).toBe('55');
-    expect((li.querySelector<HTMLInputElement>('[data-global-edit-jitter]'))?.value).toBe('4');
+    expect(li.querySelector<HTMLInputElement>('[data-global-edit-name]')?.value).toBe('Sync set');
+    expect(li.querySelector<HTMLInputElement>('[data-global-edit-interval]')?.value).toBe('55');
+    expect(li.querySelector<HTMLInputElement>('[data-global-edit-jitter]')?.value).toBe('4');
 
     const mkA = memberKeyFromTargetUrl('https://example.com/a')!;
     const mkB = memberKeyFromTargetUrl('https://example.com/b')!;
-    const u40 = li.querySelector(`[data-global-edit-member-key="${mkA}"]`)?.querySelector<HTMLInputElement>(
-      '[data-global-edit-target-url]'
-    );
-    const u41 = li.querySelector(`[data-global-edit-member-key="${mkB}"]`)?.querySelector<HTMLInputElement>(
-      '[data-global-edit-target-url]'
-    );
+    const u40 = li
+      .querySelector(`[data-global-edit-member-key="${mkA}"]`)
+      ?.querySelector<HTMLInputElement>('[data-global-edit-target-url]');
+    const u41 = li
+      .querySelector(`[data-global-edit-member-key="${mkB}"]`)
+      ?.querySelector<HTMLInputElement>('[data-global-edit-target-url]');
     expect(u40?.value).toBe('https://example.com/a');
     expect(u41?.value).toBe('https://example.com/b');
 

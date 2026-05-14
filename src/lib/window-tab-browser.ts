@@ -35,7 +35,10 @@ export function defaultTargetUrlForTab(url: string): string {
 /**
  * Move an item with `id === pinTabId` to the front (stable relative order otherwise).
  */
-export function pinTabIdFirst<T extends { id: number }>(items: readonly T[], pinTabId?: number): T[] {
+export function pinTabIdFirst<T extends { id: number }>(
+  items: readonly T[],
+  pinTabId?: number
+): T[] {
   if (pinTabId === undefined || pinTabId < 1 || items.length < 2) {
     return [...items];
   }

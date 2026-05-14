@@ -3,16 +3,15 @@
  */
 
 import { BADGE_TICK_ALARM, refreshActionBadge } from './badge';
-import {
-  alarmNameGlobalMember,
-  alarmNameIndividual,
-  parseAlarmName,
-} from '../lib/alarm-names';
+import { alarmNameGlobalMember, alarmNameIndividual, parseAlarmName } from '../lib/alarm-names';
 import { computeAlarmWhen } from '../lib/alarm-schedule';
 import { memberKeyFromTargetUrl } from '../lib/member-url';
 import { computeNextDelayMs } from '../lib/schedule';
 import { LIVE_AWARE_POLL_MS } from '../lib/live-aware-constants';
-import { globalGroupHasSchedulableConfig, resolveGlobalGroupTargets } from '../lib/global-group-targets';
+import {
+  globalGroupHasSchedulableConfig,
+  resolveGlobalGroupTargets,
+} from '../lib/global-group-targets';
 import { resolveLiveTabIdForTargetUrl } from '../lib/resolve-live-tab';
 import { loadAppState, saveAppState, STORAGE_KEY } from '../lib/storage';
 import { applyTabRemoved } from '../lib/tab-lifecycle';
@@ -270,7 +269,11 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
       }
 
       if (!ok) {
-        const nextJobs = replaceAt(state.individualJobs, idx, { ...job, enabled: false, nextFireAt: undefined });
+        const nextJobs = replaceAt(state.individualJobs, idx, {
+          ...job,
+          enabled: false,
+          nextFireAt: undefined,
+        });
         state = { ...state, individualJobs: nextJobs };
         await saveAppState(state);
         await syncAlarmsWithState(state);
@@ -314,7 +317,9 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
     const paused = new Set(group.pausedMemberKeys ?? []);
 
     const resolvedHit = resolved.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey);
-    const storedUrl = group.targets.find((t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey)?.targetUrl;
+    const storedUrl = group.targets.find(
+      (t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey
+    )?.targetUrl;
     const memberUrl = resolvedHit?.targetUrl ?? storedUrl;
     if (!memberUrl) {
       await syncAlarmsWithState(await loadAppState());
@@ -352,7 +357,7 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
 
     const { baseMs, jitterMs } = baseAndJitterMs(group);
 
-    let memberNextFireAt = { ...(group.memberNextFireAt ?? {}) };
+    const memberNextFireAt = { ...(group.memberNextFireAt ?? {}) };
 
     if (!ok) {
       delete memberNextFireAt[memberKey];

@@ -33,9 +33,9 @@ describe('resolveGlobalGroupTargets', () => {
       jitterSec: 0,
       enabled: true,
     };
-    const queryTabs = vi.fn().mockResolvedValue([
-      { id: 2, windowId: 0, url: 'https://saved.example/video' },
-    ]);
+    const queryTabs = vi
+      .fn()
+      .mockResolvedValue([{ id: 2, windowId: 0, url: 'https://saved.example/video' }]);
     const got = await resolveGlobalGroupTargets(group, queryTabs);
     expect(got).toHaveLength(1);
     expect(got[0]!.targetUrl).toBe('https://saved.example/');
@@ -51,9 +51,11 @@ describe('resolveGlobalGroupTargets', () => {
       jitterSec: 0,
       enabled: true,
     };
-    const queryTabs = vi.fn().mockResolvedValue([
-      { id: 1, windowId: 0, url: 'https://twitch.tv/Ninja', active: false, index: 0 },
-    ]);
+    const queryTabs = vi
+      .fn()
+      .mockResolvedValue([
+        { id: 1, windowId: 0, url: 'https://twitch.tv/Ninja', active: false, index: 0 },
+      ]);
     const got = await resolveGlobalGroupTargets(group, queryTabs);
     expect(got).toHaveLength(1);
     expect(got[0]!.tabId).toBe(1);

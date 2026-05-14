@@ -4,7 +4,9 @@
  * a `.catch()` on the returned promise does not catch that.
  */
 export function extensionRuntimeContextLikelyAlive(): boolean {
-  return typeof chrome !== 'undefined' && typeof chrome.runtime !== 'undefined' && !!chrome.runtime.id;
+  return (
+    typeof chrome !== 'undefined' && typeof chrome.runtime !== 'undefined' && !!chrome.runtime.id
+  );
 }
 
 /** Fire-and-forget background message; swallow async rejections. */

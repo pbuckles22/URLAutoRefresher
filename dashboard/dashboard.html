@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -6,7 +6,11 @@
     <title>URL Auto Refresher</title>
     <style>
       :root {
-        font-family: system-ui, Segoe UI, Roboto, sans-serif;
+        font-family:
+          system-ui,
+          Segoe UI,
+          Roboto,
+          sans-serif;
         color: #e8eaed;
         background: #202124;
       }
@@ -99,7 +103,9 @@
       <button type="button" data-open-side-panel>Open side panel</button>
     </div>
     <section style="margin-top: 1.25rem" aria-labelledby="prefs-heading">
-      <h2 id="prefs-heading" style="font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem">Display</h2>
+      <h2 id="prefs-heading" style="font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem">
+        Display
+      </h2>
       <label
         style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; color: #e8eaed"
       >
@@ -121,15 +127,22 @@
           Global (0)
         </h2>
         <p style="margin: 0 0 0.75rem; color: #9aa0a6; font-size: 0.9rem">
-          Saved groups are listed first. To add a group, browse windows and tabs below, check which tabs belong
-          to it, set each tab’s refresh URL (defaults to that tab’s current address when you build the list),
-          then Save. One shared schedule refreshes every included tab together. On each tick the extension loads
-          the <strong>saved</strong> URL for that tab (e.g. after a raid, it returns to the channel you
-          configured—not the tab’s live URL unless you saved that).
+          Saved groups are listed first. To add a group, browse windows and tabs below, check which
+          tabs belong to it, set each tab’s refresh URL (defaults to that tab’s current address when
+          you build the list), then Save. One shared schedule refreshes every included tab together.
+          On each tick the extension loads the <strong>saved</strong> URL for that tab (e.g. after a
+          raid, it returns to the channel you configured—not the tab’s live URL unless you saved
+          that).
         </p>
         <ul
           data-global-groups-list
-          style="margin: 0 0 1.25rem; padding: 0; list-style: none; color: #e8eaed; line-height: 1.5"
+          style="
+            margin: 0 0 1.25rem;
+            padding: 0;
+            list-style: none;
+            color: #e8eaed;
+            line-height: 1.5;
+          "
         ></ul>
         <h3
           id="global-add-group-heading"
@@ -149,18 +162,33 @@
               required
               placeholder="e.g. Morning dashboards"
               autocomplete="off"
-              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+              "
             />
           </label>
           <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem">
             <button
               type="button"
               data-global-refresh-tabs
-              style="padding: 0.4rem 0.75rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed; cursor: pointer"
+              style="
+                padding: 0.4rem 0.75rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+                cursor: pointer;
+              "
             >
               Refresh tab list
             </button>
-            <span style="color: #9aa0a6; font-size: 0.85rem">Uses all windows (<code>windows.getAll</code>).</span>
+            <span style="color: #9aa0a6; font-size: 0.85rem"
+              >Uses all windows (<code>windows.getAll</code>).</span
+            >
           </div>
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
             <span>Filter tabs (title or URL)</span>
@@ -170,7 +198,13 @@
               placeholder="Type to filter, e.g. twitch"
               autocomplete="off"
               aria-label="Filter tabs by title or URL"
-              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+              "
             />
           </label>
           <div style="overflow-x: auto">
@@ -186,15 +220,30 @@
               rows="3"
               autocomplete="off"
               placeholder="e.g. *twitch.tv*&#10;https://www.twitch.tv/*"
-              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed; resize: vertical; min-height: 3.5rem"
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+                resize: vertical;
+                min-height: 3.5rem;
+              "
             ></textarea>
             <span style="color: #9aa0a6; font-size: 0.8rem"
-              >Any open http(s) tab whose URL matches a line is included automatically, including tabs you open
-              later. Manual checkboxes above still add explicit tabs with fixed target URLs.</span
+              >Any open http(s) tab whose URL matches a line is included automatically, including
+              tabs you open later. Manual checkboxes above still add explicit tabs with fixed target
+              URLs.</span
             >
             <p
               data-global-twitch-favs-hint
-              style="margin: 0.35rem 0 0; font-size: 0.78rem; color: #9aa0a6; line-height: 1.35; display: none"
+              style="
+                margin: 0.35rem 0 0;
+                font-size: 0.78rem;
+                color: #9aa0a6;
+                line-height: 1.35;
+                display: none;
+              "
             ></p>
           </label>
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
@@ -206,7 +255,13 @@
               step="1"
               value="60"
               required
-              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+              "
             />
           </label>
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
@@ -218,18 +273,37 @@
               step="1"
               value="0"
               required
-              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+              "
             />
           </label>
           <button
             type="submit"
             data-global-save
-            style="align-self: flex-start; padding: 0.4rem 1rem; border-radius: 6px; border: none; background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer"
+            style="
+              align-self: flex-start;
+              padding: 0.4rem 1rem;
+              border-radius: 6px;
+              border: none;
+              background: #8ab4f8;
+              color: #202124;
+              font-weight: 600;
+              cursor: pointer;
+            "
           >
             Save group
           </button>
         </form>
-        <p data-global-form-error role="alert" style="margin: 0.5rem 0 0; color: #f28b82; min-height: 1.25rem"></p>
+        <p
+          data-global-form-error
+          role="alert"
+          style="margin: 0.5rem 0 0; color: #f28b82; min-height: 1.25rem"
+        ></p>
       </section>
 
       <section aria-labelledby="add-job-heading">
@@ -241,11 +315,14 @@
           Individual (0)
         </h2>
         <p style="margin: 0 0 0.75rem; color: #9aa0a6; font-size: 0.9rem">
-          Pick a tab: <strong>Target URL</strong> defaults to that tab’s current address (refresh the tab list if
-          it moved). Then set interval and jitter (seconds) and Save. Scheduled refresh always loads the
-          <strong>saved</strong> target URL.
+          Pick a tab: <strong>Target URL</strong> defaults to that tab’s current address (refresh
+          the tab list if it moved). Then set interval and jitter (seconds) and Save. Scheduled
+          refresh always loads the <strong>saved</strong> target URL.
         </p>
-        <form data-add-individual-form style="display: flex; flex-direction: column; gap: 0.5rem; max-width: 28rem">
+        <form
+          data-add-individual-form
+          style="display: flex; flex-direction: column; gap: 0.5rem; max-width: 28rem"
+        >
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
             <span>Filter tabs (title or URL)</span>
             <input
@@ -254,14 +331,27 @@
               placeholder="Type to narrow the tab list"
               autocomplete="off"
               aria-label="Filter tabs for individual job"
-              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+              "
             />
           </label>
           <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem">
             <button
               type="button"
               data-job-tab-refresh
-              style="padding: 0.4rem 0.75rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed; cursor: pointer"
+              style="
+                padding: 0.4rem 0.75rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+                cursor: pointer;
+              "
             >
               Refresh tab list
             </button>
@@ -269,9 +359,19 @@
           </div>
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
             <span>Tab</span>
-            <select data-job-tab required style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
-              ><option value="">Select a tab…</option></select
+            <select
+              data-job-tab
+              required
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+              "
             >
+              <option value="">Select a tab…</option>
+            </select>
           </label>
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
             <span>Target URL</span>
@@ -281,7 +381,13 @@
               required
               placeholder="https://…"
               autocomplete="off"
-              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+              "
             />
           </label>
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
@@ -293,7 +399,13 @@
               step="1"
               value="60"
               required
-              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+              "
             />
           </label>
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
@@ -305,14 +417,28 @@
               step="1"
               value="0"
               required
-              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+              "
             />
           </label>
-          <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; color: #e8eaed">
+          <label
+            style="
+              display: flex;
+              align-items: flex-start;
+              gap: 0.5rem;
+              cursor: pointer;
+              color: #e8eaed;
+            "
+          >
             <input type="checkbox" data-job-live-aware style="margin-top: 0.2rem" />
             <span
-              >Twitch <strong>live-aware</strong> pause (channel page only): skip refresh while the stream is live; resume
-              when offline.</span
+              >Twitch <strong>live-aware</strong> pause (channel page only): skip refresh while the
+              stream is live; resume when offline.</span
             >
           </label>
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
@@ -322,7 +448,15 @@
               rows="3"
               autocomplete="off"
               placeholder="e.g. phrases that appear after a blip"
-              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed; resize: vertical; min-height: 3.5rem"
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+                resize: vertical;
+                min-height: 3.5rem;
+              "
             ></textarea>
           </label>
           <label style="display: flex; flex-direction: column; gap: 0.25rem">
@@ -332,18 +466,38 @@
               type="text"
               autocomplete="off"
               placeholder="JavaScript regex, case-insensitive flag applied"
-              style="padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #303134; color: #e8eaed"
+              style="
+                padding: 0.35rem 0.5rem;
+                border-radius: 6px;
+                border: 1px solid #5f6368;
+                background: #303134;
+                color: #e8eaed;
+              "
             />
           </label>
           <button
             type="submit"
             data-job-save
-            style="align-self: flex-start; margin-top: 0.25rem; padding: 0.4rem 1rem; border-radius: 6px; border: none; background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer"
+            style="
+              align-self: flex-start;
+              margin-top: 0.25rem;
+              padding: 0.4rem 1rem;
+              border-radius: 6px;
+              border: none;
+              background: #8ab4f8;
+              color: #202124;
+              font-weight: 600;
+              cursor: pointer;
+            "
           >
             Save
           </button>
         </form>
-        <p data-add-job-error role="alert" style="margin: 0.5rem 0 0; color: #f28b82; min-height: 1.25rem"></p>
+        <p
+          data-add-job-error
+          role="alert"
+          style="margin: 0.5rem 0 0; color: #f28b82; min-height: 1.25rem"
+        ></p>
         <ul
           data-individual-jobs-list
           style="margin: 1rem 0 0; padding: 0; list-style: none; color: #e8eaed; line-height: 1.5"

@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { dashboardUrl, sidepanelUrl, launchExtensionContext, FIXTURE_ORIGIN } from './extension-helpers';
+import {
+  dashboardUrl,
+  sidepanelUrl,
+  launchExtensionContext,
+  FIXTURE_ORIGIN,
+} from './extension-helpers';
 
 const STORAGE_KEY = 'urlAutoRefresher_state_v1';
 

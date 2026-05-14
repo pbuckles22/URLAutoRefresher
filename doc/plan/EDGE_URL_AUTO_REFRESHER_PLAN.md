@@ -10,23 +10,23 @@ Manifest V3 Edge extension (**working name;** ships as **Media Control Suite** i
 
 ## Progress overview
 
-| Epic | Theme | Stories |
-|------|--------|--------|
-| [x] **0** | Extension shell & entry | 3 |
-| [x] **1** | Data model & persistence | 3 |
-| [x] **2** | Scheduling (service worker) | 4 |
-| [x] **3** | Individual jobs (vertical slice) | 4 |
-| [x] **4** | Global groups | 3 |
-| [x] **5** | Unified UI (choice C) | 4 |
-| [x] **6** | Toolbar badge (focus-aware) | 3 |
-| [x] **7** | Ship notes for Edge | 2 |
-| [x] **8** | Live-aware pause (Twitch-first) | 3 |
-| [x] **9** | Blip / error-text triggered refresh | 3 |
-| [x] **Post-9** | Incremental polish (see [Post–Epic 9](#postepic-9--incremental-enhancements-shipped)) | 6 |
-| [ ] **10** | [URL-first membership](#epic-10--url-first-membership-phased) (phased migration) | 6 |
-| [ ] **11** | [Precision volume (Web Audio)](#epic-11--precision-volume-web-audio) | 7 |
+| Epic           | Theme                                                                                 | Stories |
+| -------------- | ------------------------------------------------------------------------------------- | ------- |
+| [x] **0**      | Extension shell & entry                                                               | 3       |
+| [x] **1**      | Data model & persistence                                                              | 3       |
+| [x] **2**      | Scheduling (service worker)                                                           | 4       |
+| [x] **3**      | Individual jobs (vertical slice)                                                      | 4       |
+| [x] **4**      | Global groups                                                                         | 3       |
+| [x] **5**      | Unified UI (choice C)                                                                 | 4       |
+| [x] **6**      | Toolbar badge (focus-aware)                                                           | 3       |
+| [x] **7**      | Ship notes for Edge                                                                   | 2       |
+| [x] **8**      | Live-aware pause (Twitch-first)                                                       | 3       |
+| [x] **9**      | Blip / error-text triggered refresh                                                   | 3       |
+| [x] **Post-9** | Incremental polish (see [Post–Epic 9](#postepic-9--incremental-enhancements-shipped)) | 6       |
+| [ ] **10**     | [URL-first membership](#epic-10--url-first-membership-phased) (phased migration)      | 6       |
+| [ ] **11**     | [Precision volume (Web Audio)](#epic-11--precision-volume-web-audio)                  | 7       |
 
-*(Optional: set an epic row to `[x]` when **all** its stories are done.)*
+_(Optional: set an epic row to `[x]` when **all** its stories are done.)_
 
 ---
 
@@ -54,12 +54,12 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Map reference → our UI:**
 
-| Reference idea | Our plan |
-|----------------|----------|
-| “Time Interval” tab | Dashboard / side panel: interval + jitter fields per job or group |
-| “Active Tabs” list | **Individual** rows (Epic 3+), then **Global** rows (Epic 4+) |
-| Large on-page timer card | **Epic 3.0** — our overlay + dashboard toggle (default on) |
-| “Page Monitor” (find / lose text) | **Epic 9** — user-defined phrases or regex → trigger refresh |
+| Reference idea                    | Our plan                                                          |
+| --------------------------------- | ----------------------------------------------------------------- |
+| “Time Interval” tab               | Dashboard / side panel: interval + jitter fields per job or group |
+| “Active Tabs” list                | **Individual** rows (Epic 3+), then **Global** rows (Epic 4+)     |
+| Large on-page timer card          | **Epic 3.0** — our overlay + dashboard toggle (default on)        |
+| “Page Monitor” (find / lose text) | **Epic 9** — user-defined phrases or regex → trigger refresh      |
 
 ---
 
@@ -67,9 +67,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** Installable unpacked extension; toolbar opens the real “settings / overview” surface; Side Panel path exists for choice **C**.
 
-- [x] **0.1** — MV3 `manifest.json`: `background` service worker, `action`, `side_panel`, dashboard/options page, icons, permissions (`storage`, `alarms`, `tabs`, `windows`, `sidePanel`, broad `https` hosts). *Outcome: loads in Edge without errors.*
-- [x] **0.2** — **Toolbar click → full-page dashboard** as primary overview (not popup-only MVP). *Outcome: icon opens unified browse/edit surface.*
-- [x] **0.3** — Stub Side Panel path + affordance for “open side panel” (second entry). *Outcome: choice **C** skeleton.*
+- [x] **0.1** — MV3 `manifest.json`: `background` service worker, `action`, `side_panel`, dashboard/options page, icons, permissions (`storage`, `alarms`, `tabs`, `windows`, `sidePanel`, broad `https` hosts). _Outcome: loads in Edge without errors._
+- [x] **0.2** — **Toolbar click → full-page dashboard** as primary overview (not popup-only MVP). _Outcome: icon opens unified browse/edit surface._
+- [x] **0.3** — Stub Side Panel path + affordance for “open side panel” (second entry). _Outcome: choice **C** skeleton._
 
 ---
 
@@ -77,9 +77,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** Typed state in `chrome.storage.local`; validation; no double enrollment for the same tab.
 
-- [x] **1.1** — Read/write `GlobalGroup[]` and `IndividualJob[]` (per [data sketch](#data-sketch-illustrative)). *Outcome: survives browser restart.*
-- [x] **1.2** — Validation helpers: URL (`http`/`https`), positive interval, non-negative jitter, unique ids. *Outcome: bad input rejected before save.*
-- [x] **1.3** — **Mutual exclusion:** a tab cannot be active in two places (two globals, or global + individual). *Outcome: no double `tabs.update` for the same tab; surface clear errors in dashboard UI as you build Epic 3+.*
+- [x] **1.1** — Read/write `GlobalGroup[]` and `IndividualJob[]` (per [data sketch](#data-sketch-illustrative)). _Outcome: survives browser restart._
+- [x] **1.2** — Validation helpers: URL (`http`/`https`), positive interval, non-negative jitter, unique ids. _Outcome: bad input rejected before save._
+- [x] **1.3** — **Mutual exclusion:** a tab cannot be active in two places (two globals, or global + individual). _Outcome: no double `tabs.update` for the same tab; surface clear errors in dashboard UI as you build Epic 3+._
 
 ---
 
@@ -87,10 +87,10 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** `chrome.alarms` backbone, jittered reschedule, `nextFireAt` in storage, safe tab lifecycle.
 
-- [x] **2.1** — One alarm per **individual** job: on fire → `tabs.update(tabId, { url: targetUrl })`, then reschedule with **base + uniform jitter**. *Outcome: one individual refresh loop works.*
-- [x] **2.2** — After each schedule, persist **`nextFireAt`** for UI countdowns. *Outcome: storage + alarms stay aligned.*
-- [x] **2.3** — `tabs.onRemoved` / invalid tab → disable or prune job; `tabs.update` must not throw. *Outcome: clean failure modes.*
-- [x] **2.4** — **Global group:** ~~one alarm per group; synchronized refresh~~ — **superseded (Post–Epic 9):** one alarm **per tab** in the group with **per-tab jitter** and `tabNextFireAt`; each tab refreshes on its own schedule (see [Post–Epic 9](#postepic-9--incremental-enhancements-shipped)). *Outcome: global membership with staggered refreshes.*
+- [x] **2.1** — One alarm per **individual** job: on fire → `tabs.update(tabId, { url: targetUrl })`, then reschedule with **base + uniform jitter**. _Outcome: one individual refresh loop works._
+- [x] **2.2** — After each schedule, persist **`nextFireAt`** for UI countdowns. _Outcome: storage + alarms stay aligned._
+- [x] **2.3** — `tabs.onRemoved` / invalid tab → disable or prune job; `tabs.update` must not throw. _Outcome: clean failure modes._
+- [x] **2.4** — **Global group:** ~~one alarm per group; synchronized refresh~~ — **superseded (Post–Epic 9):** one alarm **per tab** in the group with **per-tab jitter** and `tabNextFireAt`; each tab refreshes on its own schedule (see [Post–Epic 9](#postepic-9--incremental-enhancements-shipped)). _Outcome: global membership with staggered refreshes._
 
 ---
 
@@ -98,10 +98,10 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** First end-to-end workflow without globals.
 
-- [x] **3.0** — **Page overlay timer** — content script shows a large **Min / Sec** countdown on `http`/`https` pages when that tab has an **enabled** individual or global refresh job; **default on**; **dashboard** checkbox turns it off/on (`urlAutoRefresher_prefs_v1`). *Outcome: in-page visibility of time-to-refresh.*
-- [x] **3.1** — Dashboard: **add Individual job** — pick tab, set `targetUrl`, interval, jitter, Save. *Outcome: first usable path.*
-- [x] **3.2** — Start / Stop, edit, delete individuals; **one countdown row** per job. *Outcome: full individual lifecycle.*
-- [x] **3.3** — Extract shared **list row** component for Epic 5. *Outcome: less duplication before Global UI.*
+- [x] **3.0** — **Page overlay timer** — content script shows a large **Min / Sec** countdown on `http`/`https` pages when that tab has an **enabled** individual or global refresh job; **default on**; **dashboard** checkbox turns it off/on (`urlAutoRefresher_prefs_v1`). _Outcome: in-page visibility of time-to-refresh._
+- [x] **3.1** — Dashboard: **add Individual job** — pick tab, set `targetUrl`, interval, jitter, Save. _Outcome: first usable path._
+- [x] **3.2** — Start / Stop, edit, delete individuals; **one countdown row** per job. _Outcome: full individual lifecycle._
+- [x] **3.3** — Extract shared **list row** component for Epic 5. _Outcome: less duplication before Global UI._
 
 ---
 
@@ -109,9 +109,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** Build globals from real windows/tabs; match product model; safe moves vs individuals.
 
-- [x] **4.1** — **Window/tab browser:** `windows.getAll({ populate: true })`, checklist of tabs, per-row `targetUrl`. *Outcome: real multi-window global groups.*
-- [x] **4.2** — Create / edit / delete globals; **Global (N)** header, shared countdown, group start/stop. *Outcome: globals behave per spec.*
-- [x] **4.3** — Enforce mutual exclusion when moving a tab between individual and global. *Outcome: safe transitions.*
+- [x] **4.1** — **Window/tab browser:** `windows.getAll({ populate: true })`, checklist of tabs, per-row `targetUrl`. _Outcome: real multi-window global groups._
+- [x] **4.2** — Create / edit / delete globals; **Global (N)** header, shared countdown, group start/stop. _Outcome: globals behave per spec._
+- [x] **4.3** — Enforce mutual exclusion when moving a tab between individual and global. _Outcome: safe transitions._
 
 ---
 
@@ -119,10 +119,10 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** **Global (N)** and **Individual (M)** everywhere; dashboard + side panel share modules.
 
-- [x] **5.1** — Dashboard: both section headers with counts; browse-all layout. *Outcome: matches **1b** / overview mental model.*
-- [x] **5.2** — Side Panel: same lists via shared JS/CSS. *Outcome: quick monitoring without full tab.*
-- [x] **5.3** — Cross-links between surfaces (choice **C**): **Dashboard** shows **Open side panel** (`[data-open-side-panel]` → `chrome.sidePanel.open` for the current window). **Side panel** shows a top-of-body **Open in a tab** control (`[data-open-in-tab]` inside `[data-sidepanel-open-dashboard-row]`) so the full-page dashboard is obvious before scroll; click opens packaged **`dashboard/dashboard.html`** in a new tab (`chrome.tabs.create` via `wireCrossSurfaceLinks()` in [`src/dashboard/dashboard-app.ts`](../../src/dashboard/dashboard-app.ts)). Shared markup in [`dashboard/dashboard.html`](../../dashboard/dashboard.html); [`Scripts/build.mjs`](../../Scripts/build.mjs) generates [`sidepanel/sidepanel.html`](../../sidepanel/sidepanel.html). On the side panel, `[data-surface-nav]` is hidden so there is no duplicate “open dashboard” control. *Outcome: coherent choice **C**; toolbar-first side panel still reaches full-tab dashboard in one click.* **Tier 2:** [`e2e/epic-5.spec.ts`](../../e2e/epic-5.spec.ts) (Epic 5.3 visibility + “Backlog 1”: first body child + tab URL includes `dashboard/dashboard.html`).
-- [x] **5.4** — Live countdown in UI (`storage` + `runtime` messages or ~1s polling while visible). *Outcome: rows tick smoothly.*
+- [x] **5.1** — Dashboard: both section headers with counts; browse-all layout. _Outcome: matches **1b** / overview mental model._
+- [x] **5.2** — Side Panel: same lists via shared JS/CSS. _Outcome: quick monitoring without full tab._
+- [x] **5.3** — Cross-links between surfaces (choice **C**): **Dashboard** shows **Open side panel** (`[data-open-side-panel]` → `chrome.sidePanel.open` for the current window). **Side panel** shows a top-of-body **Open in a tab** control (`[data-open-in-tab]` inside `[data-sidepanel-open-dashboard-row]`) so the full-page dashboard is obvious before scroll; click opens packaged **`dashboard/dashboard.html`** in a new tab (`chrome.tabs.create` via `wireCrossSurfaceLinks()` in [`src/dashboard/dashboard-app.ts`](../../src/dashboard/dashboard-app.ts)). Shared markup in [`dashboard/dashboard.html`](../../dashboard/dashboard.html); [`Scripts/build.mjs`](../../Scripts/build.mjs) generates [`sidepanel/sidepanel.html`](../../sidepanel/sidepanel.html). On the side panel, `[data-surface-nav]` is hidden so there is no duplicate “open dashboard” control. _Outcome: coherent choice **C**; toolbar-first side panel still reaches full-tab dashboard in one click._ **Tier 2:** [`e2e/epic-5.spec.ts`](../../e2e/epic-5.spec.ts) (Epic 5.3 visibility + “Backlog 1”: first body child + tab URL includes `dashboard/dashboard.html`).
+- [x] **5.4** — Live countdown in UI (`storage` + `runtime` messages or ~1s polling while visible). _Outcome: rows tick smoothly._
 
 ---
 
@@ -130,9 +130,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** Badge reflects **focused** window’s timers as far as the platform allows.
 
-- [x] **6.1** — Build **focused-window** job set: `windowId` → relevant individuals + globals touching that window. *Outcome: correct subset for badge math.*
-- [x] **6.2** — Badge = time to **nearest** `nextFireAt` in that subset; idle (e.g. `×`) when none; optional **fallback** when focused window has no jobs (product decision — document in README). *Outcome: best possible “per-window” feel.*
-- [x] **6.3** — Subscribe to focus/tab events + alarm completions; avoid busy loops. *Outcome: badge stays current without draining CPU.*
+- [x] **6.1** — Build **focused-window** job set: `windowId` → relevant individuals + globals touching that window. _Outcome: correct subset for badge math._
+- [x] **6.2** — Badge = time to **nearest** `nextFireAt` in that subset; idle (e.g. `×`) when none; optional **fallback** when focused window has no jobs (product decision — document in README). _Outcome: best possible “per-window” feel._
+- [x] **6.3** — Subscribe to focus/tab events + alarm completions; avoid busy loops. _Outcome: badge stays current without draining CPU._
 
 ---
 
@@ -140,8 +140,8 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** Someone can install, understand limits, and regress manually.
 
-- [x] **7.1** — README: load unpacked, permissions, **focus-aware badge vs tiled windows** (one shared `chrome.action` badge). *Outcome: install + explain.*
-- [x] **7.2** — Manual QA script from [Testing checklist (manual)](#testing-checklist-manual) + multi-window scenarios. *Outcome: regression path for releases.*
+- [x] **7.1** — README: load unpacked, permissions, **focus-aware badge vs tiled windows** (one shared `chrome.action` badge). _Outcome: install + explain._
+- [x] **7.2** — Manual QA script from [Testing checklist (manual)](#testing-checklist-manual) + multi-window scenarios. _Outcome: regression path for releases._
 
 ---
 
@@ -151,9 +151,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Product intent:** **Twitch** is the supported use case. The same detection logic may run on other URLs, but **non-Twitch pages are not expected** to behave like Twitch’s live/offline model. If another site happens to align and it works, fine; if users want correct live/offline semantics on arbitrary hosts, treat that as **follow-up bugs or enhancements**, not Epic 8 v1 blockers.
 
-- [x] **8.1** — Detect **live vs offline** on **twitch.tv** (DOM heuristics or documented signals; spike / adjust if Twitch changes markup). *Outcome: reliable signal for our primary use case.*
-- [x] **8.2** — Integrate with scheduling: when live, **do not fire** the periodic refresh for that job; when offline again, **resume** the alarm loop (implementation detail: e.g. `enabled` vs explicit `pausedForLive`—decide in code; align with `src/background/scheduler.ts`). *Outcome: pause/resume matches stream state.*
-- [x] **8.3** — Tab close, navigation away from target, and service worker lifecycle: no orphaned alarms; clear UX or logs if detection is unavailable. *Outcome: same robustness as Epic 2 tab lifecycle.*
+- [x] **8.1** — Detect **live vs offline** on **twitch.tv** (DOM heuristics or documented signals; spike / adjust if Twitch changes markup). _Outcome: reliable signal for our primary use case._
+- [x] **8.2** — Integrate with scheduling: when live, **do not fire** the periodic refresh for that job; when offline again, **resume** the alarm loop (implementation detail: e.g. `enabled` vs explicit `pausedForLive`—decide in code; align with `src/background/scheduler.ts`). _Outcome: pause/resume matches stream state._
+- [x] **8.3** — Tab close, navigation away from target, and service worker lifecycle: no orphaned alarms; clear UX or logs if detection is unavailable. _Outcome: same robustness as Epic 2 tab lifecycle._
 
 **Technical notes:** Likely requires **content script(s)** on Twitch (and manifest matches); messaging to the service worker. Depends on solid **per-tab individual jobs** (Epic 3+).
 
@@ -163,9 +163,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** After small connectivity blips, specific **words or patterns** sometimes appear on the page; optionally **refresh immediately** when those appear (user-configured strings or regex).
 
-- [x] **9.1** — Per-job (or per-tab) config: **watch phrases and/or regex** (user-defined only). *Outcome: user controls what counts as a “blip” signal.*
-- [x] **9.2** — **Content script** observes page text (or DOM); on match, message background → **refresh** (`tabs.update` to stored `targetUrl` or reload—align with product rules and mutual exclusion). *Outcome: recovery refresh without waiting for the next alarm.*
-- [x] **9.3** — **Rate limiting** and loop prevention (debounce, max triggers per minute). *Outcome: no runaway refresh storms.*
+- [x] **9.1** — Per-job (or per-tab) config: **watch phrases and/or regex** (user-defined only). _Outcome: user controls what counts as a “blip” signal._
+- [x] **9.2** — **Content script** observes page text (or DOM); on match, message background → **refresh** (`tabs.update` to stored `targetUrl` or reload—align with product rules and mutual exclusion). _Outcome: recovery refresh without waiting for the next alarm._
+- [x] **9.3** — **Rate limiting** and loop prevention (debounce, max triggers per minute). _Outcome: no runaway refresh storms._
 
 **Privacy / security:** Only **user-supplied** patterns; no exfiltration. **Permissions:** content scripts + host access as needed.
 
@@ -177,12 +177,12 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Goal:** Product polish and model refinements after Epics **8** and **9**; tracked here so requirements/planning stay aligned with `main`.
 
-- [x] **P9.1** — **Global URL patterns:** optional newline-separated patterns with `*` wildcards; open `http`/`https` tabs matching any pattern are included automatically (including tabs opened later). Explicit checkboxes still supported; enrollment validated on save. *Outcome: e.g. all Twitch tabs without manual include each time.*
-- [x] **P9.2** — **Per-tab pause (global groups):** pause scheduled refresh for one tab in a group (`pausedTabIds`); page overlay shows **Auto refresh paused** + **Play**; compact card when paused. *Outcome: watch one stream without stopping the whole group.*
-- [x] **P9.3** — **Per-tab jitter for globals:** `tabNextFireAt` + alarm name `urlar:gt:{groupId}:{tabId}`; each tab gets its own base±jitter delay after each refresh (not one shared fire time for the whole group). Dashboard row shows **range** (e.g. `1:00–3:00`) when times differ. *Outcome: staggered refreshes within a group.*
-- [x] **P9.4** — **Dashboard order:** saved **global group** rows listed **above** the “Add a new group” form. *Outcome: active groups visible without scrolling past the tab browser.*
-- [x] **P9.5** — **Page overlay polish:** Min/Sec label typography and alignment; timer card position; optional **Pause** for global-group tabs. *Outcome: closer to reference “large timer” UX.*
-- [x] **P9.6** — **Twitch live bridge robustness:** after extension reload, avoid uncaught **Extension context invalidated** (guard `chrome.runtime`, teardown observers/timers, `unhandledrejection`). *Outcome: clean DevTools when iterating on the extension.*
+- [x] **P9.1** — **Global URL patterns:** optional newline-separated patterns with `*` wildcards; open `http`/`https` tabs matching any pattern are included automatically (including tabs opened later). Explicit checkboxes still supported; enrollment validated on save. _Outcome: e.g. all Twitch tabs without manual include each time._
+- [x] **P9.2** — **Per-tab pause (global groups):** pause scheduled refresh for one tab in a group (`pausedTabIds`); page overlay shows **Auto refresh paused** + **Play**; compact card when paused. _Outcome: watch one stream without stopping the whole group._
+- [x] **P9.3** — **Per-tab jitter for globals:** `tabNextFireAt` + alarm name `urlar:gt:{groupId}:{tabId}`; each tab gets its own base±jitter delay after each refresh (not one shared fire time for the whole group). Dashboard row shows **range** (e.g. `1:00–3:00`) when times differ. _Outcome: staggered refreshes within a group._
+- [x] **P9.4** — **Dashboard order:** saved **global group** rows listed **above** the “Add a new group” form. _Outcome: active groups visible without scrolling past the tab browser._
+- [x] **P9.5** — **Page overlay polish:** Min/Sec label typography and alignment; timer card position; optional **Pause** for global-group tabs. _Outcome: closer to reference “large timer” UX._
+- [x] **P9.6** — **Twitch live bridge robustness:** after extension reload, avoid uncaught **Extension context invalidated** (guard `chrome.runtime`, teardown observers/timers, `unhandledrejection`). _Outcome: clean DevTools when iterating on the extension._
 
 **Requirements detail:** [doc/requirements/post-epic-9.md](../requirements/post-epic-9.md).
 
@@ -198,9 +198,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Implementation order (agents / DLC):** Ship **10.1 → 10.2 → 10.3 → 10.4 → 10.5** in that sequence for the URL-first migration. **10.6 (TwitchFavs)** requires **10.1**; **recommended after 10.2** so scheduler refresh uses resolved tab ids. Details: [doc/requirements/twitch-favs-managed-membership.md](../requirements/twitch-favs-managed-membership.md).
 
-- [x] **10.1** — **Member URL identity (library only):** canonical key helper(s) (e.g. `memberKeyFromTargetUrl`, normalize `www`/path — align with [`page-overlay-state.ts`](../../src/lib/page-overlay-state.ts) ideas) + **pure** “pick best open tab” helper from `chrome.tabs` query results. **Vitest only**; no behavior change in background/UI. *Implemented in [`src/lib/member-url.ts`](../../src/lib/member-url.ts); `pageMatchesExplicitTarget` lives there and is re-exported from [`page-overlay-state.ts`](../../src/lib/page-overlay-state.ts).*
+- [x] **10.1** — **Member URL identity (library only):** canonical key helper(s) (e.g. `memberKeyFromTargetUrl`, normalize `www`/path — align with [`page-overlay-state.ts`](../../src/lib/page-overlay-state.ts) ideas) + **pure** “pick best open tab” helper from `chrome.tabs` query results. **Vitest only**; no behavior change in background/UI. _Implemented in [`src/lib/member-url.ts`](../../src/lib/member-url.ts); `pageMatchesExplicitTarget` lives there and is re-exported from [`page-overlay-state.ts`](../../src/lib/page-overlay-state.ts)._
 
-- [x] **10.2** — **Resolve at refresh time:** In [`scheduler.ts`](../../src/background/scheduler.ts) (global + individual paths as needed), resolve **live `tabId`** from stored **`targetUrl`/member key** before `tabs.update` (do not trust stale id as identity). **Optional:** evolve alarm names from `tabId` toward **group/job + member key** in a follow-up commit in this story if needed. *Implemented in [`resolve-live-tab.ts`](../../src/lib/resolve-live-tab.ts) (`resolveLiveTabIdForTargetUrl`), [`global-group-targets.ts`](../../src/lib/global-group-targets.ts) (`resolveGlobalGroupTargets`), and scheduler wiring; Vitest: `resolve-live-tab.test.ts`, `global-group-targets.test.ts`. Legacy tab-rebind helper removed in **10.4**.*
+- [x] **10.2** — **Resolve at refresh time:** In [`scheduler.ts`](../../src/background/scheduler.ts) (global + individual paths as needed), resolve **live `tabId`** from stored **`targetUrl`/member key** before `tabs.update` (do not trust stale id as identity). **Optional:** evolve alarm names from `tabId` toward **group/job + member key** in a follow-up commit in this story if needed. _Implemented in [`resolve-live-tab.ts`](../../src/lib/resolve-live-tab.ts) (`resolveLiveTabIdForTargetUrl`), [`global-group-targets.ts`](../../src/lib/global-group-targets.ts) (`resolveGlobalGroupTargets`), and scheduler wiring; Vitest: `resolve-live-tab.test.ts`, `global-group-targets.test.ts`. Legacy tab-rebind helper removed in **10.4**._
 
 - [x] **10.3** — **Schedule + pause keys:** Key **`memberNextFireAt`** (and **`pausedMemberKeys`**) by **`memberKeyFromTargetUrl`**, not `String(tabId)` / legacy `pausedTabIds`. Bump **`schemaVersion`** to **2**; migrate v1 → v2 on load in [`state.ts`](../../src/lib/state.ts) (`normalizeGlobalGroup`). Global alarms: **`urlar:gm:`** + base64url JSON payload ([`alarm-names.ts`](../../src/lib/alarm-names.ts)). **Checkpoint:** pause/resume, countdown, alarms (`npm run ci`).
 
@@ -208,7 +208,7 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 - [x] **10.5** — **Sweep (URL-first):** Confirmed [`page-overlay-schedule.ts`](../../src/lib/page-overlay-schedule.ts) (URL-only; removed unused `tabId` args), [`tab-lifecycle.ts`](../../src/lib/tab-lifecycle.ts) (no-op by design after 10.4), [`badge.ts`](../../src/background/badge.ts) (focused-window tab URL set + `tabs.onUpdated` when URL changes in the focused window). **Global–global enrollment** now blocks overlap by **member URL key**, not only the same live `tabId` ([`global-group-enrollment.ts`](../../src/lib/global-group-enrollment.ts)).
 
-- [x] **10.6** — **TwitchFavs managed membership:** For the global group whose **name** is **`TwitchFavs`** (case-insensitive), treat **Auto-include URL patterns** as **streamer names** (newline or comma); expand to **`https://www.twitch.tv/{login}`**; **case-insensitive** matching; **prune** stored **`targets`** not on the list; **upsert** `TargetRef` rows (`targetUrl` per channel) on **`tabs.onUpdated`** and on save—when the same channel appears in a **new** tab, drop stale rows that no longer match the managed list (URL-first; no persisted `tabId` on targets). *Implemented in [`twitch-favs.ts`](../../src/lib/twitch-favs.ts), [`global-group-form.ts`](../../src/lib/global-group-form.ts), [`global-group-targets.ts`](../../src/lib/global-group-targets.ts), [`global-group-list-row.ts`](../../src/lib/global-group-list-row.ts), [`twitch-favs-sync.ts`](../../src/background/twitch-favs-sync.ts) (`tabs.onUpdated` debounced → storage + `bootstrapScheduling`); Vitest: `twitch-favs.test.ts`, form/targets/list-row tests; dashboard hint [`dashboard.html`](../../dashboard/dashboard.html) + [`dashboard-app.ts`](../../src/dashboard/dashboard-app.ts). **Requirements:** [doc/requirements/twitch-favs-managed-membership.md](../requirements/twitch-favs-managed-membership.md).*
+- [x] **10.6** — **TwitchFavs managed membership:** For the global group whose **name** is **`TwitchFavs`** (case-insensitive), treat **Auto-include URL patterns** as **streamer names** (newline or comma); expand to **`https://www.twitch.tv/{login}`**; **case-insensitive** matching; **prune** stored **`targets`** not on the list; **upsert** `TargetRef` rows (`targetUrl` per channel) on **`tabs.onUpdated`** and on save—when the same channel appears in a **new** tab, drop stale rows that no longer match the managed list (URL-first; no persisted `tabId` on targets). _Implemented in [`twitch-favs.ts`](../../src/lib/twitch-favs.ts), [`global-group-form.ts`](../../src/lib/global-group-form.ts), [`global-group-targets.ts`](../../src/lib/global-group-targets.ts), [`global-group-list-row.ts`](../../src/lib/global-group-list-row.ts), [`twitch-favs-sync.ts`](../../src/background/twitch-favs-sync.ts) (`tabs.onUpdated` debounced → storage + `bootstrapScheduling`); Vitest: `twitch-favs.test.ts`, form/targets/list-row tests; dashboard hint [`dashboard.html`](../../dashboard/dashboard.html) + [`dashboard-app.ts`](../../src/dashboard/dashboard-app.ts). **Requirements:** [doc/requirements/twitch-favs-managed-membership.md](../requirements/twitch-favs-managed-membership.md)._
 
 **Backlog relationship:** **[Backlog #7](#7-global-group--rebinding-when-a-tab-closes-and-reopens-same-url)** (rebind when same URL in a new tab) is **subsumed** by this epic’s URL-first model; after Epic **10** ships, treat **#7** as addressed unless a narrow residual bug remains. **10.6** is the **TwitchFavs-shaped** slice of that behavior for a named group.
 
@@ -222,31 +222,31 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 **Requirements detail:** [doc/requirements/precision-volume-controller.md](../requirements/precision-volume-controller.md).
 
-- [x] **11.1** — **`manifest.json` + build:** Add **`chrome.commands`** (increase / decrease / panic mute) and any **minimal** new permissions; extend [`Scripts/build.mjs`](../../Scripts/build.mjs) if a new content bundle is required. *Outcome: extension loads; commands registered.* *Implemented: [`manifest.json`](../../manifest.json) `commands`; [`volume-commands.ts`](../../src/background/volume-commands.ts) → [`precision-volume-bridge.ts`](../../src/content/precision-volume-bridge.ts) (imported from [`page-overlay.ts`](../../src/content/page-overlay.ts)); message [`PRECISION_VOLUME_COMMAND`](../../src/lib/messages.ts).*
+- [x] **11.1** — **`manifest.json` + build:** Add **`chrome.commands`** (increase / decrease / panic mute) and any **minimal** new permissions; extend [`Scripts/build.mjs`](../../Scripts/build.mjs) if a new content bundle is required. _Outcome: extension loads; commands registered._ _Implemented: [`manifest.json`](../../manifest.json) `commands`; [`volume-commands.ts`](../../src/background/volume-commands.ts) → [`precision-volume-bridge.ts`](../../src/content/precision-volume-bridge.ts) (imported from [`page-overlay.ts`](../../src/content/page-overlay.ts)); message [`PRECISION_VOLUME_COMMAND`](../../src/lib/messages.ts)._
 
-- [x] **11.2** — **Content hook:** On matching media, create **one** `MediaElementSource` per element (guard against double-hook), **zero-blast** initial gain, connect through `GainNode` to destination; handle **CORS** limits per [web-audio-dsp](../../.cursor/skills/web-audio-dsp/SKILL.md). *Outcome: safe attach without duplicate-source crashes.* *Implemented: [`precision-volume-bridge.ts`](../../src/content/precision-volume-bridge.ts); primary pick [`precision-volume-primary.ts`](../../src/lib/precision-volume-primary.ts); gain steps [`precision-volume-gain.ts`](../../src/lib/precision-volume-gain.ts); Vitest in `precision-volume-*.test.ts`.*
+- [x] **11.2** — **Content hook:** On matching media, create **one** `MediaElementSource` per element (guard against double-hook), **zero-blast** initial gain, connect through `GainNode` to destination; handle **CORS** limits per [web-audio-dsp](../../.cursor/skills/web-audio-dsp/SKILL.md). _Outcome: safe attach without duplicate-source crashes._ _Implemented: [`precision-volume-bridge.ts`](../../src/content/precision-volume-bridge.ts); primary pick [`precision-volume-primary.ts`](../../src/lib/precision-volume-primary.ts); gain steps [`precision-volume-gain.ts`](../../src/lib/precision-volume-gain.ts); Vitest in `precision-volume-_.test.ts`.\*
 
-- [ ] **11.3** — **Dynamic media:** **`MutationObserver`** (or equivalent) attaches to **new** media elements after SPA navigation. *Outcome: YouTube-style navigations pick up new players.*
+- [ ] **11.3** — **Dynamic media:** **`MutationObserver`** (or equivalent) attaches to **new** media elements after SPA navigation. _Outcome: YouTube-style navigations pick up new players._
 
-- [ ] **11.4** — **Messaging:** Typed messages in [`src/lib/messages.ts`](../../src/lib/messages.ts); background routes **set gain** / mute to the correct tab’s content handler; use **ramped** gain updates. *Outcome: dashboard can drive live volume.*
+- [ ] **11.4** — **Messaging:** Typed messages in [`src/lib/messages.ts`](../../src/lib/messages.ts); background routes **set gain** / mute to the correct tab’s content handler; use **ramped** gain updates. _Outcome: dashboard can drive live volume._
 
-- [ ] **11.5** — **Dashboard + side panel UI:** Log **fader** (precision at low end), **numeric** input (decimals + negative = phase invert label), **Shift** for 10× finer drags; persist prefs (extend or nest under [`prefs.ts`](../../src/lib/prefs.ts) pattern). *Outcome: unified surfaces control volume like the rest of choice **C**.*
+- [ ] **11.5** — **Dashboard + side panel UI:** Log **fader** (precision at low end), **numeric** input (decimals + negative = phase invert label), **Shift** for 10× finer drags; persist prefs (extend or nest under [`prefs.ts`](../../src/lib/prefs.ts) pattern). _Outcome: unified surfaces control volume like the rest of choice **C**._
 
-- [ ] **11.6** — **Shortcuts + OSD:** Background handles **`chrome.commands`**; content shows **transient OSD** (~2s) with current level when shortcuts fire. *Outcome: keyboard feedback without opening the dashboard.*
+- [ ] **11.6** — **Shortcuts + OSD:** Background handles **`chrome.commands`**; content shows **transient OSD** (~2s) with current level when shortcuts fire. _Outcome: keyboard feedback without opening the dashboard._
 
-- [ ] **11.7** — **Tests:** **Vitest** for slider ↔ gain math; **Playwright** where user-visible strings or toggles need regression cover. *Outcome: `npm run ci` stays green.*
+- [ ] **11.7** — **Tests:** **Vitest** for slider ↔ gain math; **Playwright** where user-visible strings or toggles need regression cover. _Outcome: `npm run ci` stays green._
 
 ---
 
 ## Reference — goals vs approach
 
-| Requirement | Approach |
-|-------------|----------|
-| Install in Edge | MV3; load unpacked or publish to Edge Add-ons. |
-| Refresh a **fixed target URL** per tab | Store `targetUrl` per tab; tick → `chrome.tabs.update(tabId, { url: targetUrl })`. |
-| Base interval + jitter | `nextDelayMs = baseMs + uniform offset in [-jitterMs, +jitterMs]`; reschedule after each fire. |
-| Icon shows status | **Focus-aware** badge (nearest `nextFireAt` for **focused** window’s jobs); full UI lists every job. |
-| Multi-window, one place | `chrome.storage` + `windows.getAll({ populate: true })` when picking targets. |
+| Requirement                            | Approach                                                                                             |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Install in Edge                        | MV3; load unpacked or publish to Edge Add-ons.                                                       |
+| Refresh a **fixed target URL** per tab | Store `targetUrl` per tab; tick → `chrome.tabs.update(tabId, { url: targetUrl })`.                   |
+| Base interval + jitter                 | `nextDelayMs = baseMs + uniform offset in [-jitterMs, +jitterMs]`; reschedule after each fire.       |
+| Icon shows status                      | **Focus-aware** badge (nearest `nextFireAt` for **focused** window’s jobs); full UI lists every job. |
+| Multi-window, one place                | `chrome.storage` + `windows.getAll({ populate: true })` when picking targets.                        |
 
 ---
 
@@ -366,20 +366,19 @@ Enforce **non-overlap:** same `tabId` cannot be enabled in two places.
 
 Tracked here until scheduled into an epic or story. **Normative shipped scope** for a capability also listed under an epic lives in that **epic checklist** (see **Source of truth** at the top)—backlog lines here stay for traceability or work not yet folded into an epic.
 
-1. **Side panel — open full dashboard in a tab** — *(Shipped; see **Epic 5.3** for acceptance, files, and tests.)* Originally a UX polish follow-up (toolbar opens side panel first); implementation is part of unified UI / cross-links.
+1. **Side panel — open full dashboard in a tab** — _(Shipped; see **Epic 5.3** for acceptance, files, and tests.)_ Originally a UX polish follow-up (toolbar opens side panel first); implementation is part of unified UI / cross-links.
 
-2. **Overlay timer — compact layout** — *(Shipped.)* No separate Min/Sec labels; digit tiles ~75% of prior size; **Pause** left with **mm:ss** readout beside on one row (`src/content/page-overlay.ts`; Tier 2: `e2e/extension.spec.ts`).
+2. **Overlay timer — compact layout** — _(Shipped.)_ No separate Min/Sec labels; digit tiles ~75% of prior size; **Pause** left with **mm:ss** readout beside on one row (`src/content/page-overlay.ts`; Tier 2: `e2e/extension.spec.ts`).
 
-3. **Overlay paused state — compact** — *(Shipped.)* **Play** ~75% prior control size, **inline to the right** of “Auto refresh paused” on one row (`.paused-compact-row` in `src/content/page-overlay.ts`; Tier 2: `e2e/extension.spec.ts`).
+3. **Overlay paused state — compact** — _(Shipped.)_ **Play** ~75% prior control size, **inline to the right** of “Auto refresh paused” on one row (`.paused-compact-row` in `src/content/page-overlay.ts`; Tier 2: `e2e/extension.spec.ts`).
 
-4. **Play (resume) sometimes no-ops after long idle** — *(**Status: on hold** — **hard to replicate**; resume when a reliable repro or root cause exists.)* After several minutes paused, **Play** may do nothing when clicked. **Treat as a suspected bug** (MV3 service worker sleep / message delivery) when investigated; **investigation ideas:** retry `sendMessage`, `chrome.runtime.connect` keep-alive, or explicit SW wake before handling `GLOBAL_GROUP_TAB_PAUSE` / `INDIVIDUAL_JOB_OVERLAY_PAUSE`. **Not the same as item 5:** if DevTools shows **Extension context invalidated** at `page-overlay.js`, that is usually **extension reload** while the tab stayed open — see item **5** (shipped). Item **4** is intermittent idle behavior, not that scenario.
+4. **Play (resume) sometimes no-ops after long idle** — _(**Status: on hold** — **hard to replicate**; resume when a reliable repro or root cause exists.)_ After several minutes paused, **Play** may do nothing when clicked. **Treat as a suspected bug** (MV3 service worker sleep / message delivery) when investigated; **investigation ideas:** retry `sendMessage`, `chrome.runtime.connect` keep-alive, or explicit SW wake before handling `GLOBAL_GROUP_TAB_PAUSE` / `INDIVIDUAL_JOB_OVERLAY_PAUSE`. **Not the same as item 5:** if DevTools shows **Extension context invalidated** at `page-overlay.js`, that is usually **extension reload** while the tab stayed open — see item **5** (shipped). Item **4** is intermittent idle behavior, not that scenario.
 
-5. **Page overlay — “Extension context invalidated” on pause / resume / sync** — *(Shipped for overlay.)* `sendMessage` can **throw synchronously** after reload/update while the host page still runs the old content script; promise `.catch()` does not catch that. **Implementation:** [`src/lib/extension-runtime-send.ts`](../../src/lib/extension-runtime-send.ts) (`sendExtensionMessageFireAndForget`, `sendExtensionMessageAsync`) used from [`src/content/page-overlay.ts`](../../src/content/page-overlay.ts); dead context removes overlay + blip watcher instead of throwing. Tier 1: `src/lib/extension-runtime-send.test.ts`. **Related:** [Post–Epic 9 **P9.6**](#postepic-9--incremental-enhancements-shipped) (Twitch live bridge).
+5. **Page overlay — “Extension context invalidated” on pause / resume / sync** — _(Shipped for overlay.)_ `sendMessage` can **throw synchronously** after reload/update while the host page still runs the old content script; promise `.catch()` does not catch that. **Implementation:** [`src/lib/extension-runtime-send.ts`](../../src/lib/extension-runtime-send.ts) (`sendExtensionMessageFireAndForget`, `sendExtensionMessageAsync`) used from [`src/content/page-overlay.ts`](../../src/content/page-overlay.ts); dead context removes overlay + blip watcher instead of throwing. Tier 1: `src/lib/extension-runtime-send.test.ts`. **Related:** [Post–Epic 9 **P9.6**](#postepic-9--incremental-enhancements-shipped) (Twitch live bridge).
 
-6. **Global group — edit: add / remove member URLs (tabs) after creation** — *(Shipped.)* **Edit** exposes **Member tabs** with a **green “+”** (`data-global-edit-add-target`, `aria-label="Add tab to group"`) to append an open-tab row, **red “×”** per row to remove, and **Save** collects membership in DOM order. New rows use tab picker + target URL; [`buildGlobalGroupUpdateFromForm`](../../src/lib/global-group-form.ts) accepts a variable-length target list and filters `pausedTabIds` / `tabNextFireAt` to remaining tab ids. **Tier 2:** [`e2e/epic-4-2.spec.ts`](../../e2e/epic-4-2.spec.ts) (Epic 4.2b). **Files:** [`src/dashboard/dashboard-app.ts`](../../src/dashboard/dashboard-app.ts), [`src/lib/global-group-list-row.ts`](../../src/lib/global-group-list-row.ts).
+6. **Global group — edit: add / remove member URLs (tabs) after creation** — _(Shipped.)_ **Edit** exposes **Member tabs** with a **green “+”** (`data-global-edit-add-target`, `aria-label="Add tab to group"`) to append an open-tab row, **red “×”** per row to remove, and **Save** collects membership in DOM order. New rows use tab picker + target URL; [`buildGlobalGroupUpdateFromForm`](../../src/lib/global-group-form.ts) accepts a variable-length target list and filters `pausedTabIds` / `tabNextFireAt` to remaining tab ids. **Tier 2:** [`e2e/epic-4-2.spec.ts`](../../e2e/epic-4-2.spec.ts) (Epic 4.2b). **Files:** [`src/dashboard/dashboard-app.ts`](../../src/dashboard/dashboard-app.ts), [`src/lib/global-group-list-row.ts`](../../src/lib/global-group-list-row.ts).
 
-7. **Global group — rebinding when a tab closes and reopens (same URL)** — *(**Superseded by [Epic 10](#epic-10--url-first-membership-phased)** — URL-first membership removes dependence on stored `tabId` for logical identity; use Epic 10 stories instead of a one-off rebind patch.)* ~~Membership is stored by **`tabId`** (and `windowId`). If the user **closes** a tab that belongs to a group and **opens the same URL again**, the new tab gets a **new `tabId`**; the group still references the **old** id, so scheduled refresh no longer targets the visible tab.~~
-
+7. **Global group — rebinding when a tab closes and reopens (same URL)** — _(**Superseded by [Epic 10](#epic-10--url-first-membership-phased)** — URL-first membership removes dependence on stored `tabId` for logical identity; use Epic 10 stories instead of a one-off rebind patch.)_ ~~Membership is stored by **`tabId`** (and `windowId`). If the user **closes** a tab that belongs to a group and **opens the same URL again**, the new tab gets a **new `tabId`**; the group still references the **old** id, so scheduled refresh no longer targets the visible tab.~~
    - **User scenario (example):** A tab for `https://www.twitch.tv/me` is in global group `twitchrefresh`. The user closes that tab and opens the same channel again (new tab). The new tab should be **treated as the same logical member**: alarms, `tabNextFireAt`, overlay, and per-tab rules (e.g. `pausedTabIds`, jitter) should apply to the **new** `tabId` without forcing the user to remove/re-add the tab or re-save the group.
 
    - **Relation to P9.1 (URL patterns):** P9.1 auto-includes **open** tabs whose URL matches a group’s patterns at save/enrollment time. That does **not** by itself fix a **stale `tabId`** after the user **closed** the only matching tab: the stored target can still point at a dead id. Backlog **7** closes that gap by **rebinding** when a matching tab appears again.
@@ -391,7 +390,6 @@ Tracked here until scheduled into an epic or story. **Normative shipped scope** 
    - **Likely touch:** [`src/lib/tab-lifecycle.ts`](../../src/lib/tab-lifecycle.ts) (tab removed already clears/disables in some paths), [`src/background/scheduler.ts`](../../src/background/scheduler.ts), [`src/lib/global-group-targets.ts`](../../src/lib/global-group-targets.ts) or equivalent **attach** / **tabs.onCreated** / **onUpdated** flow — design carefully to avoid stealing unrelated tabs with the same URL.
 
 8. **Page overlay — position: avoid blocking host UI (left/right vs drag)** — The overlay is fixed **top-right**; users may need to reach a **control on the page** that sits underneath.
-
    - **User scenario (example):** On **Twitch** (and similar dense UIs), the auto-refresh overlay can sit on top of **information or buttons** the user still needs. Example: **chat is minimized** to the side; the control to **expand / unhide** chat can end up **under the overlay**. Because the user **cannot move** the overlay today, they cannot reach the control without disabling the overlay or zooming the page — **snap** (left/right) or **drag** (see below) addresses this class of problem.
 
    - **Options to explore (not mutually exclusive):** (a) a control to **snap** the card between **left** and **right** (and back); (b) **user-draggable** overlay so they can move it aside, with optional **persistence** (e.g. `chrome.storage` per origin or global pref) so after **refresh** it returns near the last position or a defined default; (c) reset-to-default on each load vs remember — decide in UX.
@@ -424,4 +422,3 @@ flowchart TD
 ```
 
 Epic **8** and **9** follow **Epic 7** on the roadmap. **Technically** they need stable **per-tab jobs** (Epic 3) and benefit from **unified UI** (Epic 5); treat **Epic 7** as the quality gate before heavy **content-script** work. **Epic 10** refactors stored membership toward **URL-first** identity; it **depends** on the current scheduling/UI baseline (through Epic **9** / Post–9) and **replaces** ad-hoc “rebind tab id” work ([Backlog #7](#7-global-group--rebinding-when-a-tab-closes-and-reopens-same-url)). **Epic 11** adds **Web Audio** volume and shortcuts; it **depends** on the unified UI baseline (Epic **5**) and is **recommended after Epic 10** to reduce merge risk with overlay/scheduler work.
-

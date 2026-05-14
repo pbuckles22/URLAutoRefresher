@@ -35,11 +35,11 @@ Occurs when the **extension reloads** (or updates) while a tab still runs an **o
 
 ## 4. Project map
 
-| Area | Path |
-|------|------|
-| Background entry | `src/background/index.ts` → `dist/background.js` |
+| Area                 | Path                                                                    |
+| -------------------- | ----------------------------------------------------------------------- |
+| Background entry     | `src/background/index.ts` → `dist/background.js`                        |
 | Overlay ↔ background | `src/content/page-overlay.ts`, `src/background/page-overlay-handler.ts` |
-| Scheduler / pause | `src/background/scheduler.ts` |
+| Scheduler / pause    | `src/background/scheduler.ts`                                           |
 
 ## 5. Quality gate
 

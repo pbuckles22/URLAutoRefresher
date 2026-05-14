@@ -11,11 +11,11 @@ Use this skill when creating or revising project docs so they stay consistent an
 
 ## Doc types and audience
 
-| Doc | Audience | Goal |
-|-----|----------|------|
-| **README.md** | Users, contributors, new devs | Orient quickly; run and contribute. |
-| **AGENT_HANDOFF.md** / **AGENTS.md** | AI agents, devs resuming work | Stable process and pointers; **product** on **`main`** in **PM_PLAN** + product plan; **session** notes local (`doc/handoff/HANDOFF-*.md` or `.cursor/handoff/` — gitignored). |
-| **Internal** (PM_PLAN in root; .cursor/skills/: DEV_GUIDE, TEST_TDD, DESIGN_SYSTEM) | Team and agents | Single source of truth for scope, tech, tests, design. |
+| Doc                                                                                 | Audience                      | Goal                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **README.md**                                                                       | Users, contributors, new devs | Orient quickly; run and contribute.                                                                                                                                            |
+| **AGENT_HANDOFF.md** / **AGENTS.md**                                                | AI agents, devs resuming work | Stable process and pointers; **product** on **`main`** in **PM_PLAN** + product plan; **session** notes local (`doc/handoff/HANDOFF-*.md` or `.cursor/handoff/` — gitignored). |
+| **Internal** (PM_PLAN in root; .cursor/skills/: DEV_GUIDE, TEST_TDD, DESIGN_SYSTEM) | Team and agents               | Single source of truth for scope, tech, tests, design.                                                                                                                         |
 
 ---
 

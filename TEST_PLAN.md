@@ -6,9 +6,9 @@ Define **Tier 1** (fast feedback: unit, headless, or local) and **Tier 2** (inte
 
 **Policy:** Treat **Tier 1** (Vitest) and **Tier 2** (Playwright) as separate test-first gates. See [.cursor/skills/TEST_TDD.md](.cursor/skills/TEST_TDD.md) for the full loop.
 
-| Tier | Command | When to use TDD here |
-|------|---------|----------------------|
-| **1** | `npm test` | New or changed behavior in `src/lib/**`, or other code covered by unit tests (mocked `chrome`). **Red → green** before merging. |
+| Tier  | Command                             | When to use TDD here                                                                                                                                                          |
+| ----- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1** | `npm test`                          | New or changed behavior in `src/lib/**`, or other code covered by unit tests (mocked `chrome`). **Red → green** before merging.                                               |
 | **2** | `npm run build && npm run test:e2e` | Behavior that must hold in a **real** Chromium + unpacked extension (dashboard, content script, overlay, storage from extension pages, etc.). **Red → green** before merging. |
 
 **Typical order:** Tier 1 first for extractable logic; Tier 2 for the browser/extension slice. If the work is browser-only, Tier 2 can lead; add Tier 1 when you pull logic into `src/lib`.
@@ -23,27 +23,27 @@ npm test
 
 **Coverage (optional):**
 
-| Command | What you see |
-|---------|----------------|
-| `npm run test:coverage` | Full `src/**` instrumentation; headline % is low because `background/`, `content/`, and `dashboard/` are not executed in Vitest. |
-| `npm run test:coverage:lib` | **Only `src/lib/**`** — headline % matches unit-tested logic (~90%+). |
-| Open `coverage/index.html` | After either command: HTML report with **per-folder** drill-down (same full-repo mix unless you used `:lib`). |
+| Command                     | What you see                                                                                                                     |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run test:coverage`     | Full `src/**` instrumentation; headline % is low because `background/`, `content/`, and `dashboard/` are not executed in Vitest. |
+| `npm run test:coverage:lib` | **Only `src/lib/**`\*\* — headline % matches unit-tested logic (~90%+).                                                          |
+| Open `coverage/index.html`  | After either command: HTML report with **per-folder** drill-down (same full-repo mix unless you used `:lib`).                    |
 
 Vitest covers **pure logic** with mocked `chrome` where needed:
 
-| Area | Files (examples) |
-|------|-------------------|
-| Schedule / jitter | `src/lib/schedule.test.ts` |
-| URL / interval / jitter validation | `src/lib/validation.test.ts` |
-| App state + enrollment | `src/lib/state.test.ts` |
-| Storage round-trip | `src/lib/storage.test.ts` |
-| Alarm names / `when` / tab lifecycle | `src/lib/alarm-*.test.ts`, `tab-lifecycle.test.ts` |
-| Prefs parsing | `src/lib/prefs.test.ts` |
-| Extension `sendMessage` guards (invalidated context) | `src/lib/extension-runtime-send.test.ts` |
-| Overlay **schedule** (which tab gets which `nextFireAt`) | `src/lib/page-overlay-schedule.test.ts` |
-| Add individual job form (validation → `IndividualJob`) | `src/lib/individual-job-form.test.ts` |
-| Dashboard / global countdown formatting | `src/lib/dashboard-countdown.test.ts` |
-| Focused-window badge math + formatting | `src/lib/focused-window-badge.test.ts` |
+| Area                                                     | Files (examples)                                   |
+| -------------------------------------------------------- | -------------------------------------------------- |
+| Schedule / jitter                                        | `src/lib/schedule.test.ts`                         |
+| URL / interval / jitter validation                       | `src/lib/validation.test.ts`                       |
+| App state + enrollment                                   | `src/lib/state.test.ts`                            |
+| Storage round-trip                                       | `src/lib/storage.test.ts`                          |
+| Alarm names / `when` / tab lifecycle                     | `src/lib/alarm-*.test.ts`, `tab-lifecycle.test.ts` |
+| Prefs parsing                                            | `src/lib/prefs.test.ts`                            |
+| Extension `sendMessage` guards (invalidated context)     | `src/lib/extension-runtime-send.test.ts`           |
+| Overlay **schedule** (which tab gets which `nextFireAt`) | `src/lib/page-overlay-schedule.test.ts`            |
+| Add individual job form (validation → `IndividualJob`)   | `src/lib/individual-job-form.test.ts`              |
+| Dashboard / global countdown formatting                  | `src/lib/dashboard-countdown.test.ts`              |
+| Focused-window badge math + formatting                   | `src/lib/focused-window-badge.test.ts`             |
 
 ### Not covered by Tier 1 (by design)
 
@@ -62,7 +62,7 @@ Run before opening a PR and whenever you change logic, tests, or build scripts:
 npm run ci
 ```
 
-This runs **`npm test`** (Vitest), **`npm run build`** (service worker, dashboard, **page-overlay** content script, icons), then **`npm run test:e2e`** (Playwright: unpacked extension + HTTP fixture page). **GitHub Actions** runs the same on every push/PR to `main` / `master` (see `.github/workflows/ci.yml`) with **`PLAYWRIGHT_HEADLESS=1`** so Chromium does not require a virtual framebuffer.
+This runs **`npm run lint`** (ESLint), **`npm run format:check`** (Prettier), **`npm test`** (Vitest), **`npm run build`** (service worker, dashboard, **page-overlay** content script, icons), then **`npm run test:e2e`** (Playwright: unpacked extension + HTTP fixture page). **GitHub Actions** runs the same on every push/PR to `main` / `master` (see `.github/workflows/ci.yml`) with **`PLAYWRIGHT_HEADLESS=1`** so Chromium does not require a virtual framebuffer.
 
 **Linux without a display:** use **`npm run test:e2e:headless`** or set `PLAYWRIGHT_HEADLESS=1`. Alternatively, `xvfb-run -a npm run test:e2e` runs the default headed browser under a virtual framebuffer.
 
@@ -91,7 +91,7 @@ npm run test:e2e
 Implementation:
 
 - **`playwright.config.ts`** — starts **`e2e/fixture-server.mjs`** (HTTP fixture so content scripts match `http://*/*`).
-- **`e2e/extension-helpers.ts`** — `chromium.launchPersistentContext` with `--load-extension=<repo root>` (see Playwright docs: *Chrome extensions*).
+- **`e2e/extension-helpers.ts`** — `chromium.launchPersistentContext` with `--load-extension=<repo root>` (see Playwright docs: _Chrome extensions_).
 - **`e2e/extension.spec.ts`** — dashboard loads; seeds `chrome.storage.local` from an extension page; asserts overlay **shadow** `.card` after reload; **Backlog 2** compact timer (no Min/Sec labels, Pause + readout row, digits + colon); **Backlog 3** paused card (`.paused-compact-row`, Play to the right of copy); toggles **Display** pref and asserts overlay removed.
 - **`e2e/epic-3-1.spec.ts`** — dashboard **Individual job** form: tab picker, URL, interval, jitter, Save → `individualJobs` persisted in storage.
 - **`e2e/epic-3-2.spec.ts`** — per-job **Start/Stop**, **Delete**, **Edit** (storage), two **countdown** rows; uses `[data-individual-job-row]`, `[data-job-toggle]`, `[data-job-delete]`, `[data-job-countdown]`, edit fields.

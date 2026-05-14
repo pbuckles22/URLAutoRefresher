@@ -67,7 +67,9 @@ test.describe('Epic 3.2: individual job lifecycle on dashboard', () => {
     await dash.locator('[data-individual-job-row="e2e-job"] [data-job-toggle]').click();
     const enabledAfterStop = await dash.evaluate(async (storageKey) => {
       const data = await chrome.storage.local.get(storageKey);
-      const raw = data[storageKey as keyof typeof data] as { individualJobs?: { enabled: boolean }[] } | undefined;
+      const raw = data[storageKey as keyof typeof data] as
+        | { individualJobs?: { enabled: boolean }[] }
+        | undefined;
       return raw?.individualJobs?.[0]?.enabled;
     }, STORAGE_KEY);
     expect(enabledAfterStop).toBe(false);
@@ -75,7 +77,9 @@ test.describe('Epic 3.2: individual job lifecycle on dashboard', () => {
     await dash.locator('[data-individual-job-row="e2e-job"] [data-job-toggle]').click();
     const enabledAfterStart = await dash.evaluate(async (storageKey) => {
       const data = await chrome.storage.local.get(storageKey);
-      const raw = data[storageKey as keyof typeof data] as { individualJobs?: { enabled: boolean }[] } | undefined;
+      const raw = data[storageKey as keyof typeof data] as
+        | { individualJobs?: { enabled: boolean }[] }
+        | undefined;
       return raw?.individualJobs?.[0]?.enabled;
     }, STORAGE_KEY);
     expect(enabledAfterStart).toBe(true);
@@ -113,7 +117,9 @@ test.describe('Epic 3.2: individual job lifecycle on dashboard', () => {
 
     const jobs = await dash.evaluate(async (storageKey) => {
       const data = await chrome.storage.local.get(storageKey);
-      const raw = data[storageKey as keyof typeof data] as { individualJobs?: unknown[] } | undefined;
+      const raw = data[storageKey as keyof typeof data] as
+        | { individualJobs?: unknown[] }
+        | undefined;
       return raw?.individualJobs ?? [];
     }, STORAGE_KEY);
     expect(jobs).toHaveLength(0);

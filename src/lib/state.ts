@@ -1,4 +1,9 @@
-import { BLIP_MAX_PHRASE_LEN, BLIP_MAX_PHRASES, BLIP_MAX_REGEX_LEN, compileBlipRegex } from './blip-match';
+import {
+  BLIP_MAX_PHRASE_LEN,
+  BLIP_MAX_PHRASES,
+  BLIP_MAX_REGEX_LEN,
+  compileBlipRegex,
+} from './blip-match';
 import { memberKeyFromTargetUrl } from './member-url';
 import type { AppState, GlobalGroup, IndividualJob, TargetRef } from './types';
 import type { Err, Ok, Result } from './validation';

@@ -1,7 +1,4 @@
-import {
-  pickBestOpenTabForMemberTarget,
-  type TabPickCandidate,
-} from './member-url';
+import { pickBestOpenTabForMemberTarget, type TabPickCandidate } from './member-url';
 import type { GlobalGroup, ResolvedMemberTab } from './types';
 import { isTwitchFavsGroupName, tabUrlMatchesTwitchFavsFavorite } from './twitch-favs';
 import { urlMatchesGlob } from './url-glob';

@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { IndividualJob } from './types';
-import { buildIndividualJobFromForm, buildIndividualJobUpdateFromForm } from './individual-job-form';
+import {
+  buildIndividualJobFromForm,
+  buildIndividualJobUpdateFromForm,
+} from './individual-job-form';
 
 describe('buildIndividualJobFromForm (Epic 3.1)', () => {
   const newId = () => 'job-test-id';
@@ -36,11 +39,17 @@ describe('buildIndividualJobFromForm (Epic 3.1)', () => {
   });
 
   it('rejects invalid interval or jitter', () => {
-    expect(buildIndividualJobFromForm({ targetUrl: 'https://a.com', baseIntervalSec: 0, jitterSec: 0 }, newId).ok).toBe(
-      false
-    );
     expect(
-      buildIndividualJobFromForm({ targetUrl: 'https://a.com', baseIntervalSec: 10, jitterSec: -1 }, newId).ok
+      buildIndividualJobFromForm(
+        { targetUrl: 'https://a.com', baseIntervalSec: 0, jitterSec: 0 },
+        newId
+      ).ok
+    ).toBe(false);
+    expect(
+      buildIndividualJobFromForm(
+        { targetUrl: 'https://a.com', baseIntervalSec: 10, jitterSec: -1 },
+        newId
+      ).ok
     ).toBe(false);
   });
 
@@ -88,7 +97,10 @@ describe('buildIndividualJobUpdateFromForm (Epic 3.2)', () => {
 
   it('rejects invalid input like add form', () => {
     expect(
-      buildIndividualJobUpdateFromForm({ targetUrl: 'ftp://x', baseIntervalSec: 10, jitterSec: 0 }, existing).ok
+      buildIndividualJobUpdateFromForm(
+        { targetUrl: 'ftp://x', baseIntervalSec: 10, jitterSec: 0 },
+        existing
+      ).ok
     ).toBe(false);
   });
 

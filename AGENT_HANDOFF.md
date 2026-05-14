@@ -18,7 +18,7 @@ This repo also uses the **[AgenticTemplate](https://github.com/pbuckles22/Agenti
 - **Product spec and epic checklist:** [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) — epic/story checkboxes are authoritative for shipped behavior; the plan’s **Backlog** defers to epics when the same scope is spelled out there (one spec, no drift).
 - **Phase summary (done / next):** [PM_PLAN.md](PM_PLAN.md)
 - **Session notes (local only):** see [.gitignore](.gitignore). **Filename (recommended):** `doc/handoff/HANDOFF-YYYY-MM-DD-HHmmss.md` — **date + local time (24h)** in the name so multiple handoffs **per day** do not collide. Example: `HANDOFF-2026-04-17-143022.md`. Alternative: `.cursor/handoff/handoff-YYYY-MM-DD_HHmm.md`. **Inside the file:** put an ISO-style **Recorded** line under the title (e.g. `Recorded: 2026-04-17T14:30:22-05:00` or UTC) for humans and search.
-- **Skills:** [.cursor/skills/](.cursor/skills/) — DEV_GUIDE.md, TEST_TDD.md, DESIGN_SYSTEM.md, techwriter, tester, code-reviewer, tech-debt-evaluator, pm-governance, ui-ux, visual-match, chromium-mv3-extension, extension-architect, tech-lead, web-audio-dsp. **Globs (when to read them):** [.cursor/rules/skill-context-extension-architect.mdc](.cursor/rules/skill-context-extension-architect.mdc), [.cursor/rules/skill-context-tech-lead.mdc](.cursor/rules/skill-context-tech-lead.mdc).
+- **Skills:** [.cursor/skills/](.cursor/skills/) — DEV_GUIDE.md, TEST_TDD.md, DESIGN_SYSTEM.md, techwriter, tester, code-reviewer, code-quality-gate, tech-debt-evaluator, pm-governance, ui-ux, visual-match, chromium-mv3-extension, extension-architect, tech-lead, web-audio-dsp. **Globs (when to read them):** [.cursor/rules/skill-context-extension-architect.mdc](.cursor/rules/skill-context-extension-architect.mdc), [.cursor/rules/skill-context-tech-lead.mdc](.cursor/rules/skill-context-tech-lead.mdc).
 
 ## Pod (agents always working)
 
@@ -33,7 +33,7 @@ npm install
 npm run ci
 ```
 
-`npm run ci` runs **`npm test`**, **`npm run build`**, and **`npm run test:e2e`** (Playwright with the unpacked extension). Run it **before every push to `main`** (or merge into `main`); the same command runs in **GitHub Actions** on push and PR (`.github/workflows/ci.yml`, with **xvfb** on Linux). For local iteration you can run `npm test`, `npm run build`, or `npm run test:e2e` separately.
+`npm run ci` runs **`npm run lint`** (ESLint — see `eslint.config.mjs`), **`npm run format:check`** (Prettier — see `.prettierrc.json`), then **`npm test`**, **`npm run build`**, and **`npm run test:e2e`** (Playwright with the unpacked extension). Run it **before every push to `main`** (or merge into `main`); the same command runs in **GitHub Actions** on push and PR (`.github/workflows/ci.yml`, with **xvfb** on Linux). For local iteration you can run `npm run lint`, `npm run format:check`, `npm test`, `npm run build`, or `npm run test:e2e` separately. **`npm run format`** applies Prettier to the tree (use before commit if you skipped the hook).
 
 Load unpacked in Edge from this repo root after a successful build (needs `dist/background.js`, `dist/page-overlay.js`, `dashboard/dashboard.js`, and `icons/`).
 
@@ -52,9 +52,9 @@ Load unpacked in Edge from this repo root after a successful build (needs `dist/
 This repo is **not** using a mandatory GitHub **pull-request / approval** gate—no “person in the middle” between you and `main`. **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) remains the quality bar.
 
 1. **`main` is the integration branch.** Commit locally, run **`npm run ci`**, then **`git push origin main`** when green. Optional: use a short-lived **feature branch** for larger slices, then merge or rebase into `main` yourself—still no required PR on GitHub.
-2. **Before push:** Run **`npm run ci`** (Vitest, build, Playwright E2E). Fix failures before pushing.
+2. **Before push:** Run **`npm run ci`** (lint, Prettier check, Vitest, build, Playwright E2E). Fix failures before pushing.
 3. **Review (optional):** Use **code-reviewer**, **tech-debt-evaluator**, or **extension-architect** / **tech-lead** when useful—tools for you and agents, not a merge blocker.
-4. **Linting:** No separate ESLint script today. Quality gate = **`npm run ci`** plus judgment.
+4. **Lint + format:** **`npm run lint`** and **`npm run format:check`** are the first two steps of **`npm run ci`**. **`eslint-config-prettier`** disables ESLint rules that fight Prettier. After `npm install`, **Husky** runs **`lint-staged`** on **`git commit`** (Prettier write + ESLint `--fix` on staged files). For **change-aware** review, use **code-quality-gate** (`.cursor/skills/code-quality-gate/SKILL.md`) with **code-reviewer**. To install dependencies without Git hooks (e.g. tarball extract), set **`HUSKY=0`** for that `npm install`.
 
 **GitHub:** Optional PRs or **`gh`** still work if you want a diff view; they are **not** required to ship.
 

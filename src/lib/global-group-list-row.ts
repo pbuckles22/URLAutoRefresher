@@ -201,7 +201,8 @@ export function appendGlobalEditExistingTargetRow(container: HTMLElement, t: Tar
     'display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; margin-top: 0.35rem';
 
   const lab = document.createElement('label');
-  lab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 1 1 14rem';
+  lab.style.cssText =
+    'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; flex: 1 1 14rem';
   const cap = document.createElement('span');
   cap.textContent = t.label ? `${t.label} · target URL` : 'Target URL';
   lab.appendChild(cap);

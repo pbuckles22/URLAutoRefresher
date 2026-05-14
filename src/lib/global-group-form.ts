@@ -68,7 +68,7 @@ export function buildGlobalGroupFromForm(
   if (!patternsResult.ok) {
     return patternsResult;
   }
-  let urlPatterns = patternsResult.value;
+  const urlPatterns = patternsResult.value;
 
   if (input.targets.length < 1 && urlPatterns.length < 1) {
     return { ok: false, error: 'Select at least one tab or add at least one URL pattern' };
@@ -175,7 +175,7 @@ export function buildGlobalGroupUpdateFromForm(
   if (!patternsResult.ok) {
     return patternsResult;
   }
-  let urlPatterns = patternsResult.value;
+  const urlPatterns = patternsResult.value;
 
   const interval = validateIntervalSec(input.baseIntervalSec);
   if (!interval.ok) {

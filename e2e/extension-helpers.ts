@@ -56,10 +56,12 @@ async function waitForExtensionServiceWorker(
     await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error(
-    `No chrome-extension service worker within ${timeoutMs}ms. Known workers: ${context
-      .serviceWorkers()
-      .map((w) => w.url())
-      .join(', ') || '(none)'}`
+    `No chrome-extension service worker within ${timeoutMs}ms. Known workers: ${
+      context
+        .serviceWorkers()
+        .map((w) => w.url())
+        .join(', ') || '(none)'
+    }`
   );
 }
 
@@ -86,10 +88,7 @@ export async function launchExtensionContext(): Promise<{
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: 'chromium',
     headless,
-    args: [
-      `--disable-extensions-except=${root}`,
-      `--load-extension=${root}`,
-    ],
+    args: [`--disable-extensions-except=${root}`, `--load-extension=${root}`],
   });
 
   const wake = await context.newPage();

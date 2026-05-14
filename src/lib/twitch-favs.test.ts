@@ -64,10 +64,7 @@ describe('reconcileTwitchFavsTargets', () => {
   it('prunes targets not in favorites and normalizes URL', () => {
     const fav = [canonicalTwitchChannelUrl('a')];
     const out = reconcileTwitchFavsTargets(
-      [
-        { targetUrl: 'https://twitch.tv/a', label: 'L' },
-        { targetUrl: 'https://example.com/x' },
-      ],
+      [{ targetUrl: 'https://twitch.tv/a', label: 'L' }, { targetUrl: 'https://example.com/x' }],
       fav
     );
     expect(out).toEqual([{ targetUrl: canonicalTwitchChannelUrl('a'), label: 'L' }]);
@@ -97,7 +94,9 @@ describe('applyTwitchFavsUpsertFromTabUrl', () => {
     };
     const { next, changed } = applyTwitchFavsUpsertFromTabUrl(state, 'https://www.twitch.tv/Ninja');
     expect(changed).toBe(true);
-    expect(next.globalGroups[0]?.targets).toEqual([{ targetUrl: canonicalTwitchChannelUrl('ninja') }]);
+    expect(next.globalGroups[0]?.targets).toEqual([
+      { targetUrl: canonicalTwitchChannelUrl('ninja') },
+    ]);
   });
 
   it('dedupes same channel to one row', () => {
@@ -111,7 +110,9 @@ describe('applyTwitchFavsUpsertFromTabUrl', () => {
     };
     const { next, changed } = applyTwitchFavsUpsertFromTabUrl(state, 'https://www.twitch.tv/ninja');
     expect(changed).toBe(true);
-    expect(next.globalGroups[0]?.targets).toEqual([{ targetUrl: canonicalTwitchChannelUrl('ninja') }]);
+    expect(next.globalGroups[0]?.targets).toEqual([
+      { targetUrl: canonicalTwitchChannelUrl('ninja') },
+    ]);
   });
 
   it('skips disabled groups', () => {

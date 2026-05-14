@@ -27,14 +27,11 @@ test('Epic 4.1: window/tab browser saves global group with per-tab target URLs',
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
 
-  await dash.evaluate(
-    async (storageKey) => {
-      await chrome.storage.local.set({
-        [storageKey]: { schemaVersion: 1, globalGroups: [], individualJobs: [] },
-      });
-    },
-    STORAGE_KEY
-  );
+  await dash.evaluate(async (storageKey) => {
+    await chrome.storage.local.set({
+      [storageKey]: { schemaVersion: 1, globalGroups: [], individualJobs: [] },
+    });
+  }, STORAGE_KEY);
 
   const fixtureTabId = await dash.evaluate(async () => {
     const tabs = await chrome.tabs.query({ url: 'http://127.0.0.1:8765/*' });
@@ -60,14 +57,11 @@ test('Epic 4.1: window/tab browser saves global group with per-tab target URLs',
 
   await expect(dash.locator('[data-global-form-error]')).toHaveText('');
 
-  const groups = await dash.evaluate(
-    async (storageKey) => {
-      const data = await chrome.storage.local.get(storageKey);
-      const raw = data[storageKey as keyof typeof data] as { globalGroups?: unknown[] } | undefined;
-      return raw?.globalGroups ?? [];
-    },
-    STORAGE_KEY
-  );
+  const groups = await dash.evaluate(async (storageKey) => {
+    const data = await chrome.storage.local.get(storageKey);
+    const raw = data[storageKey as keyof typeof data] as { globalGroups?: unknown[] } | undefined;
+    return raw?.globalGroups ?? [];
+  }, STORAGE_KEY);
 
   expect(groups).toHaveLength(1);
   expect(groups[0]).toMatchObject({

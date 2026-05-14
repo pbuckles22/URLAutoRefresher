@@ -31,8 +31,12 @@ describe('collectNextFireTimesForTabSet', () => {
         },
       ],
     };
-    await expect(collectNextFireTimesForTabSet(state, new Set(['https://a.test/page']))).resolves.toEqual([1000]);
-    await expect(collectNextFireTimesForTabSet(state, new Set(['https://other.test/']))).resolves.toEqual([]);
+    await expect(
+      collectNextFireTimesForTabSet(state, new Set(['https://a.test/page']))
+    ).resolves.toEqual([1000]);
+    await expect(
+      collectNextFireTimesForTabSet(state, new Set(['https://other.test/']))
+    ).resolves.toEqual([]);
   });
 
   it('includes global group per-member next fire when a resolved tab URL matches', async () => {
@@ -48,10 +52,7 @@ describe('collectNextFireTimesForTabSet', () => {
         {
           id: 'g',
           name: 'G',
-          targets: [
-            { targetUrl: 'https://a/' },
-            { targetUrl: 'https://b/' },
-          ],
+          targets: [{ targetUrl: 'https://a/' }, { targetUrl: 'https://b/' }],
           baseIntervalSec: 10,
           jitterSec: 0,
           enabled: true,
@@ -59,8 +60,12 @@ describe('collectNextFireTimesForTabSet', () => {
         },
       ],
     };
-    await expect(collectNextFireTimesForTabSet(state, new Set(['https://b/subpath']))).resolves.toEqual([500]);
-    await expect(collectNextFireTimesForTabSet(state, new Set(['https://c/']))).resolves.toEqual([]);
+    await expect(
+      collectNextFireTimesForTabSet(state, new Set(['https://b/subpath']))
+    ).resolves.toEqual([500]);
+    await expect(collectNextFireTimesForTabSet(state, new Set(['https://c/']))).resolves.toEqual(
+      []
+    );
     vi.restoreAllMocks();
   });
 });
@@ -122,7 +127,9 @@ describe('computeBadgeComputation', () => {
 
   it('idle when nothing scheduled and no fallback match', async () => {
     await expect(
-      computeBadgeComputation(emptyState(), 0, new Set(['https://x/']), { fallbackWhenFocusedEmpty: true })
+      computeBadgeComputation(emptyState(), 0, new Set(['https://x/']), {
+        fallbackWhenFocusedEmpty: true,
+      })
     ).resolves.toEqual({ kind: 'idle' });
   });
 

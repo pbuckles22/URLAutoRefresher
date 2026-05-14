@@ -47,7 +47,9 @@ describe('createIndividualJobListRow', () => {
     expect((li.querySelector('[data-job-edit-interval]') as HTMLInputElement).value).toBe('60');
     expect((li.querySelector('[data-job-edit-jitter]') as HTMLInputElement).value).toBe('5');
     expect(li.querySelector('[data-job-edit-live-aware]')).toBeTruthy();
-    expect((li.querySelector('[data-job-edit-live-aware]') as HTMLInputElement).checked).toBe(false);
+    expect((li.querySelector('[data-job-edit-live-aware]') as HTMLInputElement).checked).toBe(
+      false
+    );
   });
 
   it('shows live-aware in summary and checked edit box when enabled', () => {

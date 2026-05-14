@@ -1,15 +1,17 @@
 /**
  * Epic 11 — background `chrome.commands` → Web Audio gain on the primary `<video>` / `<audio>`.
  */
-import { PV_MIN_GAIN_EXP, clampLinearGain, stepGainDownLinear, stepGainUpLinear } from '../lib/precision-volume-gain';
+import {
+  PV_MIN_GAIN_EXP,
+  clampLinearGain,
+  stepGainDownLinear,
+  stepGainUpLinear,
+} from '../lib/precision-volume-gain';
 import {
   pickPrimaryMediaIndex,
   type PrimaryMediaPickFields,
 } from '../lib/precision-volume-primary';
-import {
-  PRECISION_VOLUME_COMMAND,
-  type PrecisionVolumeCommandMessage,
-} from '../lib/messages';
+import { PRECISION_VOLUME_COMMAND, type PrecisionVolumeCommandMessage } from '../lib/messages';
 
 const RAMP_SEC = 0.035;
 const ZERO_UNBLAST_SEC = 0.012;
@@ -51,7 +53,7 @@ function mediaElementToPickFields(el: HTMLMediaElement, docIndex: number): Prima
 
 function listPageMedia(): HTMLMediaElement[] {
   return [...document.querySelectorAll('video, audio')].filter(
-    (n): n is HTMLMediaElement => n instanceof HTMLMediaElement,
+    (n): n is HTMLMediaElement => n instanceof HTMLMediaElement
   );
 }
 
@@ -105,7 +107,11 @@ function readEffectiveLinearGain(param: AudioParam): number {
 }
 
 /** Schedule linear-domain target `targetLinear` on the gain AudioParam (smooth + exponential-safe). */
-function scheduleGainLinearTarget(gainParam: AudioParam, context: AudioContext, targetLinear: number): void {
+function scheduleGainLinearTarget(
+  gainParam: AudioParam,
+  context: AudioContext,
+  targetLinear: number
+): void {
   const now = context.currentTime;
   gainParam.cancelScheduledValues(now);
   const T = clampLinearGain(targetLinear);

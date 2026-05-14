@@ -10,7 +10,11 @@ export function removeGlobalGroupById(state: AppState, groupId: string): AppStat
   };
 }
 
-export function setGlobalGroupEnabled(state: AppState, groupId: string, enabled: boolean): AppState {
+export function setGlobalGroupEnabled(
+  state: AppState,
+  groupId: string,
+  enabled: boolean
+): AppState {
   return {
     ...state,
     globalGroups: state.globalGroups.map((g) => {
