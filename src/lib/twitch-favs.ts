@@ -45,7 +45,10 @@ export function canonicalTwitchChannelUrl(loginLower: string): string {
 }
 
 /** Live tab URL matches a stored TwitchFavs favorite line (canonical https URL). */
-export function tabUrlMatchesTwitchFavsFavorite(tabUrl: string, favoriteCanonicalUrl: string): boolean {
+export function tabUrlMatchesTwitchFavsFavorite(
+  tabUrl: string,
+  favoriteCanonicalUrl: string
+): boolean {
   const a = twitchChannelLoginFromUrl(tabUrl);
   const b = twitchChannelLoginFromUrl(favoriteCanonicalUrl);
   return a !== null && b !== null && a === b;
@@ -177,7 +180,10 @@ export function reconcileTwitchFavsTargets(
  * When a tab navigates to a Twitch channel in the managed list, ensure one explicit
  * `TargetRef` per channel (canonical URL). Only **enabled** groups are mutated.
  */
-export function applyTwitchFavsUpsertFromTabUrl(state: AppState, tabUrl: string): { next: AppState; changed: boolean } {
+export function applyTwitchFavsUpsertFromTabUrl(
+  state: AppState,
+  tabUrl: string
+): { next: AppState; changed: boolean } {
   const login = twitchChannelLoginFromUrl(tabUrl);
   if (!login) {
     return { next: state, changed: false };

@@ -31,8 +31,7 @@
 
 ## Open questions / blockers
 
--
-( none )
+- ( none )
 
 ## Key files (optional)
 

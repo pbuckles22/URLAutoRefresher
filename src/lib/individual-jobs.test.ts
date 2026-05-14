@@ -25,7 +25,10 @@ function emptyState(): AppState {
 describe('individual-jobs (Epic 3.2)', () => {
   it('removeIndividualJobById drops the job', () => {
     const j1 = sampleJob({ id: 'keep' });
-    const j2 = sampleJob({ id: 'drop', target: { tabId: 2, windowId: 0, targetUrl: 'https://b.com' } });
+    const j2 = sampleJob({
+      id: 'drop',
+      target: { tabId: 2, windowId: 0, targetUrl: 'https://b.com' },
+    });
     const state: AppState = { ...emptyState(), individualJobs: [j1, j2] };
     const next = removeIndividualJobById(state, 'drop');
     expect(next.individualJobs).toEqual([j1]);

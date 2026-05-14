@@ -11,7 +11,9 @@ describe('extension-runtime-send', () => {
   });
 
   it('extensionRuntimeContextLikelyAlive is false without runtime id', () => {
-    vi.stubGlobal('chrome', { runtime: { id: undefined as unknown as string, sendMessage: vi.fn() } });
+    vi.stubGlobal('chrome', {
+      runtime: { id: undefined as unknown as string, sendMessage: vi.fn() },
+    });
     expect(extensionRuntimeContextLikelyAlive()).toBe(false);
   });
 
@@ -42,12 +44,16 @@ describe('extension-runtime-send', () => {
       throw new Error('Extension context invalidated.');
     });
     vi.stubGlobal('chrome', { runtime: { id: 'extid', sendMessage } });
-    await expect(sendExtensionMessageAsync<{ ok: boolean }>({ type: 'x' })).resolves.toBeUndefined();
+    await expect(
+      sendExtensionMessageAsync<{ ok: boolean }>({ type: 'x' })
+    ).resolves.toBeUndefined();
   });
 
   it('sendExtensionMessageAsync returns payload when send resolves', async () => {
     const sendMessage = vi.fn(() => Promise.resolve({ ok: true }));
     vi.stubGlobal('chrome', { runtime: { id: 'extid', sendMessage } });
-    await expect(sendExtensionMessageAsync<{ ok: boolean }>({ type: 'x' })).resolves.toEqual({ ok: true });
+    await expect(sendExtensionMessageAsync<{ ok: boolean }>({ type: 'x' })).resolves.toEqual({
+      ok: true,
+    });
   });
 });

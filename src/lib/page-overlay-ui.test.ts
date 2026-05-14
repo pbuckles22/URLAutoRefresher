@@ -33,13 +33,17 @@ describe('getPageOverlayUiState (Epic 3.0)', () => {
         },
       ],
     };
-    await expect(getPageOverlayUiState(state, { showPageOverlayTimer: false }, 1, 'https://a.test')).resolves.toEqual({
+    await expect(
+      getPageOverlayUiState(state, { showPageOverlayTimer: false }, 1, 'https://a.test')
+    ).resolves.toEqual({
       show: false,
     });
   });
 
   it('hides overlay when pref is on but tab has no active job', async () => {
-    await expect(getPageOverlayUiState(DEFAULT_STATE, DEFAULT_PREFS, 99, 'https://none/')).resolves.toEqual({
+    await expect(
+      getPageOverlayUiState(DEFAULT_STATE, DEFAULT_PREFS, 99, 'https://none/')
+    ).resolves.toEqual({
       show: false,
     });
   });
@@ -58,7 +62,9 @@ describe('getPageOverlayUiState (Epic 3.0)', () => {
         },
       ],
     };
-    await expect(getPageOverlayUiState(state, DEFAULT_PREFS, 2, 'https://a.test/page')).resolves.toEqual({
+    await expect(
+      getPageOverlayUiState(state, DEFAULT_PREFS, 2, 'https://a.test/page')
+    ).resolves.toEqual({
       show: true,
       mode: 'timer',
       nextFireAt: 9_000_000,
@@ -81,7 +87,9 @@ describe('getPageOverlayUiState (Epic 3.0)', () => {
         },
       ],
     };
-    await expect(getPageOverlayUiState(state, DEFAULT_PREFS, 4, 'https://b.test/z')).resolves.toEqual({
+    await expect(
+      getPageOverlayUiState(state, DEFAULT_PREFS, 4, 'https://b.test/z')
+    ).resolves.toEqual({
       show: true,
       mode: 'timer',
       nextFireAt: 42,

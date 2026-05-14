@@ -135,14 +135,14 @@ Sometimes the auto-refresh **overlay hides** site content or controls. **Example
 
 ## Files reference (quick)
 
-| Area | Files |
-|------|--------|
-| Overlay UI | `src/content/page-overlay.ts` |
-| Overlay messages + handlers | `src/lib/messages.ts`, `src/background/page-overlay-handler.ts` |
-| Scheduler / pause state | `src/background/scheduler.ts`, `src/lib/types.ts` |
+| Area                               | Files                                                                                                                    |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Overlay UI                         | `src/content/page-overlay.ts`                                                                                            |
+| Overlay messages + handlers        | `src/lib/messages.ts`, `src/background/page-overlay-handler.ts`                                                          |
+| Scheduler / pause state            | `src/background/scheduler.ts`, `src/lib/types.ts`                                                                        |
 | Global groups (targets, lifecycle) | `src/lib/global-group-targets.ts`, `src/lib/tab-lifecycle.ts`, `src/lib/global-groups.ts`, dashboard global forms / rows |
-| Side panel + dashboard UI | `sidepanel/sidepanel.html`, `dashboard/dashboard.html`, `src/dashboard/dashboard-app.ts`, `Scripts/build.mjs` |
-| E2E | `e2e/*.spec.ts`, `e2e/extension-helpers.ts` |
+| Side panel + dashboard UI          | `sidepanel/sidepanel.html`, `dashboard/dashboard.html`, `src/dashboard/dashboard-app.ts`, `Scripts/build.mjs`            |
+| E2E                                | `e2e/*.spec.ts`, `e2e/extension-helpers.ts`                                                                              |
 
 ---
 

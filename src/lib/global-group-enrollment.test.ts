@@ -45,12 +45,8 @@ describe('validateGlobalGroupResolvedEnrollment', () => {
     };
     const candidate = baseGroup();
     resolveGlobalGroupTargets
-      .mockResolvedValueOnce([
-        { tabId: 1, windowId: 0, targetUrl: 'https://a.test/x' },
-      ])
-      .mockResolvedValueOnce([
-        { tabId: 99, windowId: 0, targetUrl: 'https://www.a.test/x' },
-      ]);
+      .mockResolvedValueOnce([{ tabId: 1, windowId: 0, targetUrl: 'https://a.test/x' }])
+      .mockResolvedValueOnce([{ tabId: 99, windowId: 0, targetUrl: 'https://www.a.test/x' }]);
 
     const r = await validateGlobalGroupResolvedEnrollment(state, candidate);
     expect(r.ok).toBe(false);

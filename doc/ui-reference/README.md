@@ -6,10 +6,10 @@ PNG screenshots in `auto-refresh-plus/` are **not** URL Auto Refresher branding.
 
 ## Expected files (`auto-refresh-plus/`)
 
-| File | Contents |
-|------|----------|
+| File                    | Contents                                              |
+| ----------------------- | ----------------------------------------------------- |
 | `time-interval-tab.png` | Interval / presets / custom time UI (reference only). |
-| `active-tabs-list.png` | List of tabs with URLs and per-row countdown. |
-| `page-monitor-tab.png` | Text find/lose monitoring (maps loosely to Epic 9). |
+| `active-tabs-list.png`  | List of tabs with URLs and per-row countdown.         |
+| `page-monitor-tab.png`  | Text find/lose monitoring (maps loosely to Epic 9).   |
 
 Add these files when you have exports; until then **Ref.1** in the EDGE plan stays open.

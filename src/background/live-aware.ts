@@ -28,10 +28,7 @@ async function patchJobsForTwitchReport(
   let changed = false;
 
   const individualJobs = state.individualJobs.map((j) => {
-    if (
-      !j.liveAwareRefresh ||
-      !pageMatchesExplicitTarget(tabUrl!, j.target.targetUrl)
-    ) {
+    if (!j.liveAwareRefresh || !pageMatchesExplicitTarget(tabUrl!, j.target.targetUrl)) {
       return j;
     }
     const prev = j.streamLive;
@@ -50,17 +47,17 @@ async function patchJobsForTwitchReport(
   return changed ? { ...state, individualJobs } : null;
 }
 
-function patchJobsClearSignalWhenNotOnChannelRoot(state: AppState, tabUrl: string): AppState | null {
+function patchJobsClearSignalWhenNotOnChannelRoot(
+  state: AppState,
+  tabUrl: string
+): AppState | null {
   const onRoot = isTwitchChannelRootUrl(tabUrl);
   if (onRoot) {
     return null;
   }
   let changed = false;
   const individualJobs = state.individualJobs.map((j) => {
-    if (
-      !j.liveAwareRefresh ||
-      !pageMatchesExplicitTarget(tabUrl, j.target.targetUrl)
-    ) {
+    if (!j.liveAwareRefresh || !pageMatchesExplicitTarget(tabUrl, j.target.targetUrl)) {
       return j;
     }
     if (j.streamLive === undefined) {
@@ -83,7 +80,10 @@ export async function applyTwitchLiveReport(tabId: number, live: boolean | null)
   await refreshActionBadge();
 }
 
-export async function clearLiveAwareIfTabLeftChannelRoot(tabId: number, tabUrl: string | undefined): Promise<void> {
+export async function clearLiveAwareIfTabLeftChannelRoot(
+  tabId: number,
+  tabUrl: string | undefined
+): Promise<void> {
   if (tabUrl === undefined) {
     return;
   }

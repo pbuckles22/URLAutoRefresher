@@ -24,9 +24,9 @@ describe('normalizeUrlPatternLines', () => {
 
 describe('mergeDistinctPatternLines', () => {
   it('appends without duplicating case-insensitively', () => {
-    expect(mergeDistinctPatternLines('https://a.example/foo', ['https://A.example/foo', 'https://b/'])).toBe(
-      'https://a.example/foo\nhttps://b/'
-    );
+    expect(
+      mergeDistinctPatternLines('https://a.example/foo', ['https://A.example/foo', 'https://b/'])
+    ).toBe('https://a.example/foo\nhttps://b/');
   });
 
   it('handles empty base', () => {

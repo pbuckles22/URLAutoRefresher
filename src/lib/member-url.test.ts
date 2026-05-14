@@ -28,10 +28,7 @@ describe('pickBestOpenTabForMemberTarget', () => {
 
   it('returns undefined when no candidates match', () => {
     expect(
-      pickBestOpenTabForMemberTarget(
-        [{ id: 1, url: 'https://other.com/', windowId: 1 }],
-        target
-      )
+      pickBestOpenTabForMemberTarget([{ id: 1, url: 'https://other.com/', windowId: 1 }], target)
     ).toBeUndefined();
   });
 

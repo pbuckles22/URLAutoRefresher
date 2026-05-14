@@ -12,7 +12,7 @@ async function expectOverlayCardVisible(fixturePage: Page): Promise<void> {
       async () =>
         fixturePage.evaluate(() => {
           const host = document.getElementById('url-auto-refresher-overlay-root');
-          return !!(host?.shadowRoot?.querySelector('.card'));
+          return !!host?.shadowRoot?.querySelector('.card');
         }),
       { timeout: 30_000 }
     )

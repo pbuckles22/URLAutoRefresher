@@ -76,7 +76,13 @@ describe('validateUniqueIds', () => {
         },
       ],
       individualJobs: [
-        { id: 'i1', target: sampleTarget('https://id.example/1'), baseIntervalSec: 60, jitterSec: 0, enabled: false },
+        {
+          id: 'i1',
+          target: sampleTarget('https://id.example/1'),
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: false,
+        },
       ],
     });
     expect(r.ok).toBe(true);
@@ -85,10 +91,7 @@ describe('validateUniqueIds', () => {
   it('fails when two global groups share an id', () => {
     const r = validateUniqueIds({
       ...DEFAULT_STATE,
-      globalGroups: [
-        group('dup', []),
-        group('dup', []),
-      ],
+      globalGroups: [group('dup', []), group('dup', [])],
     });
     expect(r.ok).toBe(false);
   });
@@ -98,7 +101,13 @@ describe('validateUniqueIds', () => {
       ...DEFAULT_STATE,
       globalGroups: [group('x', [])],
       individualJobs: [
-        { id: 'x', target: sampleTarget('https://id.example/2'), baseIntervalSec: 60, jitterSec: 0, enabled: false },
+        {
+          id: 'x',
+          target: sampleTarget('https://id.example/2'),
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: false,
+        },
       ],
     });
     expect(r.ok).toBe(false);
@@ -108,8 +117,20 @@ describe('validateUniqueIds', () => {
     const r = validateUniqueIds({
       ...DEFAULT_STATE,
       individualJobs: [
-        { id: 'dup', target: sampleTarget('https://id.example/a'), baseIntervalSec: 60, jitterSec: 0, enabled: false },
-        { id: 'dup', target: sampleTarget('https://id.example/b'), baseIntervalSec: 60, jitterSec: 0, enabled: false },
+        {
+          id: 'dup',
+          target: sampleTarget('https://id.example/a'),
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: false,
+        },
+        {
+          id: 'dup',
+          target: sampleTarget('https://id.example/b'),
+          baseIntervalSec: 60,
+          jitterSec: 0,
+          enabled: false,
+        },
       ],
     });
     expect(r.ok).toBe(false);
@@ -259,7 +280,9 @@ describe('validateEnabledEnrollment', () => {
     });
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.error).toContain('cannot be in an enabled global group and an enabled individual job');
+      expect(r.error).toContain(
+        'cannot be in an enabled global group and an enabled individual job'
+      );
     }
   });
 

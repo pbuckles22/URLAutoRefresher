@@ -72,7 +72,8 @@ export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTM
   details.appendChild(sum);
 
   const editWrap = document.createElement('div');
-  editWrap.style.cssText = 'display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.35rem; max-width: 28rem';
+  editWrap.style.cssText =
+    'display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.35rem; max-width: 28rem';
 
   const urlLab = document.createElement('label');
   urlLab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem';
@@ -111,7 +112,8 @@ export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTM
   jitLab.appendChild(jitEdit);
 
   const liveLab = document.createElement('label');
-  liveLab.style.cssText = 'display: flex; align-items: flex-start; gap: 0.35rem; font-size: 0.85rem; cursor: pointer';
+  liveLab.style.cssText =
+    'display: flex; align-items: flex-start; gap: 0.35rem; font-size: 0.85rem; cursor: pointer';
   const liveCb = document.createElement('input');
   liveCb.type = 'checkbox';
   liveCb.setAttribute('data-job-edit-live-aware', '');
@@ -135,7 +137,8 @@ export function createIndividualJobListRow(j: IndividualJob, nowMs: number): HTM
   blipLab.appendChild(blipTa);
 
   const blipRxLab = document.createElement('label');
-  blipRxLab.style.cssText = 'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem';
+  blipRxLab.style.cssText =
+    'display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem';
   blipRxLab.innerHTML = '<span>Blip regex (optional, case-insensitive)</span>';
   const blipRx = document.createElement('input');
   blipRx.type = 'text';

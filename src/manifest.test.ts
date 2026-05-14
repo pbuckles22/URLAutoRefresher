@@ -76,8 +76,7 @@ describe('manifest.json', () => {
     const invalidSegment = /\b(Equal|Minus|Plus|Digit\d*)\b/i;
     for (const def of Object.values(commands ?? {})) {
       const sk = def?.suggested_key;
-      const strings: string[] =
-        typeof sk === 'string' ? [sk] : sk ? Object.values(sk) : [];
+      const strings: string[] = typeof sk === 'string' ? [sk] : sk ? Object.values(sk) : [];
       for (const chord of strings) {
         expect(chord, `invalid chord segment in ${chord}`).not.toMatch(invalidSegment);
       }

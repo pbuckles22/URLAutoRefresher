@@ -2,7 +2,10 @@
  * Epic 8.1: report Twitch channel live/offline to the service worker (Twitch-first).
  */
 import { TWITCH_LIVE_REPORT } from '../lib/messages';
-import { gatherTwitchBootScriptSample, inferTwitchLiveFromScriptText } from '../lib/twitch-live-detect';
+import {
+  gatherTwitchBootScriptSample,
+  inferTwitchLiveFromScriptText,
+} from '../lib/twitch-live-detect';
 
 const POLL_MS = 22_000;
 const DEBOUNCE_MS = 1_600;

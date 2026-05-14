@@ -1,6 +1,6 @@
 # Move the repo from a UNC path to a local disk (Windows)
 
-Use this guide **after** you copy or move the folder and **reopen** the project in your editor. It helps when the repo lived on a **network (UNC)** path and **npm** / tooling failed with *UNC paths are not supported*.
+Use this guide **after** you copy or move the folder and **reopen** the project in your editor. It helps when the repo lived on a **network (UNC)** path and **npm** / tooling failed with _UNC paths are not supported_.
 
 Substitute **your** UNC source and **your** local destination everywhere below.
 
@@ -88,11 +88,11 @@ npm run build
 
 This file is **only** about relocating the repo. **Roadmap** lives elsewhere:
 
-| Doc | Purpose |
-|-----|---------|
-| [EDGE_URL_AUTO_REFRESHER_PLAN.md](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) | Epics, checkboxes, product spec |
-| [PM_PLAN.md](../../PM_PLAN.md) | Short phase summary |
-| [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) | Agent process, run/test commands |
+| Doc                                                                        | Purpose                          |
+| -------------------------------------------------------------------------- | -------------------------------- |
+| [EDGE_URL_AUTO_REFRESHER_PLAN.md](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) | Epics, checkboxes, product spec  |
+| [PM_PLAN.md](../../PM_PLAN.md)                                             | Short phase summary              |
+| [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md)                                 | Agent process, run/test commands |
 
 ---
 

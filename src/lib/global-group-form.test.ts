@@ -161,10 +161,7 @@ describe('buildGlobalGroupUpdateFromForm', () => {
         name: '  ',
         baseIntervalSec: 60,
         jitterSec: 0,
-        targets: [
-          { targetUrl: 'https://x/' },
-          { targetUrl: 'https://y/' },
-        ],
+        targets: [{ targetUrl: 'https://x/' }, { targetUrl: 'https://y/' }],
         urlPatternsRaw: '',
       },
       existing()

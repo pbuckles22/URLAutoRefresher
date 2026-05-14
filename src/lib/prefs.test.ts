@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { DEFAULT_PREFS, loadExtensionPrefs, parsePrefs, PREFS_STORAGE_KEY, saveExtensionPrefs } from './prefs';
+import {
+  DEFAULT_PREFS,
+  loadExtensionPrefs,
+  parsePrefs,
+  PREFS_STORAGE_KEY,
+  saveExtensionPrefs,
+} from './prefs';
 
 describe('prefs', () => {
   it('defaults when missing', () => {

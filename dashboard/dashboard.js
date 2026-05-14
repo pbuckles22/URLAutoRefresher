@@ -367,7 +367,7 @@
     if (!patternsResult.ok) {
       return patternsResult;
     }
-    let urlPatterns = patternsResult.value;
+    const urlPatterns = patternsResult.value;
     if (input.targets.length < 1 && urlPatterns.length < 1) {
       return { ok: false, error: "Select at least one tab or add at least one URL pattern" };
     }
@@ -451,7 +451,7 @@
     if (!patternsResult.ok) {
       return patternsResult;
     }
-    let urlPatterns = patternsResult.value;
+    const urlPatterns = patternsResult.value;
     const interval = validateIntervalSec(input.baseIntervalSec);
     if (!interval.ok) {
       return interval;
@@ -1002,7 +1002,13 @@
           return j;
         }
         if (!enabled) {
-          return { ...j, enabled: false, nextFireAt: void 0, streamLive: void 0, overlayPaused: void 0 };
+          return {
+            ...j,
+            enabled: false,
+            nextFireAt: void 0,
+            streamLive: void 0,
+            overlayPaused: void 0
+          };
         }
         return { ...j, enabled: true };
       })
@@ -1659,11 +1665,17 @@
     const globalTabSearch = document.querySelector("[data-global-tab-search]");
     const globalIntervalInput = document.querySelector("[data-global-interval]");
     const globalJitterInput = document.querySelector("[data-global-jitter]");
-    const globalUrlPatterns = document.querySelector("[data-global-url-patterns]");
-    const globalTwitchFavsHint = document.querySelector("[data-global-twitch-favs-hint]");
+    const globalUrlPatterns = document.querySelector(
+      "[data-global-url-patterns]"
+    );
+    const globalTwitchFavsHint = document.querySelector(
+      "[data-global-twitch-favs-hint]"
+    );
     const globalFormError = document.querySelector("[data-global-form-error]");
     const globalSectionHeading = document.querySelector("[data-global-section-heading]");
-    const individualSectionHeading = document.querySelector("[data-individual-section-heading]");
+    const individualSectionHeading = document.querySelector(
+      "[data-individual-section-heading]"
+    );
     const globalGroupsList = document.querySelector("[data-global-groups-list]");
     if (globalTwitchFavsHint) {
       globalTwitchFavsHint.textContent = TWITCH_FAVS_PATTERN_HINT;
@@ -1973,11 +1985,19 @@
               return;
             }
             const url = row.querySelector("[data-job-edit-url]")?.value ?? "";
-            const interval = Number(row.querySelector("[data-job-edit-interval]")?.value);
-            const jitter = Number(row.querySelector("[data-job-edit-jitter]")?.value);
+            const interval = Number(
+              row.querySelector("[data-job-edit-interval]")?.value
+            );
+            const jitter = Number(
+              row.querySelector("[data-job-edit-jitter]")?.value
+            );
             const liveAware = row.querySelector("[data-job-edit-live-aware]")?.checked === true;
-            const blipPhrases = row.querySelector("[data-job-edit-blip-phrases]")?.value;
-            const blipRegex = row.querySelector("[data-job-edit-blip-regex]")?.value;
+            const blipPhrases = row.querySelector(
+              "[data-job-edit-blip-phrases]"
+            )?.value;
+            const blipRegex = row.querySelector(
+              "[data-job-edit-blip-regex]"
+            )?.value;
             const built = buildIndividualJobUpdateFromForm(
               {
                 targetUrl: url,
@@ -2096,8 +2116,12 @@
               return;
             }
             const name = row.querySelector("[data-global-edit-name]")?.value ?? "";
-            const interval = Number(row.querySelector("[data-global-edit-interval]")?.value);
-            const jitter = Number(row.querySelector("[data-global-edit-jitter]")?.value);
+            const interval = Number(
+              row.querySelector("[data-global-edit-interval]")?.value
+            );
+            const jitter = Number(
+              row.querySelector("[data-global-edit-jitter]")?.value
+            );
             const targets = [];
             const extraPatternUrls = [];
             for (const tr of row.querySelectorAll("[data-global-edit-target-row]")) {
@@ -2146,7 +2170,13 @@
             const patternsField = row.querySelector("[data-global-edit-url-patterns]")?.value ?? "";
             const patternsRaw = mergeDistinctPatternLines(patternsField, extraPatternUrls);
             const built = buildGlobalGroupUpdateFromForm(
-              { name, baseIntervalSec: interval, jitterSec: jitter, targets, urlPatternsRaw: patternsRaw },
+              {
+                name,
+                baseIntervalSec: interval,
+                jitterSec: jitter,
+                targets,
+                urlPatternsRaw: patternsRaw
+              },
               existing
             );
             if (!built.ok) {
@@ -2155,7 +2185,11 @@
               }
               return;
             }
-            const enroll = await validateGlobalGroupResolvedEnrollment(state, built.value, existing.id);
+            const enroll = await validateGlobalGroupResolvedEnrollment(
+              state,
+              built.value,
+              existing.id
+            );
             if (!enroll.ok) {
               if (errEl) {
                 errEl.textContent = enroll.error;
@@ -2208,7 +2242,9 @@
               urlIn.value = defaultTargetUrlForTab(ct.url ?? "");
             });
           }
-          for (const other of groupRow.querySelectorAll("[data-global-edit-pick-tab]")) {
+          for (const other of groupRow.querySelectorAll(
+            "[data-global-edit-pick-tab]"
+          )) {
             if (other !== sel) {
               populateGlobalEditNewTabSelect(other, groupRow);
             }

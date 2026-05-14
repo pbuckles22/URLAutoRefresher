@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  inferTwitchLiveFromScriptText,
-  isTwitchChannelRootUrl,
-} from './twitch-live-detect';
+import { inferTwitchLiveFromScriptText, isTwitchChannelRootUrl } from './twitch-live-detect';
 
 describe('isTwitchChannelRootUrl', () => {
   it('accepts single-segment twitch channel URLs', () => {

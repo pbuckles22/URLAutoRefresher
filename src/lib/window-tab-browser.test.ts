@@ -8,7 +8,9 @@ import {
 describe('defaultTargetUrlForTab', () => {
   it('returns http(s) URLs unchanged', () => {
     expect(defaultTargetUrlForTab('https://a.example/')).toBe('https://a.example/');
-    expect(defaultTargetUrlForTab('  http://127.0.0.1:8765/path  ')).toBe('http://127.0.0.1:8765/path');
+    expect(defaultTargetUrlForTab('  http://127.0.0.1:8765/path  ')).toBe(
+      'http://127.0.0.1:8765/path'
+    );
   });
 
   it('returns empty for non-http(s) schemes', () => {

@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  validateHttpUrl,
-  validateIntervalSec,
-  validateJitterSec,
-} from './validation';
+import { validateHttpUrl, validateIntervalSec, validateJitterSec } from './validation';
 
 describe('validateHttpUrl', () => {
   it('accepts https URLs', () => {

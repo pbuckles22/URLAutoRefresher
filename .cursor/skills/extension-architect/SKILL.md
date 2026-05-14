@@ -26,12 +26,12 @@ Use this skill for **design and structure** before or alongside implementation. 
 
 ## Design checklist
 
-| Question | Action |
-|----------|--------|
+| Question                                       | Action                                                           |
+| ---------------------------------------------- | ---------------------------------------------------------------- |
 | Where is the source of truth for this feature? | Pick one layer + storage; others read or subscribe via messages. |
-| Survives service worker restart? | Persist; rehydrate on startup paths. |
-| Works after extension reload? | Content script guards + teardown (see chromium-mv3-extension). |
-| Conflicts with another script? | Namespace IDs, shadow DOM, or separate entry bundle. |
+| Survives service worker restart?               | Persist; rehydrate on startup paths.                             |
+| Works after extension reload?                  | Content script guards + teardown (see chromium-mv3-extension).   |
+| Conflicts with another script?                 | Namespace IDs, shadow DOM, or separate entry bundle.             |
 
 ## Handoffs
 

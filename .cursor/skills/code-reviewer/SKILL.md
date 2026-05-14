@@ -20,14 +20,19 @@ Use this skill when performing a code review: before commit, on a diff, or when 
 
 ## Review checklist
 
-| Area | Check |
-|------|--------|
-| **Correctness** | Logic correct; null/empty/edge cases handled. |
-| **Secrets & data** | No API keys or secrets in repo; no sensitive data logged. |
-| **Conventions** | Matches DEV_GUIDE; tests present for new behavior. |
-| **Tests** | Project test suite green (or skip documented). |
-| **Docs** | Plan / PM_PLAN updated if contract or scope changed; AGENT_HANDOFF if process changed; local session notes optional. |
-| **Maintainability** | Clear names; functions testable and understandable. |
+| Area                | Check                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Correctness**     | Logic correct; null/empty/edge cases handled.                                                                        |
+| **Secrets & data**  | No API keys or secrets in repo; no sensitive data logged.                                                            |
+| **Conventions**     | Matches DEV_GUIDE; tests present for new behavior.                                                                   |
+| **Tests**           | Project test suite green (or skip documented).                                                                       |
+| **Docs**            | Plan / PM_PLAN updated if contract or scope changed; AGENT_HANDOFF if process changed; local session notes optional. |
+| **Maintainability** | Clear names; functions testable and understandable; **`npm run lint`** clean.                                        |
+
+## Automated vs human review
+
+- **Machine gate:** **`npm run lint`** / **`npm run format:check`** / **`npm run ci`** enforce `eslint.config.mjs` and Prettier — unused bindings, `console` usage, cyclomatic complexity and function length **by folder**, plus consistent formatting. Fix violations; avoid blanket `eslint-disable` unless the exception is justified in the same change.
+- **Human gate:** Correctness, security, intent, and naming ESLint cannot judge. For **diff-scoped** readability and spaghetti risk, pair this skill with **code-quality-gate** (`.cursor/skills/code-quality-gate/SKILL.md`).
 
 ## Output format
 

@@ -44,7 +44,9 @@ export async function resolveLiveTabIdForTargetUrl(
   }
   const candidates = tabsToPickCandidates(tabs);
   const lastFocusedWindowId = await getLastFocusedWindowId();
-  const picked = pickBestOpenTabForMemberTarget(candidates, memberTargetUrl, { lastFocusedWindowId });
+  const picked = pickBestOpenTabForMemberTarget(candidates, memberTargetUrl, {
+    lastFocusedWindowId,
+  });
   if (picked !== undefined) {
     return picked;
   }

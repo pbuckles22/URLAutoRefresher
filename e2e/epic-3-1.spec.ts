@@ -27,14 +27,11 @@ test('Epic 3.1: dashboard form saves individual job to storage', async () => {
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
 
-  await dash.evaluate(
-    async (storageKey) => {
-      await chrome.storage.local.set({
-        [storageKey]: { schemaVersion: 1, globalGroups: [], individualJobs: [] },
-      });
-    },
-    STORAGE_KEY
-  );
+  await dash.evaluate(async (storageKey) => {
+    await chrome.storage.local.set({
+      [storageKey]: { schemaVersion: 1, globalGroups: [], individualJobs: [] },
+    });
+  }, STORAGE_KEY);
 
   const fixtureTabId = await dash.evaluate(async () => {
     const tabs = await chrome.tabs.query({ url: 'http://127.0.0.1:8765/*' });
@@ -56,14 +53,11 @@ test('Epic 3.1: dashboard form saves individual job to storage', async () => {
 
   await expect(dash.locator('[data-add-job-error]')).toHaveText('');
 
-  const jobs = await dash.evaluate(
-    async (storageKey) => {
-      const data = await chrome.storage.local.get(storageKey);
-      const raw = data[storageKey as keyof typeof data] as { individualJobs?: unknown[] } | undefined;
-      return raw?.individualJobs ?? [];
-    },
-    STORAGE_KEY
-  );
+  const jobs = await dash.evaluate(async (storageKey) => {
+    const data = await chrome.storage.local.get(storageKey);
+    const raw = data[storageKey as keyof typeof data] as { individualJobs?: unknown[] } | undefined;
+    return raw?.individualJobs ?? [];
+  }, STORAGE_KEY);
 
   expect(jobs).toHaveLength(1);
   expect(jobs[0]).toMatchObject({

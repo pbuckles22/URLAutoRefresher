@@ -15,14 +15,14 @@ Chromium Manifest V3 extension for Edge: scheduled refreshes to a **configured t
 
 ## What’s included (agentic)
 
-| Area | Contents |
-|------|----------|
-| **.cursor/rules** | `always.mdc`, `handoff-checklist.mdc`, `testing.mdc` |
-| **.cursor/skills** | DEV_GUIDE, TEST_TDD, DESIGN_SYSTEM, techwriter, tester, code-reviewer, tech-debt-evaluator, pm-governance, ui-ux, visual-match |
-| **.cursor/handoff** | Handoff note template and README |
-| **doc/** | Plan, requirements, UI references; **`doc/handoff/`** on `main` is only the [UNC → local move guide](doc/handoff/HANDOFF_MOVE_TO_LOCAL.md) — see [index](doc/README.md) |
-| **examples/** | Placeholder for reference UI/specs |
-| **script/** | README — add your own test runner scripts |
+| Area                | Contents                                                                                                                                                                |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **.cursor/rules**   | `always.mdc`, `handoff-checklist.mdc`, `testing.mdc`                                                                                                                    |
+| **.cursor/skills**  | DEV_GUIDE, TEST_TDD, DESIGN_SYSTEM, techwriter, tester, code-reviewer, tech-debt-evaluator, pm-governance, ui-ux, visual-match                                          |
+| **.cursor/handoff** | Handoff note template and README                                                                                                                                        |
+| **doc/**            | Plan, requirements, UI references; **`doc/handoff/`** on `main` is only the [UNC → local move guide](doc/handoff/HANDOFF_MOVE_TO_LOCAL.md) — see [index](doc/README.md) |
+| **examples/**       | Placeholder for reference UI/specs                                                                                                                                      |
+| **script/**         | README — add your own test runner scripts                                                                                                                               |
 
 ## Development
 
@@ -107,11 +107,11 @@ The extension requests: **`storage`**, **`alarms`**, **`tabs`**, **`windows`**, 
 
 Registered via **`chrome.commands`** in [`manifest.json`](manifest.json) (defaults below). Remap or disable under **edge://extensions/shortcuts** (or Chrome equivalent).
 
-| Command | Default chord |
-|--------|----------------|
-| Increase precision volume | **Ctrl+Shift+Up** · **Command+Shift+Up** |
+| Command                   | Default chord                                |
+| ------------------------- | -------------------------------------------- |
+| Increase precision volume | **Ctrl+Shift+Up** · **Command+Shift+Up**     |
 | Decrease precision volume | **Ctrl+Shift+Down** · **Command+Shift+Down** |
-| Panic mute | **Ctrl+Shift+0** · **Command+Shift+0** |
+| Panic mute                | **Ctrl+Shift+0** · **Command+Shift+0**       |
 
 Only key names [documented for `chrome.commands`](https://developer.chrome.com/docs/extensions/reference/api/commands#supported_keys) are valid (e.g. `Up`, `Down`, `0`–`9`, `Comma`, `Period` — not `Equal`, `Minus`, or `Digit0`). Remap under **edge://extensions/shortcuts** if a chord conflicts with the browser or OS.
 

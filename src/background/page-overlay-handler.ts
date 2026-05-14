@@ -98,7 +98,11 @@ async function handleIndividualJobOverlayPause(
   return true;
 }
 
-async function handleGlobalGroupTabPause(tabId: number, groupId: string, paused: boolean): Promise<boolean> {
+async function handleGlobalGroupTabPause(
+  tabId: number,
+  groupId: string,
+  paused: boolean
+): Promise<boolean> {
   let state = await loadAppState();
   const gIdx = state.globalGroups.findIndex((g) => g.id === groupId);
   if (gIdx < 0) {
