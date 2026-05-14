@@ -196,8 +196,9 @@ test.describe('Epic 3.2: individual job lifecycle on dashboard', () => {
       return id;
     });
 
+    const targetBefore = `${FIXTURE_ORIGIN}/`;
     await dash.evaluate(
-      async ({ storageKey, tabId }) => {
+      async ({ storageKey, tabId, targetUrl }) => {
         await chrome.storage.local.set({
           [storageKey]: {
             schemaVersion: 1,
@@ -208,7 +209,7 @@ test.describe('Epic 3.2: individual job lifecycle on dashboard', () => {
                 target: {
                   tabId,
                   windowId: 0,
-                  targetUrl: 'https://example.com/before',
+                  targetUrl,
                 },
                 baseIntervalSec: 60,
                 jitterSec: 0,
@@ -218,21 +219,40 @@ test.describe('Epic 3.2: individual job lifecycle on dashboard', () => {
           },
         });
       },
-      { storageKey: STORAGE_KEY, tabId: fixtureTabId }
+      { storageKey: STORAGE_KEY, tabId: fixtureTabId, targetUrl: targetBefore }
     );
 
     await dash.reload();
 
     const editRow = dash.locator('[data-individual-job-row="edit-me"]');
-    // Open <details> in-page so Playwright does not fight headed viewport / pointer interception on the summary.
-    await editRow.locator('details').evaluate((d: HTMLDetailsElement) => {
-      d.open = true;
-    });
-    await editRow.locator('[data-job-edit-url]').fill('https://example.com/after-e2e');
-    // Native click in the page avoids scroll/detach flakes when the list is tall or hit-testing is odd.
-    await editRow.locator('[data-job-edit-save]').evaluate((b: HTMLButtonElement) => {
-      b.click();
-    });
+    await expect(editRow).toBeVisible();
+
+    // One in-page turn: avoids "element detached" when the background scheduler updates storage
+    // (e.g. disabling a job whose targetUrl does not match any open tab) and the dashboard does a full list re-render.
+    const afterUrl = 'https://example.com/after-e2e';
+    await dash.evaluate(
+      (arg: { jobId: string; url: string }) => {
+        const row = document.querySelector(`[data-individual-job-row="${arg.jobId}"]`);
+        if (!row) {
+          throw new Error(`missing row ${arg.jobId}`);
+        }
+        const details = row.querySelector('details');
+        if (details) {
+          details.open = true;
+        }
+        const urlInput = row.querySelector<HTMLInputElement>('[data-job-edit-url]');
+        if (!urlInput) {
+          throw new Error('missing [data-job-edit-url]');
+        }
+        urlInput.value = arg.url;
+        const saveBtn = row.querySelector<HTMLButtonElement>('[data-job-edit-save]');
+        if (!saveBtn) {
+          throw new Error('missing [data-job-edit-save]');
+        }
+        saveBtn.click();
+      },
+      { jobId: 'edit-me', url: afterUrl }
+    );
 
     await expect
       .poll(
