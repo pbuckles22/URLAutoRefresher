@@ -35,6 +35,17 @@ Use this skill when creating or revising project docs so they stay consistent an
 
 **Style:** Dense but structured. Headings and bullets so agents can jump to the right section.
 
+### Dual-audience blurbs (pre-commit chat, optional PR description)
+
+**AGENT_HANDOFF.md** → _Git workflow_ step **3** requires **two** blurbs before commit (unless the user waived): one for **maintainers**, one for **people who only use the shipped extension**.
+
+| Blurb      | Voice                                                                                                                  | Avoid in the extension-user blurb                                                                                            |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **First**  | Plan and engineering context; epic/story, risk, pointers to files or modules if helpful.                               | (No extra restriction.)                                                                                                      |
+| **Second** | Plain, concrete, user-outcome only—like short **release notes** (“You can still …”, “Nothing changes for you when …”). | File paths, symbols, DOM/CSS/HTML, APIs, test or CI tool names, git vocabulary—unless the user asked for a technical answer. |
+
+**Habit:** After drafting, ask whether a **non-developer** who uses the product would understand the **second** blurb without opening the repo. Rewrite that blurb until the answer is yes.
+
 ---
 
 ## Internal docs
