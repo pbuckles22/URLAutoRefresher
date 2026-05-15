@@ -16,6 +16,13 @@ import {
   type PrecisionVolumeApplyMessage,
   type PrecisionVolumeShortcutAction,
 } from '../lib/messages';
+import {
+  precisionVolumeOsdMessageForHookFailed,
+  precisionVolumeOsdMessageForLevel,
+  precisionVolumeOsdMessageForNoMedia,
+  precisionVolumeOsdMessageForPanicMute,
+} from '../lib/precision-volume-osd-text';
+import { showPrecisionVolumeOsd } from './precision-volume-osd';
 
 const RAMP_SEC = 0.035;
 const ZERO_UNBLAST_SEC = 0.012;
@@ -172,10 +179,12 @@ function panicMuteGain(gainParam: AudioParam, context: AudioContext): void {
 function handlePrecisionVolumeShortcut(action: PrecisionVolumeShortcutAction): void {
   const el = pickPrimaryMediaElement();
   if (!el) {
+    showPrecisionVolumeOsd(precisionVolumeOsdMessageForNoMedia());
     return;
   }
   const hook = tryHookMediaElement(el);
   if (!hook) {
+    showPrecisionVolumeOsd(precisionVolumeOsdMessageForHookFailed());
     return;
   }
   const { context, gainNode } = hook;
@@ -186,13 +195,18 @@ function handlePrecisionVolumeShortcut(action: PrecisionVolumeShortcutAction): v
 
   if (action === 'panic-mute') {
     panicMuteGain(g, context);
+    showPrecisionVolumeOsd(precisionVolumeOsdMessageForPanicMute());
     return;
   }
   if (action === 'volume-up') {
-    scheduleGainLinearTarget(g, context, stepGainUpLinear(curLinear));
+    const target = clampSignedLinearGain(stepGainUpLinear(curLinear));
+    scheduleGainLinearTarget(g, context, target);
+    showPrecisionVolumeOsd(precisionVolumeOsdMessageForLevel(target));
     return;
   }
-  scheduleGainLinearTarget(g, context, stepGainDownLinear(curLinear));
+  const targetDown = clampSignedLinearGain(stepGainDownLinear(curLinear));
+  scheduleGainLinearTarget(g, context, targetDown);
+  showPrecisionVolumeOsd(precisionVolumeOsdMessageForLevel(targetDown));
 }
 
 function handlePrecisionVolumeSetLinearGain(linearGain: number): void {

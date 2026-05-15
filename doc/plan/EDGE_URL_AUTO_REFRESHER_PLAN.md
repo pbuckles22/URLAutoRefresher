@@ -238,9 +238,9 @@ Third-party UI (**Auto Refresh Plus**–style screenshots) is **inspiration only
 
 - [x] **11.5** — **Dashboard + side panel UI:** Log **fader** (precision at low end), **numeric** input (decimals + negative = phase invert label), **Shift** for 10× finer drags; persist prefs (extend or nest under [`prefs.ts`](../../src/lib/prefs.ts) pattern). _Outcome: unified surfaces control volume like the rest of choice **C**._ _Implemented: [`dashboard-precision-volume.ts`](../../src/dashboard/dashboard-precision-volume.ts), [`precision-volume-fader.ts`](../../src/lib/precision-volume-fader.ts), prefs `precisionVolume`, HTML in [`dashboard/dashboard.html`](../../dashboard/dashboard.html) (side panel generated at build)._
 
-- [ ] **11.6** — **Shortcuts + OSD:** Background handles **`chrome.commands`**; content shows **transient OSD** (~2s) with current level when shortcuts fire. _Outcome: keyboard feedback without opening the dashboard._
+- [x] **11.6** — **Shortcuts + OSD:** Background handles **`chrome.commands`**; content shows **transient OSD** (~2s) with current level when shortcuts fire. _Outcome: keyboard feedback without opening the dashboard._ _Implemented: existing [`volume-commands.ts`](../../src/background/volume-commands.ts) → [`precision-volume-bridge.ts`](../../src/content/precision-volume-bridge.ts); new [`precision-volume-osd.ts`](../../src/content/precision-volume-osd.ts) (shadow host, `data-precision-volume-osd`); copy helpers [`precision-volume-osd-text.ts`](../../src/lib/precision-volume-osd-text.ts); Vitest: [`precision-volume-osd-text.test.ts`](../../src/lib/precision-volume-osd-text.test.ts)._
 
-- [ ] **11.7** — **Tests:** **Vitest** for slider ↔ gain math; **Playwright** where user-visible strings or toggles need regression cover. _Outcome: `npm run ci` stays green._
+- [x] **11.7** — **Tests:** **Vitest** for slider ↔ gain math; **Playwright** where user-visible strings or toggles need regression cover. _Outcome: `npm run ci` stays green._ _Vitest: `precision-volume-fader.test.ts`, `precision-volume-osd-text.test.ts`, etc.; Playwright: [`epic-11-7-precision-volume-osd.spec.ts`](../../e2e/epic-11-7-precision-volume-osd.spec.ts) (dashboard → `tabs.sendMessage` → content OSD; fixture [`media.html`](../../e2e/fixtures/media.html))._
 
 ---
 
