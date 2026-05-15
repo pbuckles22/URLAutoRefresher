@@ -1,5 +1,6 @@
 /**
- * Epic 13.B1: dashboard shell — cross-surface navigation + overlay preference wiring.
+ * Epic 13.B — dashboard shell: cross-surface navigation, overlay preference, shared `DashboardDom`
+ * queries (grows by story — e.g. 13.B1 links + overlay, 13.B2 individual list + add-job nodes).
  */
 
 import { loadExtensionPrefs, saveExtensionPrefs } from '../lib/prefs';
@@ -9,6 +10,18 @@ export type DashboardDom = {
   openSidePanel: HTMLElement | null;
   openDashboardInTab: HTMLElement | null;
   overlayPreference: HTMLInputElement | null;
+  /** Epic 13.B2 — individual jobs list + add-job form */
+  individualSectionHeading: HTMLElement | null;
+  jobsList: HTMLUListElement | null;
+  addJobForm: HTMLFormElement | null;
+  addJobError: HTMLElement | null;
+  tabSelect: HTMLSelectElement | null;
+  urlInput: HTMLInputElement | null;
+  intervalInput: HTMLInputElement | null;
+  jitterInput: HTMLInputElement | null;
+  liveAwareInput: HTMLInputElement | null;
+  blipPhrasesAdd: HTMLTextAreaElement | null;
+  blipRegexAdd: HTMLInputElement | null;
 };
 
 /** Single object passed into shell binders so later extractions avoid implicit `document` scope. */
@@ -22,6 +35,19 @@ export function createDashboardContext(): DashboardContext {
       openSidePanel: document.querySelector<HTMLElement>('[data-open-side-panel]'),
       openDashboardInTab: document.querySelector<HTMLElement>('[data-open-in-tab]'),
       overlayPreference: document.querySelector<HTMLInputElement>('[data-pref-overlay]'),
+      individualSectionHeading: document.querySelector<HTMLElement>(
+        '[data-individual-section-heading]'
+      ),
+      jobsList: document.querySelector<HTMLUListElement>('[data-individual-jobs-list]'),
+      addJobForm: document.querySelector<HTMLFormElement>('[data-add-individual-form]'),
+      addJobError: document.querySelector<HTMLElement>('[data-add-job-error]'),
+      tabSelect: document.querySelector<HTMLSelectElement>('[data-job-tab]'),
+      urlInput: document.querySelector<HTMLInputElement>('[data-job-target-url]'),
+      intervalInput: document.querySelector<HTMLInputElement>('[data-job-interval]'),
+      jitterInput: document.querySelector<HTMLInputElement>('[data-job-jitter]'),
+      liveAwareInput: document.querySelector<HTMLInputElement>('[data-job-live-aware]'),
+      blipPhrasesAdd: document.querySelector<HTMLTextAreaElement>('[data-job-blip-phrases]'),
+      blipRegexAdd: document.querySelector<HTMLInputElement>('[data-job-blip-regex]'),
     },
   };
 }

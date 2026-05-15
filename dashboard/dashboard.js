@@ -722,308 +722,6 @@
     return select;
   }
 
-  // src/lib/individual-job-list-row.ts
-  function rowStyle2() {
-    return "list-style: none; margin: 0.75rem 0; padding: 0.75rem; border: 1px solid #5f6368; border-radius: 8px; background: #303134;";
-  }
-  function btnStyle2() {
-    return "padding: 0.3rem 0.65rem; border-radius: 6px; border: 1px solid #5f6368; background: #3c4043; color: #e8eaed; cursor: pointer; font-size: 0.85rem";
-  }
-  function dangerBtnStyle2() {
-    return `${btnStyle2()} border-color: #c5221f; color: #f28b82`;
-  }
-  function primaryBtnStyle2() {
-    return "padding: 0.35rem 0.75rem; border-radius: 6px; border: none; background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer; font-size: 0.85rem";
-  }
-  function createIndividualJobListRow(j, nowMs) {
-    const li = document.createElement("li");
-    li.setAttribute("data-individual-job-row", j.id);
-    li.style.cssText = rowStyle2();
-    const top = document.createElement("div");
-    top.style.cssText = "display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;";
-    const summaryLine = document.createElement("span");
-    const liveHint = j.liveAwareRefresh ? " \xB7 Twitch live-aware" : "";
-    const blipHint = (j.blipWatchPhrases?.length ?? 0) > 0 || j.blipWatchRegex?.trim() ? " \xB7 blip watch" : "";
-    summaryLine.textContent = `${j.target.targetUrl} \xB7 every ${j.baseIntervalSec}s \xB1${j.jitterSec}s${liveHint}${blipHint}`;
-    summaryLine.style.flex = "1 1 12rem";
-    const countdown = document.createElement("span");
-    countdown.setAttribute("data-job-countdown", "");
-    countdown.textContent = formatIndividualJobCountdown(nowMs, j);
-    countdown.style.cssText = "font-variant-numeric: tabular-nums; min-width: 3.5rem; color: #9aa0a6";
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.setAttribute("data-job-toggle", "");
-    toggle.textContent = j.enabled ? "Stop" : "Start";
-    toggle.style.cssText = btnStyle2();
-    const del = document.createElement("button");
-    del.type = "button";
-    del.setAttribute("data-job-delete", "");
-    del.textContent = "Delete";
-    del.style.cssText = dangerBtnStyle2();
-    top.append(summaryLine, countdown, toggle, del);
-    li.appendChild(top);
-    const rowErr = document.createElement("p");
-    rowErr.setAttribute("data-job-row-error", "");
-    rowErr.setAttribute("role", "alert");
-    rowErr.style.cssText = "color: #f28b82; margin: 0.35rem 0 0; min-height: 0; font-size: 0.8rem";
-    li.appendChild(rowErr);
-    const details = document.createElement("details");
-    details.style.marginTop = "0.5rem";
-    const sum = document.createElement("summary");
-    sum.textContent = "Edit";
-    sum.style.cursor = "pointer";
-    sum.style.color = "#8ab4f8";
-    details.appendChild(sum);
-    const editWrap = document.createElement("div");
-    editWrap.style.cssText = "display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.35rem; max-width: 28rem";
-    const urlLab = document.createElement("label");
-    urlLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
-    urlLab.innerHTML = "<span>Target URL</span>";
-    const urlEdit = document.createElement("input");
-    urlEdit.type = "text";
-    urlEdit.setAttribute("data-job-edit-url", "");
-    urlEdit.value = j.target.targetUrl;
-    urlEdit.autocomplete = "off";
-    urlEdit.style.cssText = "padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #202124; color: #e8eaed";
-    urlLab.appendChild(urlEdit);
-    const intLab = document.createElement("label");
-    intLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
-    intLab.innerHTML = "<span>Interval (seconds)</span>";
-    const intEdit = document.createElement("input");
-    intEdit.type = "number";
-    intEdit.min = "1";
-    intEdit.step = "1";
-    intEdit.setAttribute("data-job-edit-interval", "");
-    intEdit.value = String(j.baseIntervalSec);
-    intEdit.style.cssText = urlEdit.style.cssText;
-    intLab.appendChild(intEdit);
-    const jitLab = document.createElement("label");
-    jitLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
-    jitLab.innerHTML = "<span>Jitter (seconds)</span>";
-    const jitEdit = document.createElement("input");
-    jitEdit.type = "number";
-    jitEdit.min = "0";
-    jitEdit.step = "1";
-    jitEdit.setAttribute("data-job-edit-jitter", "");
-    jitEdit.value = String(j.jitterSec);
-    jitEdit.style.cssText = urlEdit.style.cssText;
-    jitLab.appendChild(jitEdit);
-    const liveLab = document.createElement("label");
-    liveLab.style.cssText = "display: flex; align-items: flex-start; gap: 0.35rem; font-size: 0.85rem; cursor: pointer";
-    const liveCb = document.createElement("input");
-    liveCb.type = "checkbox";
-    liveCb.setAttribute("data-job-edit-live-aware", "");
-    liveCb.checked = j.liveAwareRefresh === true;
-    liveLab.appendChild(liveCb);
-    const liveSpan = document.createElement("span");
-    liveSpan.innerHTML = "Pause refresh while this channel is <strong>live</strong> on Twitch (channel page only; best-effort detection).";
-    liveLab.appendChild(liveSpan);
-    const blipLab = document.createElement("label");
-    blipLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
-    blipLab.innerHTML = "<span>Blip phrases (optional, one per line)</span>";
-    const blipTa = document.createElement("textarea");
-    blipTa.setAttribute("data-job-edit-blip-phrases", "");
-    blipTa.rows = 3;
-    blipTa.autocomplete = "off";
-    blipTa.value = (j.blipWatchPhrases ?? []).join("\n");
-    blipTa.style.cssText = "padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #202124; color: #e8eaed; resize: vertical; min-height: 3.5rem";
-    blipLab.appendChild(blipTa);
-    const blipRxLab = document.createElement("label");
-    blipRxLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
-    blipRxLab.innerHTML = "<span>Blip regex (optional, case-insensitive)</span>";
-    const blipRx = document.createElement("input");
-    blipRx.type = "text";
-    blipRx.setAttribute("data-job-edit-blip-regex", "");
-    blipRx.value = j.blipWatchRegex ?? "";
-    blipRx.autocomplete = "off";
-    blipRx.style.cssText = urlEdit.style.cssText;
-    blipRxLab.appendChild(blipRx);
-    const editErr = document.createElement("p");
-    editErr.setAttribute("data-job-edit-error", "");
-    editErr.style.cssText = "color: #f28b82; margin: 0; min-height: 1rem; font-size: 0.8rem";
-    const saveBtn = document.createElement("button");
-    saveBtn.type = "button";
-    saveBtn.setAttribute("data-job-edit-save", "");
-    saveBtn.textContent = "Save changes";
-    saveBtn.style.cssText = `${primaryBtnStyle2()} align-self: flex-start`;
-    editWrap.append(urlLab, intLab, jitLab, liveLab, blipLab, blipRxLab, editErr, saveBtn);
-    details.appendChild(editWrap);
-    li.appendChild(details);
-    return li;
-  }
-
-  // src/lib/blip-match.ts
-  var BLIP_MAX_PHRASES = 20;
-  var BLIP_MAX_PHRASE_LEN = 200;
-  var BLIP_MAX_REGEX_LEN = 240;
-  function normalizeBlipPhrasesFromTextarea(raw) {
-    if (!raw?.trim()) {
-      return [];
-    }
-    const out = [];
-    const seen = /* @__PURE__ */ new Set();
-    for (const line of raw.split(/\r?\n/)) {
-      const t = line.trim().slice(0, BLIP_MAX_PHRASE_LEN);
-      if (!t) {
-        continue;
-      }
-      const key = t.toLowerCase();
-      if (seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      out.push(t);
-      if (out.length >= BLIP_MAX_PHRASES) {
-        break;
-      }
-    }
-    return out;
-  }
-  function compileBlipRegex(pattern) {
-    if (!pattern?.trim()) {
-      return void 0;
-    }
-    const p = pattern.trim().slice(0, BLIP_MAX_REGEX_LEN);
-    try {
-      return new RegExp(p, "i");
-    } catch {
-      return void 0;
-    }
-  }
-
-  // src/lib/individual-job-form.ts
-  function parseBlipFields(phrasesText, regexRaw) {
-    const phrases = normalizeBlipPhrasesFromTextarea(phrasesText);
-    const rx = regexRaw?.trim() ?? "";
-    if (phrases.length === 0 && !rx) {
-      return { ok: true, value: {} };
-    }
-    if (rx && !compileBlipRegex(rx)) {
-      return { ok: false, error: "Invalid blip regex pattern" };
-    }
-    const out = {};
-    if (phrases.length > 0) {
-      out.blipWatchPhrases = phrases;
-    }
-    if (rx) {
-      out.blipWatchRegex = rx.slice(0, BLIP_MAX_REGEX_LEN);
-    }
-    return { ok: true, value: out };
-  }
-  function buildIndividualJobFromForm(input, newId = () => crypto.randomUUID()) {
-    const url = validateHttpUrl(input.targetUrl);
-    if (!url.ok) {
-      return url;
-    }
-    const interval = validateIntervalSec(input.baseIntervalSec);
-    if (!interval.ok) {
-      return interval;
-    }
-    const jitter = validateJitterSec(input.jitterSec);
-    if (!jitter.ok) {
-      return jitter;
-    }
-    const liveAware = Boolean(input.liveAwareRefresh);
-    const blip = parseBlipFields(input.blipWatchPhrasesText, input.blipWatchRegex);
-    if (!blip.ok) {
-      return blip;
-    }
-    return {
-      ok: true,
-      value: {
-        id: newId(),
-        target: {
-          targetUrl: url.value
-        },
-        baseIntervalSec: interval.value,
-        jitterSec: jitter.value,
-        enabled: true,
-        ...liveAware ? { liveAwareRefresh: true } : {},
-        ...blip.value
-      }
-    };
-  }
-  function buildIndividualJobUpdateFromForm(input, existing) {
-    const base = buildIndividualJobFromForm(
-      {
-        targetUrl: input.targetUrl,
-        baseIntervalSec: input.baseIntervalSec,
-        jitterSec: input.jitterSec,
-        liveAwareRefresh: input.liveAwareRefresh,
-        blipWatchPhrasesText: input.blipWatchPhrasesText,
-        blipWatchRegex: input.blipWatchRegex
-      },
-      () => existing.id
-    );
-    if (!base.ok) {
-      return base;
-    }
-    const liveAware = Boolean(input.liveAwareRefresh);
-    const value = {
-      id: base.value.id,
-      target: base.value.target,
-      baseIntervalSec: base.value.baseIntervalSec,
-      jitterSec: base.value.jitterSec,
-      enabled: existing.enabled,
-      nextFireAt: existing.nextFireAt
-    };
-    if (liveAware) {
-      value.liveAwareRefresh = true;
-      value.streamLive = existing.streamLive;
-    }
-    const ph = base.value.blipWatchPhrases;
-    const rx = base.value.blipWatchRegex;
-    if ((ph?.length ?? 0) > 0 || rx) {
-      if (ph?.length) {
-        value.blipWatchPhrases = ph;
-      }
-      if (rx) {
-        value.blipWatchRegex = rx;
-      }
-      if (existing.blipMaxPerMinute !== void 0) {
-        value.blipMaxPerMinute = existing.blipMaxPerMinute;
-      }
-    }
-    return { ok: true, value };
-  }
-
-  // src/lib/individual-jobs.ts
-  function removeIndividualJobById(state, jobId) {
-    return {
-      ...state,
-      individualJobs: state.individualJobs.filter((j) => j.id !== jobId)
-    };
-  }
-  function setIndividualJobEnabled(state, jobId, enabled) {
-    return {
-      ...state,
-      individualJobs: state.individualJobs.map((j) => {
-        if (j.id !== jobId) {
-          return j;
-        }
-        if (!enabled) {
-          return {
-            ...j,
-            enabled: false,
-            nextFireAt: void 0,
-            streamLive: void 0,
-            overlayPaused: void 0
-          };
-        }
-        return { ...j, enabled: true };
-      })
-    };
-  }
-  function replaceIndividualJob(state, updated) {
-    const idx = state.individualJobs.findIndex((j) => j.id === updated.id);
-    if (idx === -1) {
-      return state;
-    }
-    const next = [...state.individualJobs];
-    next[idx] = updated;
-    return { ...state, individualJobs: next };
-  }
-
   // src/lib/global-groups.ts
   function removeGlobalGroupById(state, groupId) {
     return {
@@ -1285,6 +983,45 @@
       }
     }
     return ok();
+  }
+
+  // src/lib/blip-match.ts
+  var BLIP_MAX_PHRASES = 20;
+  var BLIP_MAX_PHRASE_LEN = 200;
+  var BLIP_MAX_REGEX_LEN = 240;
+  function normalizeBlipPhrasesFromTextarea(raw) {
+    if (!raw?.trim()) {
+      return [];
+    }
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const line of raw.split(/\r?\n/)) {
+      const t = line.trim().slice(0, BLIP_MAX_PHRASE_LEN);
+      if (!t) {
+        continue;
+      }
+      const key = t.toLowerCase();
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      out.push(t);
+      if (out.length >= BLIP_MAX_PHRASES) {
+        break;
+      }
+    }
+    return out;
+  }
+  function compileBlipRegex(pattern) {
+    if (!pattern?.trim()) {
+      return void 0;
+    }
+    const p = pattern.trim().slice(0, BLIP_MAX_REGEX_LEN);
+    try {
+      return new RegExp(p, "i");
+    } catch {
+      return void 0;
+    }
   }
 
   // src/lib/state.ts
@@ -1591,6 +1328,462 @@
     await chrome.storage.local.set({ [STORAGE_KEY]: state });
   }
 
+  // src/lib/individual-job-form.ts
+  function parseBlipFields(phrasesText, regexRaw) {
+    const phrases = normalizeBlipPhrasesFromTextarea(phrasesText);
+    const rx = regexRaw?.trim() ?? "";
+    if (phrases.length === 0 && !rx) {
+      return { ok: true, value: {} };
+    }
+    if (rx && !compileBlipRegex(rx)) {
+      return { ok: false, error: "Invalid blip regex pattern" };
+    }
+    const out = {};
+    if (phrases.length > 0) {
+      out.blipWatchPhrases = phrases;
+    }
+    if (rx) {
+      out.blipWatchRegex = rx.slice(0, BLIP_MAX_REGEX_LEN);
+    }
+    return { ok: true, value: out };
+  }
+  function buildIndividualJobFromForm(input, newId = () => crypto.randomUUID()) {
+    const url = validateHttpUrl(input.targetUrl);
+    if (!url.ok) {
+      return url;
+    }
+    const interval = validateIntervalSec(input.baseIntervalSec);
+    if (!interval.ok) {
+      return interval;
+    }
+    const jitter = validateJitterSec(input.jitterSec);
+    if (!jitter.ok) {
+      return jitter;
+    }
+    const liveAware = Boolean(input.liveAwareRefresh);
+    const blip = parseBlipFields(input.blipWatchPhrasesText, input.blipWatchRegex);
+    if (!blip.ok) {
+      return blip;
+    }
+    return {
+      ok: true,
+      value: {
+        id: newId(),
+        target: {
+          targetUrl: url.value
+        },
+        baseIntervalSec: interval.value,
+        jitterSec: jitter.value,
+        enabled: true,
+        ...liveAware ? { liveAwareRefresh: true } : {},
+        ...blip.value
+      }
+    };
+  }
+  function buildIndividualJobUpdateFromForm(input, existing) {
+    const base = buildIndividualJobFromForm(
+      {
+        targetUrl: input.targetUrl,
+        baseIntervalSec: input.baseIntervalSec,
+        jitterSec: input.jitterSec,
+        liveAwareRefresh: input.liveAwareRefresh,
+        blipWatchPhrasesText: input.blipWatchPhrasesText,
+        blipWatchRegex: input.blipWatchRegex
+      },
+      () => existing.id
+    );
+    if (!base.ok) {
+      return base;
+    }
+    const liveAware = Boolean(input.liveAwareRefresh);
+    const value = {
+      id: base.value.id,
+      target: base.value.target,
+      baseIntervalSec: base.value.baseIntervalSec,
+      jitterSec: base.value.jitterSec,
+      enabled: existing.enabled,
+      nextFireAt: existing.nextFireAt
+    };
+    if (liveAware) {
+      value.liveAwareRefresh = true;
+      value.streamLive = existing.streamLive;
+    }
+    const ph = base.value.blipWatchPhrases;
+    const rx = base.value.blipWatchRegex;
+    if ((ph?.length ?? 0) > 0 || rx) {
+      if (ph?.length) {
+        value.blipWatchPhrases = ph;
+      }
+      if (rx) {
+        value.blipWatchRegex = rx;
+      }
+      if (existing.blipMaxPerMinute !== void 0) {
+        value.blipMaxPerMinute = existing.blipMaxPerMinute;
+      }
+    }
+    return { ok: true, value };
+  }
+
+  // src/lib/individual-job-list-row.ts
+  function rowStyle2() {
+    return "list-style: none; margin: 0.75rem 0; padding: 0.75rem; border: 1px solid #5f6368; border-radius: 8px; background: #303134;";
+  }
+  function btnStyle2() {
+    return "padding: 0.3rem 0.65rem; border-radius: 6px; border: 1px solid #5f6368; background: #3c4043; color: #e8eaed; cursor: pointer; font-size: 0.85rem";
+  }
+  function dangerBtnStyle2() {
+    return `${btnStyle2()} border-color: #c5221f; color: #f28b82`;
+  }
+  function primaryBtnStyle2() {
+    return "padding: 0.35rem 0.75rem; border-radius: 6px; border: none; background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer; font-size: 0.85rem";
+  }
+  function createIndividualJobListRow(j, nowMs) {
+    const li = document.createElement("li");
+    li.setAttribute("data-individual-job-row", j.id);
+    li.style.cssText = rowStyle2();
+    const top = document.createElement("div");
+    top.style.cssText = "display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;";
+    const summaryLine = document.createElement("span");
+    const liveHint = j.liveAwareRefresh ? " \xB7 Twitch live-aware" : "";
+    const blipHint = (j.blipWatchPhrases?.length ?? 0) > 0 || j.blipWatchRegex?.trim() ? " \xB7 blip watch" : "";
+    summaryLine.textContent = `${j.target.targetUrl} \xB7 every ${j.baseIntervalSec}s \xB1${j.jitterSec}s${liveHint}${blipHint}`;
+    summaryLine.style.flex = "1 1 12rem";
+    const countdown = document.createElement("span");
+    countdown.setAttribute("data-job-countdown", "");
+    countdown.textContent = formatIndividualJobCountdown(nowMs, j);
+    countdown.style.cssText = "font-variant-numeric: tabular-nums; min-width: 3.5rem; color: #9aa0a6";
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.setAttribute("data-job-toggle", "");
+    toggle.textContent = j.enabled ? "Stop" : "Start";
+    toggle.style.cssText = btnStyle2();
+    const del = document.createElement("button");
+    del.type = "button";
+    del.setAttribute("data-job-delete", "");
+    del.textContent = "Delete";
+    del.style.cssText = dangerBtnStyle2();
+    top.append(summaryLine, countdown, toggle, del);
+    li.appendChild(top);
+    const rowErr = document.createElement("p");
+    rowErr.setAttribute("data-job-row-error", "");
+    rowErr.setAttribute("role", "alert");
+    rowErr.style.cssText = "color: #f28b82; margin: 0.35rem 0 0; min-height: 0; font-size: 0.8rem";
+    li.appendChild(rowErr);
+    const details = document.createElement("details");
+    details.style.marginTop = "0.5rem";
+    const sum = document.createElement("summary");
+    sum.textContent = "Edit";
+    sum.style.cursor = "pointer";
+    sum.style.color = "#8ab4f8";
+    details.appendChild(sum);
+    const editWrap = document.createElement("div");
+    editWrap.style.cssText = "display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.35rem; max-width: 28rem";
+    const urlLab = document.createElement("label");
+    urlLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
+    urlLab.innerHTML = "<span>Target URL</span>";
+    const urlEdit = document.createElement("input");
+    urlEdit.type = "text";
+    urlEdit.setAttribute("data-job-edit-url", "");
+    urlEdit.value = j.target.targetUrl;
+    urlEdit.autocomplete = "off";
+    urlEdit.style.cssText = "padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #202124; color: #e8eaed";
+    urlLab.appendChild(urlEdit);
+    const intLab = document.createElement("label");
+    intLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
+    intLab.innerHTML = "<span>Interval (seconds)</span>";
+    const intEdit = document.createElement("input");
+    intEdit.type = "number";
+    intEdit.min = "1";
+    intEdit.step = "1";
+    intEdit.setAttribute("data-job-edit-interval", "");
+    intEdit.value = String(j.baseIntervalSec);
+    intEdit.style.cssText = urlEdit.style.cssText;
+    intLab.appendChild(intEdit);
+    const jitLab = document.createElement("label");
+    jitLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
+    jitLab.innerHTML = "<span>Jitter (seconds)</span>";
+    const jitEdit = document.createElement("input");
+    jitEdit.type = "number";
+    jitEdit.min = "0";
+    jitEdit.step = "1";
+    jitEdit.setAttribute("data-job-edit-jitter", "");
+    jitEdit.value = String(j.jitterSec);
+    jitEdit.style.cssText = urlEdit.style.cssText;
+    jitLab.appendChild(jitEdit);
+    const liveLab = document.createElement("label");
+    liveLab.style.cssText = "display: flex; align-items: flex-start; gap: 0.35rem; font-size: 0.85rem; cursor: pointer";
+    const liveCb = document.createElement("input");
+    liveCb.type = "checkbox";
+    liveCb.setAttribute("data-job-edit-live-aware", "");
+    liveCb.checked = j.liveAwareRefresh === true;
+    liveLab.appendChild(liveCb);
+    const liveSpan = document.createElement("span");
+    liveSpan.innerHTML = "Pause refresh while this channel is <strong>live</strong> on Twitch (channel page only; best-effort detection).";
+    liveLab.appendChild(liveSpan);
+    const blipLab = document.createElement("label");
+    blipLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
+    blipLab.innerHTML = "<span>Blip phrases (optional, one per line)</span>";
+    const blipTa = document.createElement("textarea");
+    blipTa.setAttribute("data-job-edit-blip-phrases", "");
+    blipTa.rows = 3;
+    blipTa.autocomplete = "off";
+    blipTa.value = (j.blipWatchPhrases ?? []).join("\n");
+    blipTa.style.cssText = "padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #5f6368; background: #202124; color: #e8eaed; resize: vertical; min-height: 3.5rem";
+    blipLab.appendChild(blipTa);
+    const blipRxLab = document.createElement("label");
+    blipRxLab.style.cssText = "display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem";
+    blipRxLab.innerHTML = "<span>Blip regex (optional, case-insensitive)</span>";
+    const blipRx = document.createElement("input");
+    blipRx.type = "text";
+    blipRx.setAttribute("data-job-edit-blip-regex", "");
+    blipRx.value = j.blipWatchRegex ?? "";
+    blipRx.autocomplete = "off";
+    blipRx.style.cssText = urlEdit.style.cssText;
+    blipRxLab.appendChild(blipRx);
+    const editErr = document.createElement("p");
+    editErr.setAttribute("data-job-edit-error", "");
+    editErr.style.cssText = "color: #f28b82; margin: 0; min-height: 1rem; font-size: 0.8rem";
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.setAttribute("data-job-edit-save", "");
+    saveBtn.textContent = "Save changes";
+    saveBtn.style.cssText = `${primaryBtnStyle2()} align-self: flex-start`;
+    editWrap.append(urlLab, intLab, jitLab, liveLab, blipLab, blipRxLab, editErr, saveBtn);
+    details.appendChild(editWrap);
+    li.appendChild(details);
+    return li;
+  }
+
+  // src/lib/individual-jobs.ts
+  function removeIndividualJobById(state, jobId) {
+    return {
+      ...state,
+      individualJobs: state.individualJobs.filter((j) => j.id !== jobId)
+    };
+  }
+  function setIndividualJobEnabled(state, jobId, enabled) {
+    return {
+      ...state,
+      individualJobs: state.individualJobs.map((j) => {
+        if (j.id !== jobId) {
+          return j;
+        }
+        if (!enabled) {
+          return {
+            ...j,
+            enabled: false,
+            nextFireAt: void 0,
+            streamLive: void 0,
+            overlayPaused: void 0
+          };
+        }
+        return { ...j, enabled: true };
+      })
+    };
+  }
+  function replaceIndividualJob(state, updated) {
+    const idx = state.individualJobs.findIndex((j) => j.id === updated.id);
+    if (idx === -1) {
+      return state;
+    }
+    const next = [...state.individualJobs];
+    next[idx] = updated;
+    return { ...state, individualJobs: next };
+  }
+
+  // src/dashboard/dashboard-individual-jobs.ts
+  function individualJobRowSelectorFragment(jobId) {
+    if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+      return CSS.escape(jobId);
+    }
+    return jobId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  }
+  async function renderIndividualJobs(ctx) {
+    const { individualSectionHeading, jobsList } = ctx.dom;
+    const state = await loadAppState();
+    if (individualSectionHeading) {
+      individualSectionHeading.textContent = `Individual (${state.individualJobs.length})`;
+    }
+    if (!jobsList) {
+      return;
+    }
+    const now = Date.now();
+    jobsList.innerHTML = "";
+    for (const j of state.individualJobs) {
+      jobsList.appendChild(createIndividualJobListRow(j, now));
+    }
+  }
+  function tickIndividualJobCountdowns(jobsList, jobs, now) {
+    if (!jobsList) {
+      return;
+    }
+    for (const job of jobs) {
+      const row = jobsList.querySelector(
+        `[data-individual-job-row="${individualJobRowSelectorFragment(job.id)}"]`
+      );
+      const el = row?.querySelector("[data-job-countdown]");
+      if (el) {
+        el.textContent = formatIndividualJobCountdown(now, job);
+      }
+    }
+  }
+  function bindJobsListEvents(ctx) {
+    const { jobsList } = ctx.dom;
+    if (!jobsList || jobsList.dataset.epic32Bound === "1") {
+      return;
+    }
+    jobsList.dataset.epic32Bound = "1";
+    jobsList.addEventListener("click", (e) => {
+      const t = e.target;
+      const row = t.closest("[data-individual-job-row]");
+      if (!row) {
+        return;
+      }
+      const id = row.getAttribute("data-individual-job-row");
+      if (!id) {
+        return;
+      }
+      if (t.closest("[data-job-delete]")) {
+        void (async () => {
+          const state = await loadAppState();
+          const next = removeIndividualJobById(state, id);
+          try {
+            await saveAppState(next);
+          } catch (err3) {
+            console.error(err3);
+          }
+          await renderIndividualJobs(ctx);
+        })();
+        return;
+      }
+      if (t.closest("[data-job-toggle]")) {
+        void (async () => {
+          const rowErr = row.querySelector("[data-job-row-error]");
+          if (rowErr) {
+            rowErr.textContent = "";
+          }
+          const state = await loadAppState();
+          const job = state.individualJobs.find((j) => j.id === id);
+          if (!job) {
+            return;
+          }
+          const next = setIndividualJobEnabled(state, id, !job.enabled);
+          try {
+            await saveAppState(next);
+          } catch (err3) {
+            if (rowErr) {
+              rowErr.textContent = err3 instanceof Error ? err3.message : String(err3);
+            } else {
+              console.error(err3);
+            }
+            return;
+          }
+          await renderIndividualJobs(ctx);
+        })();
+        return;
+      }
+      if (t.closest("[data-job-edit-save]")) {
+        void (async () => {
+          const errEl = row.querySelector("[data-job-edit-error]");
+          if (errEl) {
+            errEl.textContent = "";
+          }
+          const state = await loadAppState();
+          const job = state.individualJobs.find((j) => j.id === id);
+          if (!job) {
+            return;
+          }
+          const url = row.querySelector("[data-job-edit-url]")?.value ?? "";
+          const interval = Number(
+            row.querySelector("[data-job-edit-interval]")?.value
+          );
+          const jitter = Number(row.querySelector("[data-job-edit-jitter]")?.value);
+          const liveAware = row.querySelector("[data-job-edit-live-aware]")?.checked === true;
+          const blipPhrases = row.querySelector(
+            "[data-job-edit-blip-phrases]"
+          )?.value;
+          const blipRegex = row.querySelector("[data-job-edit-blip-regex]")?.value;
+          const built = buildIndividualJobUpdateFromForm(
+            {
+              targetUrl: url,
+              baseIntervalSec: interval,
+              jitterSec: jitter,
+              liveAwareRefresh: liveAware,
+              blipWatchPhrasesText: blipPhrases,
+              blipWatchRegex: blipRegex
+            },
+            job
+          );
+          if (!built.ok) {
+            if (errEl) {
+              errEl.textContent = built.error;
+            }
+            return;
+          }
+          const next = replaceIndividualJob(state, built.value);
+          try {
+            await saveAppState(next);
+          } catch (err3) {
+            if (errEl) {
+              errEl.textContent = err3 instanceof Error ? err3.message : String(err3);
+            }
+            return;
+          }
+          await renderIndividualJobs(ctx);
+        })();
+      }
+    });
+  }
+  function bindAddIndividualJobForm(ctx) {
+    const {
+      addJobForm,
+      tabSelect,
+      urlInput,
+      intervalInput,
+      jitterInput,
+      liveAwareInput,
+      blipPhrasesAdd,
+      blipRegexAdd,
+      addJobError
+    } = ctx.dom;
+    if (!addJobForm || !tabSelect || !urlInput || !intervalInput || !jitterInput) {
+      return;
+    }
+    addJobForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      void (async () => {
+        if (addJobError) {
+          addJobError.textContent = "";
+        }
+        const built = buildIndividualJobFromForm({
+          targetUrl: urlInput.value,
+          baseIntervalSec: Number(intervalInput.value),
+          jitterSec: Number(jitterInput.value),
+          liveAwareRefresh: liveAwareInput?.checked === true,
+          blipWatchPhrasesText: blipPhrasesAdd?.value,
+          blipWatchRegex: blipRegexAdd?.value
+        });
+        if (!built.ok) {
+          if (addJobError) {
+            addJobError.textContent = built.error;
+          }
+          return;
+        }
+        const state = await loadAppState();
+        const next = { ...state, individualJobs: [...state.individualJobs, built.value] };
+        try {
+          await saveAppState(next);
+        } catch (err3) {
+          if (addJobError) {
+            addJobError.textContent = err3 instanceof Error ? err3.message : String(err3);
+          }
+          return;
+        }
+        await renderIndividualJobs(ctx);
+      })();
+    });
+  }
+
   // src/lib/prefs.ts
   var PREFS_STORAGE_KEY = "urlAutoRefresher_prefs_v1";
   var DEFAULT_PREFS = {
@@ -1619,7 +1812,20 @@
       dom: {
         openSidePanel: document.querySelector("[data-open-side-panel]"),
         openDashboardInTab: document.querySelector("[data-open-in-tab]"),
-        overlayPreference: document.querySelector("[data-pref-overlay]")
+        overlayPreference: document.querySelector("[data-pref-overlay]"),
+        individualSectionHeading: document.querySelector(
+          "[data-individual-section-heading]"
+        ),
+        jobsList: document.querySelector("[data-individual-jobs-list]"),
+        addJobForm: document.querySelector("[data-add-individual-form]"),
+        addJobError: document.querySelector("[data-add-job-error]"),
+        tabSelect: document.querySelector("[data-job-tab]"),
+        urlInput: document.querySelector("[data-job-target-url]"),
+        intervalInput: document.querySelector("[data-job-interval]"),
+        jitterInput: document.querySelector("[data-job-jitter]"),
+        liveAwareInput: document.querySelector("[data-job-live-aware]"),
+        blipPhrasesAdd: document.querySelector("[data-job-blip-phrases]"),
+        blipRegexAdd: document.querySelector("[data-job-blip-regex]")
       }
     };
   }
@@ -1661,18 +1867,9 @@
       title.textContent = chrome.runtime.getManifest().name;
     }
     bindOverlayPreference(dashboardContext);
-    const tabSelect = document.querySelector("[data-job-tab]");
+    const { tabSelect, urlInput } = dashboardContext.dom;
     const jobTabSearch = document.querySelector("[data-job-tab-search]");
     const jobTabRefresh = document.querySelector("[data-job-tab-refresh]");
-    const urlInput = document.querySelector("[data-job-target-url]");
-    const intervalInput = document.querySelector("[data-job-interval]");
-    const jitterInput = document.querySelector("[data-job-jitter]");
-    const liveAwareInput = document.querySelector("[data-job-live-aware]");
-    const blipPhrasesAdd = document.querySelector("[data-job-blip-phrases]");
-    const blipRegexAdd = document.querySelector("[data-job-blip-regex]");
-    const addJobForm = document.querySelector("[data-add-individual-form]");
-    const addJobError = document.querySelector("[data-add-job-error]");
-    const jobsList = document.querySelector("[data-individual-jobs-list]");
     const globalGroupForm = document.querySelector("[data-global-group-form]");
     const globalGroupName = document.querySelector("[data-global-group-name]");
     const globalTabBrowser = document.querySelector("[data-global-tab-browser]");
@@ -1688,9 +1885,6 @@
     );
     const globalFormError = document.querySelector("[data-global-form-error]");
     const globalSectionHeading = document.querySelector("[data-global-section-heading]");
-    const individualSectionHeading = document.querySelector(
-      "[data-individual-section-heading]"
-    );
     const globalGroupsList = document.querySelector("[data-global-groups-list]");
     if (globalTwitchFavsHint) {
       globalTwitchFavsHint.textContent = TWITCH_FAVS_PATTERN_HINT;
@@ -1898,32 +2092,10 @@
         urlInput.value = defaultTargetUrlForTab(t.url ?? "");
       });
     }
-    async function renderIndividualJobs() {
-      const state = await loadAppState();
-      if (individualSectionHeading) {
-        individualSectionHeading.textContent = `Individual (${state.individualJobs.length})`;
-      }
-      if (!jobsList) {
-        return;
-      }
-      const now = Date.now();
-      jobsList.innerHTML = "";
-      for (const j of state.individualJobs) {
-        jobsList.appendChild(createIndividualJobListRow(j, now));
-      }
-    }
     async function tickCountdowns() {
       const state = await loadAppState();
       const now = Date.now();
-      if (jobsList) {
-        for (const job of state.individualJobs) {
-          const row = jobsList.querySelector(`[data-individual-job-row="${CSS.escape(job.id)}"]`);
-          const el = row?.querySelector("[data-job-countdown]");
-          if (el) {
-            el.textContent = formatIndividualJobCountdown(now, job);
-          }
-        }
-      }
+      tickIndividualJobCountdowns(dashboardContext.dom.jobsList, state.individualJobs, now);
       if (globalGroupsList) {
         for (const g of state.globalGroups) {
           const row = globalGroupsList.querySelector(`[data-global-group-row="${CSS.escape(g.id)}"]`);
@@ -1933,116 +2105,6 @@
           }
         }
       }
-    }
-    function bindJobsListEvents() {
-      if (!jobsList || jobsList.dataset.epic32Bound === "1") {
-        return;
-      }
-      jobsList.dataset.epic32Bound = "1";
-      jobsList.addEventListener("click", (e) => {
-        const t = e.target;
-        const row = t.closest("[data-individual-job-row]");
-        if (!row) {
-          return;
-        }
-        const id = row.getAttribute("data-individual-job-row");
-        if (!id) {
-          return;
-        }
-        if (t.closest("[data-job-delete]")) {
-          void (async () => {
-            const state = await loadAppState();
-            const next = removeIndividualJobById(state, id);
-            try {
-              await saveAppState(next);
-            } catch (err3) {
-              console.error(err3);
-            }
-            await renderIndividualJobs();
-          })();
-          return;
-        }
-        if (t.closest("[data-job-toggle]")) {
-          void (async () => {
-            const rowErr = row.querySelector("[data-job-row-error]");
-            if (rowErr) {
-              rowErr.textContent = "";
-            }
-            const state = await loadAppState();
-            const job = state.individualJobs.find((j) => j.id === id);
-            if (!job) {
-              return;
-            }
-            const next = setIndividualJobEnabled(state, id, !job.enabled);
-            try {
-              await saveAppState(next);
-            } catch (err3) {
-              if (rowErr) {
-                rowErr.textContent = err3 instanceof Error ? err3.message : String(err3);
-              } else {
-                console.error(err3);
-              }
-              return;
-            }
-            await renderIndividualJobs();
-          })();
-          return;
-        }
-        if (t.closest("[data-job-edit-save]")) {
-          void (async () => {
-            const errEl = row.querySelector("[data-job-edit-error]");
-            if (errEl) {
-              errEl.textContent = "";
-            }
-            const state = await loadAppState();
-            const job = state.individualJobs.find((j) => j.id === id);
-            if (!job) {
-              return;
-            }
-            const url = row.querySelector("[data-job-edit-url]")?.value ?? "";
-            const interval = Number(
-              row.querySelector("[data-job-edit-interval]")?.value
-            );
-            const jitter = Number(
-              row.querySelector("[data-job-edit-jitter]")?.value
-            );
-            const liveAware = row.querySelector("[data-job-edit-live-aware]")?.checked === true;
-            const blipPhrases = row.querySelector(
-              "[data-job-edit-blip-phrases]"
-            )?.value;
-            const blipRegex = row.querySelector(
-              "[data-job-edit-blip-regex]"
-            )?.value;
-            const built = buildIndividualJobUpdateFromForm(
-              {
-                targetUrl: url,
-                baseIntervalSec: interval,
-                jitterSec: jitter,
-                liveAwareRefresh: liveAware,
-                blipWatchPhrasesText: blipPhrases,
-                blipWatchRegex: blipRegex
-              },
-              job
-            );
-            if (!built.ok) {
-              if (errEl) {
-                errEl.textContent = built.error;
-              }
-              return;
-            }
-            const next = replaceIndividualJob(state, built.value);
-            try {
-              await saveAppState(next);
-            } catch (err3) {
-              if (errEl) {
-                errEl.textContent = err3 instanceof Error ? err3.message : String(err3);
-              }
-              return;
-            }
-            await renderIndividualJobs();
-          })();
-        }
-      });
     }
     function bindGlobalGroupsListEvents() {
       if (!globalGroupsList || globalGroupsList.dataset.epic42Bound === "1") {
@@ -2069,7 +2131,7 @@
               console.error(err3);
             }
             await renderGlobalGroupsList();
-            await renderIndividualJobs();
+            await renderIndividualJobs(dashboardContext);
           })();
           return;
         }
@@ -2096,7 +2158,7 @@
               return;
             }
             await renderGlobalGroupsList();
-            await renderIndividualJobs();
+            await renderIndividualJobs(dashboardContext);
           })();
           return;
         }
@@ -2221,7 +2283,7 @@
               return;
             }
             await renderGlobalGroupsList();
-            await renderIndividualJobs();
+            await renderIndividualJobs(dashboardContext);
           })();
         }
       });
@@ -2276,48 +2338,14 @@
         void tickCountdowns();
         return;
       }
-      void renderIndividualJobs();
+      void renderIndividualJobs(dashboardContext);
       void renderGlobalGroupsList();
     });
-    bindJobsListEvents();
+    bindJobsListEvents(dashboardContext);
+    bindAddIndividualJobForm(dashboardContext);
     bindGlobalGroupsListEvents();
     wireCrossSurfaceLinks(dashboardContext);
     window.setInterval(() => void tickCountdowns(), 1e3);
-    if (addJobForm && tabSelect && urlInput && intervalInput && jitterInput) {
-      addJobForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        void (async () => {
-          if (addJobError) {
-            addJobError.textContent = "";
-          }
-          const built = buildIndividualJobFromForm({
-            targetUrl: urlInput.value,
-            baseIntervalSec: Number(intervalInput.value),
-            jitterSec: Number(jitterInput.value),
-            liveAwareRefresh: liveAwareInput?.checked === true,
-            blipWatchPhrasesText: blipPhrasesAdd?.value,
-            blipWatchRegex: blipRegexAdd?.value
-          });
-          if (!built.ok) {
-            if (addJobError) {
-              addJobError.textContent = built.error;
-            }
-            return;
-          }
-          const state = await loadAppState();
-          const next = { ...state, individualJobs: [...state.individualJobs, built.value] };
-          try {
-            await saveAppState(next);
-          } catch (err3) {
-            if (addJobError) {
-              addJobError.textContent = err3 instanceof Error ? err3.message : String(err3);
-            }
-            return;
-          }
-          await renderIndividualJobs();
-        })();
-      });
-    }
     if (globalRefreshTabs) {
       globalRefreshTabs.addEventListener("click", () => void renderGlobalTabBrowser());
     }
@@ -2391,12 +2419,12 @@
             globalUrlPatterns.value = "";
           }
           await renderGlobalGroupsList();
-          await renderIndividualJobs();
+          await renderIndividualJobs(dashboardContext);
         })();
       });
     }
     void Promise.all([populateTabSelect(), renderGlobalTabBrowser(), renderGlobalGroupsList()]).then(
-      () => renderIndividualJobs()
+      () => renderIndividualJobs(dashboardContext)
     );
   }
 

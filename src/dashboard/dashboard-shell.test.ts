@@ -2,11 +2,32 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as prefs from '../lib/prefs';
+import type { DashboardDom } from './dashboard-shell';
 import {
   bindOverlayPreference,
   createDashboardContext,
   wireCrossSurfaceLinks,
 } from './dashboard-shell';
+
+function emptyShellDom(over: Partial<DashboardDom> = {}): DashboardDom {
+  return {
+    openSidePanel: null,
+    openDashboardInTab: null,
+    overlayPreference: null,
+    individualSectionHeading: null,
+    jobsList: null,
+    addJobForm: null,
+    addJobError: null,
+    tabSelect: null,
+    urlInput: null,
+    intervalInput: null,
+    jitterInput: null,
+    liveAwareInput: null,
+    blipPhrasesAdd: null,
+    blipRegexAdd: null,
+    ...over,
+  };
+}
 
 describe('createDashboardContext', () => {
   it('returns null refs when selectors miss', () => {
@@ -15,6 +36,8 @@ describe('createDashboardContext', () => {
     expect(ctx.dom.openSidePanel).toBeNull();
     expect(ctx.dom.openDashboardInTab).toBeNull();
     expect(ctx.dom.overlayPreference).toBeNull();
+    expect(ctx.dom.jobsList).toBeNull();
+    expect(ctx.dom.addJobForm).toBeNull();
   });
 
   it('binds known data attributes when present', () => {
@@ -22,11 +45,17 @@ describe('createDashboardContext', () => {
       <button data-open-side-panel></button>
       <a data-open-in-tab></a>
       <input type="checkbox" data-pref-overlay />
+      <h2 data-individual-section-heading></h2>
+      <ul data-individual-jobs-list></ul>
+      <form data-add-individual-form></form>
     `;
     const ctx = createDashboardContext();
     expect(ctx.dom.openSidePanel).not.toBeNull();
     expect(ctx.dom.openDashboardInTab).not.toBeNull();
     expect(ctx.dom.overlayPreference).not.toBeNull();
+    expect(ctx.dom.individualSectionHeading).not.toBeNull();
+    expect(ctx.dom.jobsList).not.toBeNull();
+    expect(ctx.dom.addJobForm).not.toBeNull();
   });
 });
 
@@ -48,11 +77,7 @@ describe('bindOverlayPreference', () => {
 
   it('no-ops when overlay input is absent', () => {
     bindOverlayPreference({
-      dom: {
-        openSidePanel: null,
-        openDashboardInTab: null,
-        overlayPreference: null,
-      },
+      dom: emptyShellDom(),
     });
     expect(loadSpy).not.toHaveBeenCalled();
   });
