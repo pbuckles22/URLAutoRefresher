@@ -4,7 +4,8 @@ import {
   GLOBAL_GROUP_TAB_PAUSE,
   INDIVIDUAL_JOB_OVERLAY_PAUSE,
   PAGE_OVERLAY_GET_STATE,
-  PRECISION_VOLUME_COMMAND,
+  PRECISION_VOLUME_APPLY,
+  PRECISION_VOLUME_TAB_REQUEST,
   TWITCH_LIVE_REPORT,
 } from './messages';
 
@@ -18,6 +19,7 @@ describe('message type constants', () => {
     expect(GLOBAL_GROUP_TAB_PAUSE).toBe('urlAutoRefresher:globalGroupTabPause');
     expect(INDIVIDUAL_JOB_OVERLAY_PAUSE).toBe('urlAutoRefresher:individualJobOverlayPause');
     expect(TWITCH_LIVE_REPORT).toBe('urlAutoRefresher:twitchLiveReport');
-    expect(PRECISION_VOLUME_COMMAND).toBe('urlAutoRefresher:precisionVolumeCommand');
+    expect(PRECISION_VOLUME_APPLY).toBe('urlAutoRefresher:precisionVolumeApply');
+    expect(PRECISION_VOLUME_TAB_REQUEST).toBe('urlAutoRefresher:precisionVolumeTabRequest');
   });
 });

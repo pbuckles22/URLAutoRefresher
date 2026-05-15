@@ -2,8 +2,8 @@
  * Epic 11 — `chrome.commands` → active tab content script (precision volume).
  */
 import {
-  PRECISION_VOLUME_COMMAND,
-  type PrecisionVolumeCommandMessage,
+  PRECISION_VOLUME_APPLY,
+  type PrecisionVolumeApplyMessage,
   type PrecisionVolumeShortcutAction,
 } from '../lib/messages';
 
@@ -35,8 +35,9 @@ async function deliverPrecisionVolumeCommand(action: PrecisionVolumeShortcutActi
     return;
   }
 
-  const payload: PrecisionVolumeCommandMessage = {
-    type: PRECISION_VOLUME_COMMAND,
+  const payload: PrecisionVolumeApplyMessage = {
+    type: PRECISION_VOLUME_APPLY,
+    kind: 'shortcut',
     action,
   };
 

@@ -54,12 +54,36 @@ export type TwitchLiveReportMessage = {
   live: boolean | null;
 };
 
-/** Background → content: keyboard shortcut from `chrome.commands` (Epic 11). */
-export const PRECISION_VOLUME_COMMAND = 'urlAutoRefresher:precisionVolumeCommand' as const;
+/** Background → content: Web Audio gain change (shortcuts or dashboard-routed set) — Epic 11. */
+export const PRECISION_VOLUME_APPLY = 'urlAutoRefresher:precisionVolumeApply' as const;
+
+/** Dashboard / side panel → background: forward apply payload to a tab (Epic 11.4). */
+export const PRECISION_VOLUME_TAB_REQUEST = 'urlAutoRefresher:precisionVolumeTabRequest' as const;
 
 export type PrecisionVolumeShortcutAction = 'volume-up' | 'volume-down' | 'panic-mute';
 
-export type PrecisionVolumeCommandMessage = {
-  type: typeof PRECISION_VOLUME_COMMAND;
-  action: PrecisionVolumeShortcutAction;
-};
+export type PrecisionVolumeApplyPayload =
+  | { kind: 'shortcut'; action: PrecisionVolumeShortcutAction }
+  | { kind: 'set-linear-gain'; linearGain: number };
+
+export type PrecisionVolumeApplyMessage = {
+  type: typeof PRECISION_VOLUME_APPLY;
+} & PrecisionVolumeApplyPayload;
+
+export type PrecisionVolumeTabRequestMessage = {
+  type: typeof PRECISION_VOLUME_TAB_REQUEST;
+  tabId: number;
+} & PrecisionVolumeApplyPayload;
+
+export type PrecisionVolumeTabRouteResponse =
+  | { ok: true }
+  | { ok: false; reason: 'forbidden' | 'bad-gain' | 'send' };
+
+export function precisionVolumeTabRequestToApply(
+  msg: PrecisionVolumeTabRequestMessage
+): PrecisionVolumeApplyMessage {
+  if (msg.kind === 'shortcut') {
+    return { type: PRECISION_VOLUME_APPLY, kind: 'shortcut', action: msg.action };
+  }
+  return { type: PRECISION_VOLUME_APPLY, kind: 'set-linear-gain', linearGain: msg.linearGain };
+}

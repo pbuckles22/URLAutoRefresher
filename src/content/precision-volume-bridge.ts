@@ -11,7 +11,11 @@ import {
   pickPrimaryMediaIndex,
   type PrimaryMediaPickFields,
 } from '../lib/precision-volume-primary';
-import { PRECISION_VOLUME_COMMAND, type PrecisionVolumeCommandMessage } from '../lib/messages';
+import {
+  PRECISION_VOLUME_APPLY,
+  type PrecisionVolumeApplyMessage,
+  type PrecisionVolumeShortcutAction,
+} from '../lib/messages';
 
 const RAMP_SEC = 0.035;
 const ZERO_UNBLAST_SEC = 0.012;
@@ -151,7 +155,7 @@ function panicMuteGain(gainParam: AudioParam, context: AudioContext): void {
   gainParam.setValueAtTime(0, now);
 }
 
-function handlePrecisionVolumeCommand(action: PrecisionVolumeCommandMessage['action']): void {
+function handlePrecisionVolumeShortcut(action: PrecisionVolumeShortcutAction): void {
   const el = pickPrimaryMediaElement();
   if (!el) {
     return;
@@ -177,12 +181,58 @@ function handlePrecisionVolumeCommand(action: PrecisionVolumeCommandMessage['act
   scheduleGainLinearTarget(g, context, stepGainDownLinear(curLinear));
 }
 
-chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
-  const m = msg as Partial<PrecisionVolumeCommandMessage>;
-  if (m?.type !== PRECISION_VOLUME_COMMAND || !m.action) {
+function handlePrecisionVolumeSetLinearGain(linearGain: number): void {
+  const el = pickPrimaryMediaElement();
+  if (!el) {
     return;
   }
-  handlePrecisionVolumeCommand(m.action);
-  sendResponse({ ok: true as const });
-  return false;
+  const hook = tryHookMediaElement(el);
+  if (!hook) {
+    return;
+  }
+  const { context, gainNode } = hook;
+  void context.resume();
+  scheduleGainLinearTarget(gainNode.gain, context, clampLinearGain(linearGain));
+}
+
+function handlePrecisionVolumeApply(msg: PrecisionVolumeApplyMessage): void {
+  if (msg.kind === 'shortcut') {
+    handlePrecisionVolumeShortcut(msg.action);
+    return;
+  }
+  handlePrecisionVolumeSetLinearGain(msg.linearGain);
+}
+
+function isShortcutAction(a: unknown): a is PrecisionVolumeShortcutAction {
+  return a === 'volume-up' || a === 'volume-down' || a === 'panic-mute';
+}
+
+chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
+  const m = msg as Partial<PrecisionVolumeApplyMessage>;
+  if (m?.type !== PRECISION_VOLUME_APPLY) {
+    return;
+  }
+  if (m.kind === 'shortcut' && isShortcutAction(m.action)) {
+    handlePrecisionVolumeApply({
+      type: PRECISION_VOLUME_APPLY,
+      kind: 'shortcut',
+      action: m.action,
+    });
+    sendResponse({ ok: true as const });
+    return false;
+  }
+  if (
+    m.kind === 'set-linear-gain' &&
+    typeof m.linearGain === 'number' &&
+    Number.isFinite(m.linearGain)
+  ) {
+    handlePrecisionVolumeApply({
+      type: PRECISION_VOLUME_APPLY,
+      kind: 'set-linear-gain',
+      linearGain: m.linearGain,
+    });
+    sendResponse({ ok: true as const });
+    return false;
+  }
+  return;
 });
