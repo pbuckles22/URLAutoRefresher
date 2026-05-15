@@ -27,6 +27,18 @@ function emptyShellDom(over: Partial<DashboardDom> = {}): DashboardDom {
     blipRegexAdd: null,
     jobTabSearch: null,
     jobTabRefresh: null,
+    globalSectionHeading: null,
+    globalGroupsList: null,
+    globalGroupForm: null,
+    globalGroupName: null,
+    globalTabBrowser: null,
+    globalRefreshTabs: null,
+    globalTabSearch: null,
+    globalIntervalInput: null,
+    globalJitterInput: null,
+    globalUrlPatterns: null,
+    globalTwitchFavsHint: null,
+    globalFormError: null,
     ...over,
   };
 }
@@ -52,6 +64,18 @@ describe('createDashboardContext', () => {
       <form data-add-individual-form></form>
       <input type="search" data-job-tab-search />
       <button type="button" data-job-tab-refresh></button>
+      <h2 data-global-section-heading></h2>
+      <ul data-global-groups-list></ul>
+      <form data-global-group-form></form>
+      <input data-global-group-name />
+      <ul data-global-tab-browser></ul>
+      <button type="button" data-global-refresh-tabs></button>
+      <input data-global-tab-search />
+      <input data-global-interval />
+      <input data-global-jitter />
+      <textarea data-global-url-patterns></textarea>
+      <p data-global-twitch-favs-hint></p>
+      <p data-global-form-error></p>
     `;
     const ctx = createDashboardContext();
     expect(ctx.dom.openSidePanel).not.toBeNull();
@@ -62,6 +86,18 @@ describe('createDashboardContext', () => {
     expect(ctx.dom.addJobForm).not.toBeNull();
     expect(ctx.dom.jobTabSearch).not.toBeNull();
     expect(ctx.dom.jobTabRefresh).not.toBeNull();
+    expect(ctx.dom.globalSectionHeading).not.toBeNull();
+    expect(ctx.dom.globalGroupsList).not.toBeNull();
+    expect(ctx.dom.globalGroupForm).not.toBeNull();
+    expect(ctx.dom.globalGroupName).not.toBeNull();
+    expect(ctx.dom.globalTabBrowser).not.toBeNull();
+    expect(ctx.dom.globalRefreshTabs).not.toBeNull();
+    expect(ctx.dom.globalTabSearch).not.toBeNull();
+    expect(ctx.dom.globalIntervalInput).not.toBeNull();
+    expect(ctx.dom.globalJitterInput).not.toBeNull();
+    expect(ctx.dom.globalUrlPatterns).not.toBeNull();
+    expect(ctx.dom.globalTwitchFavsHint).not.toBeNull();
+    expect(ctx.dom.globalFormError).not.toBeNull();
   });
 });
 

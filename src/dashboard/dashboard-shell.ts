@@ -25,6 +25,19 @@ export type DashboardDom = {
   /** Epic 13.B3 — individual add-job tab search + refresh */
   jobTabSearch: HTMLInputElement | null;
   jobTabRefresh: HTMLButtonElement | null;
+  /** Epic 13.B4 — global groups list, form, tab browser */
+  globalSectionHeading: HTMLElement | null;
+  globalGroupsList: HTMLUListElement | null;
+  globalGroupForm: HTMLFormElement | null;
+  globalGroupName: HTMLInputElement | null;
+  globalTabBrowser: HTMLUListElement | null;
+  globalRefreshTabs: HTMLButtonElement | null;
+  globalTabSearch: HTMLInputElement | null;
+  globalIntervalInput: HTMLInputElement | null;
+  globalJitterInput: HTMLInputElement | null;
+  globalUrlPatterns: HTMLTextAreaElement | null;
+  globalTwitchFavsHint: HTMLElement | null;
+  globalFormError: HTMLElement | null;
 };
 
 /** Single object passed into shell binders so later extractions avoid implicit `document` scope. */
@@ -53,6 +66,18 @@ export function createDashboardContext(): DashboardContext {
       blipRegexAdd: document.querySelector<HTMLInputElement>('[data-job-blip-regex]'),
       jobTabSearch: document.querySelector<HTMLInputElement>('[data-job-tab-search]'),
       jobTabRefresh: document.querySelector<HTMLButtonElement>('[data-job-tab-refresh]'),
+      globalSectionHeading: document.querySelector<HTMLElement>('[data-global-section-heading]'),
+      globalGroupsList: document.querySelector<HTMLUListElement>('[data-global-groups-list]'),
+      globalGroupForm: document.querySelector<HTMLFormElement>('[data-global-group-form]'),
+      globalGroupName: document.querySelector<HTMLInputElement>('[data-global-group-name]'),
+      globalTabBrowser: document.querySelector<HTMLUListElement>('[data-global-tab-browser]'),
+      globalRefreshTabs: document.querySelector<HTMLButtonElement>('[data-global-refresh-tabs]'),
+      globalTabSearch: document.querySelector<HTMLInputElement>('[data-global-tab-search]'),
+      globalIntervalInput: document.querySelector<HTMLInputElement>('[data-global-interval]'),
+      globalJitterInput: document.querySelector<HTMLInputElement>('[data-global-jitter]'),
+      globalUrlPatterns: document.querySelector<HTMLTextAreaElement>('[data-global-url-patterns]'),
+      globalTwitchFavsHint: document.querySelector<HTMLElement>('[data-global-twitch-favs-hint]'),
+      globalFormError: document.querySelector<HTMLElement>('[data-global-form-error]'),
     },
   };
 }

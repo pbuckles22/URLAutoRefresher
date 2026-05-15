@@ -834,55 +834,6 @@
     return void 0;
   }
 
-  // src/lib/app-state-list-layout.ts
-  function individualJobsLayoutSignature(s) {
-    return JSON.stringify(
-      s.individualJobs.map((j) => ({
-        id: j.id,
-        target: j.target,
-        baseIntervalSec: j.baseIntervalSec,
-        jitterSec: j.jitterSec,
-        enabled: j.enabled,
-        liveAwareRefresh: j.liveAwareRefresh === true,
-        blip: JSON.stringify({
-          p: j.blipWatchPhrases ?? [],
-          r: j.blipWatchRegex ?? "",
-          m: j.blipMaxPerMinute ?? null
-        })
-      }))
-    );
-  }
-  function globalGroupsLayoutSignature(s) {
-    return JSON.stringify(
-      s.globalGroups.map((g) => ({
-        id: g.id,
-        name: g.name,
-        targets: g.targets,
-        urlPatterns: g.urlPatterns ?? [],
-        baseIntervalSec: g.baseIntervalSec,
-        jitterSec: g.jitterSec,
-        enabled: g.enabled
-      }))
-    );
-  }
-  function appStateListLayoutEqual(a, b) {
-    if (a.schemaVersion !== b.schemaVersion) {
-      return false;
-    }
-    return individualJobsLayoutSignature(a) === individualJobsLayoutSignature(b) && globalGroupsLayoutSignature(a) === globalGroupsLayoutSignature(b);
-  }
-  function onlyNonLayoutAppStateDiff(oldVal, newVal) {
-    if (oldVal === void 0 || newVal === void 0) {
-      return false;
-    }
-    const a = oldVal;
-    const b = newVal;
-    if (typeof a !== "object" || typeof b !== "object" || !Array.isArray(a.individualJobs) || !Array.isArray(b.individualJobs) || !Array.isArray(a.globalGroups) || !Array.isArray(b.globalGroups)) {
-      return false;
-    }
-    return appStateListLayoutEqual(a, b);
-  }
-
   // src/lib/global-group-targets.ts
   function isHttpUrl(u) {
     if (!u) {
@@ -1352,6 +1303,539 @@
     await chrome.storage.local.set({ [STORAGE_KEY]: state });
   }
 
+  // src/dashboard/dashboard-individual-tab-picker.ts
+  function createIndividualTabPickerCache() {
+    return { tabs: [] };
+  }
+  async function refreshIndividualTabPickerCache(cache) {
+    const [tabs, pinId] = await Promise.all([chrome.tabs.query({}), resolvePreferredPinTabId()]);
+    const withIds = tabs.filter(
+      (t) => typeof t.id === "number" && typeof t.windowId === "number"
+    );
+    withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
+    cache.tabs = pinTabIdFirst(withIds, pinId);
+  }
+  function applyIndividualTabSelectFilter(ctx, cache) {
+    const { tabSelect, jobTabSearch } = ctx.dom;
+    if (!tabSelect) {
+      return;
+    }
+    const q = (jobTabSearch?.value ?? "").trim().toLowerCase();
+    const prev = tabSelect.value;
+    tabSelect.innerHTML = '<option value="">Select a tab\u2026</option>';
+    for (const t of cache.tabs) {
+      const label = t.title?.trim() || t.url || `Tab ${t.id}`;
+      const url = t.url ?? "";
+      const hay = `${label} (${t.id}) ${url}`.toLowerCase();
+      if (q !== "" && !hay.includes(q)) {
+        continue;
+      }
+      const opt = document.createElement("option");
+      opt.value = String(t.id);
+      opt.textContent = `${label} (${t.id})`;
+      tabSelect.appendChild(opt);
+    }
+    const stillValid = prev !== "" && [...tabSelect.options].some((o) => o.value === prev);
+    tabSelect.value = stillValid ? prev : "";
+  }
+  async function populateIndividualTabSelect(ctx, cache) {
+    await refreshIndividualTabPickerCache(cache);
+    if (!ctx.dom.tabSelect) {
+      return;
+    }
+    applyIndividualTabSelectFilter(ctx, cache);
+  }
+  function syncIndividualTargetUrlFromSelectedTab(ctx, cache) {
+    const { tabSelect, urlInput } = ctx.dom;
+    if (!tabSelect || !urlInput) {
+      return;
+    }
+    const raw = tabSelect.value;
+    if (raw === "") {
+      return;
+    }
+    const tabId = Number(raw);
+    if (!Number.isInteger(tabId) || tabId < 1) {
+      return;
+    }
+    const tab = cache.tabs.find((t) => t.id === tabId);
+    if (tab) {
+      urlInput.value = defaultTargetUrlForTab(tab.url ?? "");
+      return;
+    }
+    void chrome.tabs.get(tabId).then((t) => {
+      if (tabSelect?.value !== String(tabId) || !urlInput) {
+        return;
+      }
+      urlInput.value = defaultTargetUrlForTab(t.url ?? "");
+    });
+  }
+  function bindIndividualTabPickerUi(ctx, cache) {
+    const { jobTabSearch, jobTabRefresh, tabSelect } = ctx.dom;
+    if (jobTabSearch && jobTabSearch.dataset.filterBound !== "1") {
+      jobTabSearch.dataset.filterBound = "1";
+      jobTabSearch.addEventListener("input", () => applyIndividualTabSelectFilter(ctx, cache));
+    }
+    if (jobTabRefresh) {
+      jobTabRefresh.addEventListener("click", () => void populateIndividualTabSelect(ctx, cache));
+    }
+    if (tabSelect && tabSelect.dataset.targetSyncBound !== "1") {
+      tabSelect.dataset.targetSyncBound = "1";
+      tabSelect.addEventListener("change", () => syncIndividualTargetUrlFromSelectedTab(ctx, cache));
+    }
+  }
+
+  // src/dashboard/dashboard-global-groups.ts
+  function globalGroupRowSelectorFragment(groupId) {
+    if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+      return CSS.escape(groupId);
+    }
+    return groupId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  }
+  function tickGlobalGroupCountdowns(globalGroupsList, globalGroups, now) {
+    if (!globalGroupsList) {
+      return;
+    }
+    for (const g of globalGroups) {
+      const row = globalGroupsList.querySelector(
+        `[data-global-group-row="${globalGroupRowSelectorFragment(g.id)}"]`
+      );
+      const el = row?.querySelector("[data-global-group-countdown]");
+      if (el) {
+        el.textContent = formatGlobalGroupCountdown(now, g);
+      }
+    }
+  }
+  async function renderGlobalGroupsList(ctx) {
+    const { globalSectionHeading, globalGroupsList } = ctx.dom;
+    const state = await loadAppState();
+    if (globalSectionHeading) {
+      globalSectionHeading.textContent = `Global (${state.globalGroups.length})`;
+    }
+    if (!globalGroupsList) {
+      return;
+    }
+    const now = Date.now();
+    globalGroupsList.innerHTML = "";
+    for (const g of state.globalGroups) {
+      globalGroupsList.appendChild(createGlobalGroupListRow(g, now));
+    }
+  }
+  function applyGlobalTabSearchFilter(ctx) {
+    const { globalTabBrowser, globalTabSearch } = ctx.dom;
+    if (!globalTabBrowser) {
+      return;
+    }
+    const q = (globalTabSearch?.value ?? "").trim().toLowerCase();
+    for (const li of globalTabBrowser.querySelectorAll("[data-global-tab-row]")) {
+      const title = li.querySelector("[data-global-tab-title]")?.textContent ?? "";
+      const url = li.querySelector("[data-global-target-url]")?.value ?? "";
+      const hay = `${title} ${url}`.toLowerCase();
+      if (q === "" || hay.includes(q)) {
+        li.style.display = "grid";
+      } else {
+        li.style.display = "none";
+      }
+    }
+  }
+  async function renderGlobalTabBrowser(ctx) {
+    const { globalTabBrowser } = ctx.dom;
+    if (!globalTabBrowser) {
+      return;
+    }
+    const [windows, pinId] = await Promise.all([
+      chrome.windows.getAll({ populate: true }),
+      resolvePreferredPinTabId()
+    ]);
+    const rows = tabRowsFromWindowsSnapshot(windows, pinId);
+    globalTabBrowser.innerHTML = "";
+    for (const row of rows) {
+      const li = document.createElement("li");
+      li.setAttribute("data-global-tab-row", String(row.tabId));
+      li.setAttribute("data-window-id", String(row.windowId));
+      li.style.display = "grid";
+      li.style.gridTemplateColumns = "auto minmax(6rem, 1fr) minmax(10rem, 2fr)";
+      li.style.gap = "0.5rem";
+      li.style.alignItems = "center";
+      li.style.marginBottom = "0.35rem";
+      const pick = document.createElement("label");
+      pick.style.display = "flex";
+      pick.style.alignItems = "center";
+      pick.style.gap = "0.35rem";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.setAttribute("data-global-tab-include", "");
+      pick.appendChild(cb);
+      pick.appendChild(document.createTextNode("Include"));
+      const titleEl = document.createElement("span");
+      titleEl.setAttribute("data-global-tab-title", "");
+      const tlabel = row.title.trim() || row.url || `Tab ${row.tabId}`;
+      titleEl.textContent = tlabel;
+      titleEl.style.overflow = "hidden";
+      titleEl.style.textOverflow = "ellipsis";
+      titleEl.style.whiteSpace = "nowrap";
+      titleEl.style.fontSize = "0.9rem";
+      const urlIn = document.createElement("input");
+      urlIn.type = "text";
+      urlIn.setAttribute("data-global-target-url", "");
+      urlIn.placeholder = "https://\u2026";
+      urlIn.value = defaultTargetUrlForTab(row.url);
+      urlIn.autocomplete = "off";
+      urlIn.style.padding = "0.35rem 0.5rem";
+      urlIn.style.borderRadius = "6px";
+      urlIn.style.border = "1px solid #5f6368";
+      urlIn.style.background = "#303134";
+      urlIn.style.color = "#e8eaed";
+      li.append(pick, titleEl, urlIn);
+      globalTabBrowser.appendChild(li);
+    }
+    applyGlobalTabSearchFilter(ctx);
+  }
+  function populateGlobalEditNewTabSelect(selectEl, groupRow, cache) {
+    const selfRow = selectEl.closest("[data-global-edit-target-row]");
+    const taken = /* @__PURE__ */ new Set();
+    for (const tr of groupRow.querySelectorAll("[data-global-edit-target-row]")) {
+      if (tr === selfRow) {
+        continue;
+      }
+      if (tr.hasAttribute("data-global-edit-new-target")) {
+        const v = tr.querySelector("[data-global-edit-pick-tab]")?.value;
+        if (v) {
+          taken.add(Number(v));
+        }
+      }
+    }
+    const current = selectEl.value;
+    selectEl.innerHTML = '<option value="">Select a tab\u2026</option>';
+    for (const t of cache.tabs) {
+      if (t.id !== Number(current) && taken.has(t.id)) {
+        continue;
+      }
+      const opt = document.createElement("option");
+      opt.value = String(t.id);
+      opt.setAttribute("data-window-id", String(t.windowId));
+      const label = t.title?.trim() || t.url || `Tab ${t.id}`;
+      opt.textContent = `${label} (${t.id})`;
+      selectEl.appendChild(opt);
+    }
+    const still = current !== "" && [...selectEl.options].some((o) => o.value === current);
+    selectEl.value = still ? current : "";
+  }
+  function bindGlobalTwitchFavsHint(ctx) {
+    const { globalGroupName, globalTwitchFavsHint } = ctx.dom;
+    if (globalTwitchFavsHint) {
+      globalTwitchFavsHint.textContent = TWITCH_FAVS_PATTERN_HINT;
+    }
+    if (globalGroupName && globalTwitchFavsHint) {
+      const syncGlobalTwitchFavsHint = () => {
+        globalTwitchFavsHint.style.display = isTwitchFavsGroupName(globalGroupName.value) ? "block" : "none";
+      };
+      globalGroupName.addEventListener("input", syncGlobalTwitchFavsHint);
+      syncGlobalTwitchFavsHint();
+    }
+  }
+  function bindGlobalGroupsListEvents(ctx, individualTabCache, refreshIndividualJobs) {
+    const { globalGroupsList } = ctx.dom;
+    if (!globalGroupsList || globalGroupsList.dataset.epic42Bound === "1") {
+      return;
+    }
+    globalGroupsList.dataset.epic42Bound = "1";
+    globalGroupsList.addEventListener("click", (e) => {
+      const t = e.target;
+      const row = t.closest("[data-global-group-row]");
+      if (!row) {
+        return;
+      }
+      const id = row.getAttribute("data-global-group-row");
+      if (!id) {
+        return;
+      }
+      if (t.closest("[data-global-group-delete]")) {
+        void (async () => {
+          const state = await loadAppState();
+          const next = removeGlobalGroupById(state, id);
+          try {
+            await saveAppState(next);
+          } catch (err3) {
+            console.error(err3);
+          }
+          await renderGlobalGroupsList(ctx);
+          await refreshIndividualJobs(ctx);
+        })();
+        return;
+      }
+      if (t.closest("[data-global-group-toggle]")) {
+        void (async () => {
+          const rowErr = row.querySelector("[data-global-group-row-error]");
+          if (rowErr) {
+            rowErr.textContent = "";
+          }
+          const state = await loadAppState();
+          const g = state.globalGroups.find((x) => x.id === id);
+          if (!g) {
+            return;
+          }
+          const next = setGlobalGroupEnabled(state, id, !g.enabled);
+          try {
+            await saveAppState(next);
+          } catch (err3) {
+            if (rowErr) {
+              rowErr.textContent = err3 instanceof Error ? err3.message : String(err3);
+            } else {
+              console.error(err3);
+            }
+            return;
+          }
+          await renderGlobalGroupsList(ctx);
+          await refreshIndividualJobs(ctx);
+        })();
+        return;
+      }
+      if (t.closest("[data-global-edit-add-target]")) {
+        e.preventDefault();
+        void (async () => {
+          await refreshIndividualTabPickerCache(individualTabCache);
+          const container = row.querySelector("[data-global-edit-targets]");
+          if (!container || !(container instanceof HTMLElement)) {
+            return;
+          }
+          const select = appendGlobalEditNewTargetRow(container);
+          populateGlobalEditNewTabSelect(select, row, individualTabCache);
+        })();
+        return;
+      }
+      if (t.closest("[data-global-edit-remove-target]")) {
+        e.preventDefault();
+        const tr = t.closest("[data-global-edit-target-row]");
+        tr?.remove();
+        return;
+      }
+      if (t.closest("[data-global-edit-save]")) {
+        void (async () => {
+          const errEl = row.querySelector("[data-global-edit-error]");
+          if (errEl) {
+            errEl.textContent = "";
+          }
+          const state = await loadAppState();
+          const existing = state.globalGroups.find((x) => x.id === id);
+          if (!existing) {
+            return;
+          }
+          const name = row.querySelector("[data-global-edit-name]")?.value ?? "";
+          const interval = Number(
+            row.querySelector("[data-global-edit-interval]")?.value
+          );
+          const jitter = Number(
+            row.querySelector("[data-global-edit-jitter]")?.value
+          );
+          const targets = [];
+          const extraPatternUrls = [];
+          for (const tr of row.querySelectorAll("[data-global-edit-target-row]")) {
+            if (tr.hasAttribute("data-global-edit-new-target")) {
+              const sel = tr.querySelector("[data-global-edit-pick-tab]");
+              const urlIn = tr.querySelector("[data-global-edit-target-url]");
+              const raw = sel?.value?.trim() ?? "";
+              const urlRaw = (urlIn?.value ?? "").trim();
+              if (raw === "" && urlRaw === "") {
+                continue;
+              }
+              if (raw === "") {
+                const urlCheck = validateHttpUrl(urlRaw);
+                if (!urlCheck.ok) {
+                  if (errEl) {
+                    errEl.textContent = urlCheck.error;
+                  }
+                  return;
+                }
+                extraPatternUrls.push(urlCheck.value);
+                continue;
+              }
+              const tabId = Number(raw);
+              if (!Number.isInteger(tabId) || tabId < 1) {
+                if (errEl) {
+                  errEl.textContent = "Invalid tab selection";
+                }
+                return;
+              }
+              const tabMeta = individualTabCache.tabs.find((x) => x.id === tabId);
+              const label = tabMeta?.title?.trim();
+              targets.push({
+                targetUrl: urlIn?.value ?? "",
+                ...label ? { label } : {}
+              });
+            } else {
+              const mkAttr = tr.getAttribute("data-global-edit-member-key") ?? "";
+              const urlIn = tr.querySelector("[data-global-edit-target-url]");
+              const prev = mkAttr !== "" ? existing.targets.find((x) => memberKeyFromTargetUrl(x.targetUrl) === mkAttr) : void 0;
+              targets.push({
+                targetUrl: urlIn?.value ?? "",
+                ...prev?.label ? { label: prev.label } : {}
+              });
+            }
+          }
+          const patternsField = row.querySelector("[data-global-edit-url-patterns]")?.value ?? "";
+          const patternsRaw = mergeDistinctPatternLines(patternsField, extraPatternUrls);
+          const built = buildGlobalGroupUpdateFromForm(
+            {
+              name,
+              baseIntervalSec: interval,
+              jitterSec: jitter,
+              targets,
+              urlPatternsRaw: patternsRaw
+            },
+            existing
+          );
+          if (!built.ok) {
+            if (errEl) {
+              errEl.textContent = built.error;
+            }
+            return;
+          }
+          const enroll = await validateGlobalGroupResolvedEnrollment(state, built.value, existing.id);
+          if (!enroll.ok) {
+            if (errEl) {
+              errEl.textContent = enroll.error;
+            }
+            return;
+          }
+          const next = replaceGlobalGroup(state, built.value);
+          try {
+            await saveAppState(next);
+          } catch (err3) {
+            if (errEl) {
+              errEl.textContent = err3 instanceof Error ? err3.message : String(err3);
+            }
+            return;
+          }
+          await renderGlobalGroupsList(ctx);
+          await refreshIndividualJobs(ctx);
+        })();
+      }
+    });
+    if (globalGroupsList.dataset.globalEditTabPickBound !== "1") {
+      globalGroupsList.dataset.globalEditTabPickBound = "1";
+      globalGroupsList.addEventListener("change", (e) => {
+        const sel = e.target;
+        if (!(sel instanceof HTMLSelectElement) || !sel.matches("[data-global-edit-pick-tab]")) {
+          return;
+        }
+        const tr = sel.closest("[data-global-edit-target-row]");
+        const groupRow = sel.closest("[data-global-group-row]");
+        if (!tr || !groupRow) {
+          return;
+        }
+        const urlIn = tr.querySelector("[data-global-edit-target-url]");
+        if (!urlIn) {
+          return;
+        }
+        const tabId = Number(sel.value);
+        if (!Number.isInteger(tabId) || tabId < 1) {
+          urlIn.value = "";
+          return;
+        }
+        const tab = individualTabCache.tabs.find((x) => x.id === tabId);
+        if (tab) {
+          urlIn.value = defaultTargetUrlForTab(tab.url ?? "");
+        } else {
+          void chrome.tabs.get(tabId).then((ct) => {
+            if (sel.value !== String(tabId) || !urlIn) {
+              return;
+            }
+            urlIn.value = defaultTargetUrlForTab(ct.url ?? "");
+          });
+        }
+        for (const other of groupRow.querySelectorAll(
+          "[data-global-edit-pick-tab]"
+        )) {
+          if (other !== sel) {
+            populateGlobalEditNewTabSelect(other, groupRow, individualTabCache);
+          }
+        }
+      });
+    }
+  }
+  function bindGlobalTabBrowserUi(ctx) {
+    const { globalRefreshTabs, globalTabSearch } = ctx.dom;
+    if (globalRefreshTabs) {
+      globalRefreshTabs.addEventListener("click", () => void renderGlobalTabBrowser(ctx));
+    }
+    if (globalTabSearch && globalTabSearch.dataset.filterBound !== "1") {
+      globalTabSearch.dataset.filterBound = "1";
+      globalTabSearch.addEventListener("input", () => applyGlobalTabSearchFilter(ctx));
+    }
+  }
+  function bindGlobalGroupForm(ctx, refreshIndividualJobs) {
+    const {
+      globalGroupForm,
+      globalGroupName,
+      globalTabBrowser,
+      globalIntervalInput,
+      globalJitterInput,
+      globalUrlPatterns,
+      globalFormError
+    } = ctx.dom;
+    if (!globalGroupForm || !globalGroupName || !globalTabBrowser || !globalIntervalInput || !globalJitterInput) {
+      return;
+    }
+    globalGroupForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      void (async () => {
+        if (globalFormError) {
+          globalFormError.textContent = "";
+        }
+        const targets = [];
+        for (const li of globalTabBrowser.querySelectorAll("[data-global-tab-row]")) {
+          const checked = li.querySelector("[data-global-tab-include]")?.checked;
+          if (!checked) {
+            continue;
+          }
+          const targetUrl = li.querySelector("[data-global-target-url]")?.value ?? "";
+          const label = li.querySelector("[data-global-tab-title]")?.textContent?.trim();
+          targets.push({
+            targetUrl,
+            ...label ? { label } : {}
+          });
+        }
+        const built = buildGlobalGroupFromForm({
+          name: globalGroupName.value,
+          baseIntervalSec: Number(globalIntervalInput.value),
+          jitterSec: Number(globalJitterInput.value),
+          targets,
+          urlPatternsRaw: globalUrlPatterns?.value
+        });
+        if (!built.ok) {
+          if (globalFormError) {
+            globalFormError.textContent = built.error;
+          }
+          return;
+        }
+        const state = await loadAppState();
+        const enroll = await validateGlobalGroupResolvedEnrollment(state, built.value);
+        if (!enroll.ok) {
+          if (globalFormError) {
+            globalFormError.textContent = enroll.error;
+          }
+          return;
+        }
+        const next = { ...state, globalGroups: [...state.globalGroups, built.value] };
+        try {
+          await saveAppState(next);
+        } catch (err3) {
+          if (globalFormError) {
+            globalFormError.textContent = err3 instanceof Error ? err3.message : String(err3);
+          }
+          return;
+        }
+        globalGroupName.value = "";
+        if (globalUrlPatterns) {
+          globalUrlPatterns.value = "";
+        }
+        await renderGlobalGroupsList(ctx);
+        await refreshIndividualJobs(ctx);
+      })();
+    });
+  }
+
   // src/lib/individual-job-form.ts
   function parseBlipFields(phrasesText, regexRaw) {
     const phrases = normalizeBlipPhrasesFromTextarea(phrasesText);
@@ -1808,88 +2292,6 @@
     });
   }
 
-  // src/dashboard/dashboard-individual-tab-picker.ts
-  function createIndividualTabPickerCache() {
-    return { tabs: [] };
-  }
-  async function refreshIndividualTabPickerCache(cache) {
-    const [tabs, pinId] = await Promise.all([chrome.tabs.query({}), resolvePreferredPinTabId()]);
-    const withIds = tabs.filter(
-      (t) => typeof t.id === "number" && typeof t.windowId === "number"
-    );
-    withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
-    cache.tabs = pinTabIdFirst(withIds, pinId);
-  }
-  function applyIndividualTabSelectFilter(ctx, cache) {
-    const { tabSelect, jobTabSearch } = ctx.dom;
-    if (!tabSelect) {
-      return;
-    }
-    const q = (jobTabSearch?.value ?? "").trim().toLowerCase();
-    const prev = tabSelect.value;
-    tabSelect.innerHTML = '<option value="">Select a tab\u2026</option>';
-    for (const t of cache.tabs) {
-      const label = t.title?.trim() || t.url || `Tab ${t.id}`;
-      const url = t.url ?? "";
-      const hay = `${label} (${t.id}) ${url}`.toLowerCase();
-      if (q !== "" && !hay.includes(q)) {
-        continue;
-      }
-      const opt = document.createElement("option");
-      opt.value = String(t.id);
-      opt.textContent = `${label} (${t.id})`;
-      tabSelect.appendChild(opt);
-    }
-    const stillValid = prev !== "" && [...tabSelect.options].some((o) => o.value === prev);
-    tabSelect.value = stillValid ? prev : "";
-  }
-  async function populateIndividualTabSelect(ctx, cache) {
-    await refreshIndividualTabPickerCache(cache);
-    if (!ctx.dom.tabSelect) {
-      return;
-    }
-    applyIndividualTabSelectFilter(ctx, cache);
-  }
-  function syncIndividualTargetUrlFromSelectedTab(ctx, cache) {
-    const { tabSelect, urlInput } = ctx.dom;
-    if (!tabSelect || !urlInput) {
-      return;
-    }
-    const raw = tabSelect.value;
-    if (raw === "") {
-      return;
-    }
-    const tabId = Number(raw);
-    if (!Number.isInteger(tabId) || tabId < 1) {
-      return;
-    }
-    const tab = cache.tabs.find((t) => t.id === tabId);
-    if (tab) {
-      urlInput.value = defaultTargetUrlForTab(tab.url ?? "");
-      return;
-    }
-    void chrome.tabs.get(tabId).then((t) => {
-      if (tabSelect?.value !== String(tabId) || !urlInput) {
-        return;
-      }
-      urlInput.value = defaultTargetUrlForTab(t.url ?? "");
-    });
-  }
-  function bindIndividualTabPickerUi(ctx, cache) {
-    const { jobTabSearch, jobTabRefresh, tabSelect } = ctx.dom;
-    if (jobTabSearch && jobTabSearch.dataset.filterBound !== "1") {
-      jobTabSearch.dataset.filterBound = "1";
-      jobTabSearch.addEventListener("input", () => applyIndividualTabSelectFilter(ctx, cache));
-    }
-    if (jobTabRefresh) {
-      jobTabRefresh.addEventListener("click", () => void populateIndividualTabSelect(ctx, cache));
-    }
-    if (tabSelect && tabSelect.dataset.targetSyncBound !== "1") {
-      tabSelect.dataset.targetSyncBound = "1";
-      tabSelect.addEventListener("change", () => syncIndividualTargetUrlFromSelectedTab(ctx, cache));
-    }
-  }
-
   // src/lib/prefs.ts
   var PREFS_STORAGE_KEY = "urlAutoRefresher_prefs_v1";
   var DEFAULT_PREFS = {
@@ -1933,7 +2335,19 @@
         blipPhrasesAdd: document.querySelector("[data-job-blip-phrases]"),
         blipRegexAdd: document.querySelector("[data-job-blip-regex]"),
         jobTabSearch: document.querySelector("[data-job-tab-search]"),
-        jobTabRefresh: document.querySelector("[data-job-tab-refresh]")
+        jobTabRefresh: document.querySelector("[data-job-tab-refresh]"),
+        globalSectionHeading: document.querySelector("[data-global-section-heading]"),
+        globalGroupsList: document.querySelector("[data-global-groups-list]"),
+        globalGroupForm: document.querySelector("[data-global-group-form]"),
+        globalGroupName: document.querySelector("[data-global-group-name]"),
+        globalTabBrowser: document.querySelector("[data-global-tab-browser]"),
+        globalRefreshTabs: document.querySelector("[data-global-refresh-tabs]"),
+        globalTabSearch: document.querySelector("[data-global-tab-search]"),
+        globalIntervalInput: document.querySelector("[data-global-interval]"),
+        globalJitterInput: document.querySelector("[data-global-jitter]"),
+        globalUrlPatterns: document.querySelector("[data-global-url-patterns]"),
+        globalTwitchFavsHint: document.querySelector("[data-global-twitch-favs-hint]"),
+        globalFormError: document.querySelector("[data-global-form-error]")
       }
     };
   }
@@ -1967,6 +2381,78 @@
     }
   }
 
+  // src/lib/app-state-list-layout.ts
+  function individualJobsLayoutSignature(s) {
+    return JSON.stringify(
+      s.individualJobs.map((j) => ({
+        id: j.id,
+        target: j.target,
+        baseIntervalSec: j.baseIntervalSec,
+        jitterSec: j.jitterSec,
+        enabled: j.enabled,
+        liveAwareRefresh: j.liveAwareRefresh === true,
+        blip: JSON.stringify({
+          p: j.blipWatchPhrases ?? [],
+          r: j.blipWatchRegex ?? "",
+          m: j.blipMaxPerMinute ?? null
+        })
+      }))
+    );
+  }
+  function globalGroupsLayoutSignature(s) {
+    return JSON.stringify(
+      s.globalGroups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        targets: g.targets,
+        urlPatterns: g.urlPatterns ?? [],
+        baseIntervalSec: g.baseIntervalSec,
+        jitterSec: g.jitterSec,
+        enabled: g.enabled
+      }))
+    );
+  }
+  function appStateListLayoutEqual(a, b) {
+    if (a.schemaVersion !== b.schemaVersion) {
+      return false;
+    }
+    return individualJobsLayoutSignature(a) === individualJobsLayoutSignature(b) && globalGroupsLayoutSignature(a) === globalGroupsLayoutSignature(b);
+  }
+  function onlyNonLayoutAppStateDiff(oldVal, newVal) {
+    if (oldVal === void 0 || newVal === void 0) {
+      return false;
+    }
+    const a = oldVal;
+    const b = newVal;
+    if (typeof a !== "object" || typeof b !== "object" || !Array.isArray(a.individualJobs) || !Array.isArray(b.individualJobs) || !Array.isArray(a.globalGroups) || !Array.isArray(b.globalGroups)) {
+      return false;
+    }
+    return appStateListLayoutEqual(a, b);
+  }
+
+  // src/dashboard/dashboard-storage-sync.ts
+  async function tickDashboardCountdowns(ctx) {
+    const state = await loadAppState();
+    const now = Date.now();
+    tickIndividualJobCountdowns(ctx.dom.jobsList, state.individualJobs, now);
+    tickGlobalGroupCountdowns(ctx.dom.globalGroupsList, state.globalGroups, now);
+  }
+  function wireDashboardStorageSync(ctx) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "local" || !(STORAGE_KEY in changes)) {
+        return;
+      }
+      const ch = changes[STORAGE_KEY];
+      if (onlyNonLayoutAppStateDiff(ch.oldValue, ch.newValue)) {
+        void tickDashboardCountdowns(ctx);
+        return;
+      }
+      void renderIndividualJobs(ctx);
+      void renderGlobalGroupsList(ctx);
+    });
+    window.setInterval(() => void tickDashboardCountdowns(ctx), 1e3);
+  }
+
   // src/dashboard/dashboard-app.ts
   function initDashboardApp() {
     const dashboardContext = createDashboardContext();
@@ -1976,469 +2462,19 @@
       title.textContent = chrome.runtime.getManifest().name;
     }
     bindOverlayPreference(dashboardContext);
-    const globalGroupForm = document.querySelector("[data-global-group-form]");
-    const globalGroupName = document.querySelector("[data-global-group-name]");
-    const globalTabBrowser = document.querySelector("[data-global-tab-browser]");
-    const globalRefreshTabs = document.querySelector("[data-global-refresh-tabs]");
-    const globalTabSearch = document.querySelector("[data-global-tab-search]");
-    const globalIntervalInput = document.querySelector("[data-global-interval]");
-    const globalJitterInput = document.querySelector("[data-global-jitter]");
-    const globalUrlPatterns = document.querySelector(
-      "[data-global-url-patterns]"
-    );
-    const globalTwitchFavsHint = document.querySelector(
-      "[data-global-twitch-favs-hint]"
-    );
-    const globalFormError = document.querySelector("[data-global-form-error]");
-    const globalSectionHeading = document.querySelector("[data-global-section-heading]");
-    const globalGroupsList = document.querySelector("[data-global-groups-list]");
-    if (globalTwitchFavsHint) {
-      globalTwitchFavsHint.textContent = TWITCH_FAVS_PATTERN_HINT;
-    }
-    if (globalGroupName && globalTwitchFavsHint) {
-      const syncGlobalTwitchFavsHint = () => {
-        globalTwitchFavsHint.style.display = isTwitchFavsGroupName(globalGroupName.value) ? "block" : "none";
-      };
-      globalGroupName.addEventListener("input", syncGlobalTwitchFavsHint);
-      syncGlobalTwitchFavsHint();
-    }
-    async function renderGlobalGroupsList() {
-      const state = await loadAppState();
-      if (globalSectionHeading) {
-        globalSectionHeading.textContent = `Global (${state.globalGroups.length})`;
-      }
-      if (!globalGroupsList) {
-        return;
-      }
-      const now = Date.now();
-      globalGroupsList.innerHTML = "";
-      for (const g of state.globalGroups) {
-        globalGroupsList.appendChild(createGlobalGroupListRow(g, now));
-      }
-    }
-    function applyGlobalTabSearchFilter() {
-      if (!globalTabBrowser) {
-        return;
-      }
-      const q = (globalTabSearch?.value ?? "").trim().toLowerCase();
-      for (const li of globalTabBrowser.querySelectorAll("[data-global-tab-row]")) {
-        const title2 = li.querySelector("[data-global-tab-title]")?.textContent ?? "";
-        const url = li.querySelector("[data-global-target-url]")?.value ?? "";
-        const hay = `${title2} ${url}`.toLowerCase();
-        if (q === "" || hay.includes(q)) {
-          li.style.display = "grid";
-        } else {
-          li.style.display = "none";
-        }
-      }
-    }
-    async function renderGlobalTabBrowser() {
-      if (!globalTabBrowser) {
-        return;
-      }
-      const [windows, pinId] = await Promise.all([
-        chrome.windows.getAll({ populate: true }),
-        resolvePreferredPinTabId()
-      ]);
-      const rows = tabRowsFromWindowsSnapshot(windows, pinId);
-      globalTabBrowser.innerHTML = "";
-      for (const row of rows) {
-        const li = document.createElement("li");
-        li.setAttribute("data-global-tab-row", String(row.tabId));
-        li.setAttribute("data-window-id", String(row.windowId));
-        li.style.display = "grid";
-        li.style.gridTemplateColumns = "auto minmax(6rem, 1fr) minmax(10rem, 2fr)";
-        li.style.gap = "0.5rem";
-        li.style.alignItems = "center";
-        li.style.marginBottom = "0.35rem";
-        const pick = document.createElement("label");
-        pick.style.display = "flex";
-        pick.style.alignItems = "center";
-        pick.style.gap = "0.35rem";
-        const cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.setAttribute("data-global-tab-include", "");
-        pick.appendChild(cb);
-        pick.appendChild(document.createTextNode("Include"));
-        const titleEl = document.createElement("span");
-        titleEl.setAttribute("data-global-tab-title", "");
-        const tlabel = row.title.trim() || row.url || `Tab ${row.tabId}`;
-        titleEl.textContent = tlabel;
-        titleEl.style.overflow = "hidden";
-        titleEl.style.textOverflow = "ellipsis";
-        titleEl.style.whiteSpace = "nowrap";
-        titleEl.style.fontSize = "0.9rem";
-        const urlIn = document.createElement("input");
-        urlIn.type = "text";
-        urlIn.setAttribute("data-global-target-url", "");
-        urlIn.placeholder = "https://\u2026";
-        urlIn.value = defaultTargetUrlForTab(row.url);
-        urlIn.autocomplete = "off";
-        urlIn.style.padding = "0.35rem 0.5rem";
-        urlIn.style.borderRadius = "6px";
-        urlIn.style.border = "1px solid #5f6368";
-        urlIn.style.background = "#303134";
-        urlIn.style.color = "#e8eaed";
-        li.append(pick, titleEl, urlIn);
-        globalTabBrowser.appendChild(li);
-      }
-      applyGlobalTabSearchFilter();
-    }
-    function populateGlobalEditNewTabSelect(selectEl, groupRow) {
-      const selfRow = selectEl.closest("[data-global-edit-target-row]");
-      const taken = /* @__PURE__ */ new Set();
-      for (const tr of groupRow.querySelectorAll("[data-global-edit-target-row]")) {
-        if (tr === selfRow) {
-          continue;
-        }
-        if (tr.hasAttribute("data-global-edit-new-target")) {
-          const v = tr.querySelector("[data-global-edit-pick-tab]")?.value;
-          if (v) {
-            taken.add(Number(v));
-          }
-        }
-      }
-      const current = selectEl.value;
-      selectEl.innerHTML = '<option value="">Select a tab\u2026</option>';
-      for (const t of individualTabCache.tabs) {
-        if (t.id !== Number(current) && taken.has(t.id)) {
-          continue;
-        }
-        const opt = document.createElement("option");
-        opt.value = String(t.id);
-        opt.setAttribute("data-window-id", String(t.windowId));
-        const label = t.title?.trim() || t.url || `Tab ${t.id}`;
-        opt.textContent = `${label} (${t.id})`;
-        selectEl.appendChild(opt);
-      }
-      const still = current !== "" && [...selectEl.options].some((o) => o.value === current);
-      selectEl.value = still ? current : "";
-    }
-    async function tickCountdowns() {
-      const state = await loadAppState();
-      const now = Date.now();
-      tickIndividualJobCountdowns(dashboardContext.dom.jobsList, state.individualJobs, now);
-      if (globalGroupsList) {
-        for (const g of state.globalGroups) {
-          const row = globalGroupsList.querySelector(`[data-global-group-row="${CSS.escape(g.id)}"]`);
-          const el = row?.querySelector("[data-global-group-countdown]");
-          if (el) {
-            el.textContent = formatGlobalGroupCountdown(now, g);
-          }
-        }
-      }
-    }
-    function bindGlobalGroupsListEvents() {
-      if (!globalGroupsList || globalGroupsList.dataset.epic42Bound === "1") {
-        return;
-      }
-      globalGroupsList.dataset.epic42Bound = "1";
-      globalGroupsList.addEventListener("click", (e) => {
-        const t = e.target;
-        const row = t.closest("[data-global-group-row]");
-        if (!row) {
-          return;
-        }
-        const id = row.getAttribute("data-global-group-row");
-        if (!id) {
-          return;
-        }
-        if (t.closest("[data-global-group-delete]")) {
-          void (async () => {
-            const state = await loadAppState();
-            const next = removeGlobalGroupById(state, id);
-            try {
-              await saveAppState(next);
-            } catch (err3) {
-              console.error(err3);
-            }
-            await renderGlobalGroupsList();
-            await renderIndividualJobs(dashboardContext);
-          })();
-          return;
-        }
-        if (t.closest("[data-global-group-toggle]")) {
-          void (async () => {
-            const rowErr = row.querySelector("[data-global-group-row-error]");
-            if (rowErr) {
-              rowErr.textContent = "";
-            }
-            const state = await loadAppState();
-            const g = state.globalGroups.find((x) => x.id === id);
-            if (!g) {
-              return;
-            }
-            const next = setGlobalGroupEnabled(state, id, !g.enabled);
-            try {
-              await saveAppState(next);
-            } catch (err3) {
-              if (rowErr) {
-                rowErr.textContent = err3 instanceof Error ? err3.message : String(err3);
-              } else {
-                console.error(err3);
-              }
-              return;
-            }
-            await renderGlobalGroupsList();
-            await renderIndividualJobs(dashboardContext);
-          })();
-          return;
-        }
-        if (t.closest("[data-global-edit-add-target]")) {
-          e.preventDefault();
-          void (async () => {
-            await refreshIndividualTabPickerCache(individualTabCache);
-            const container = row.querySelector("[data-global-edit-targets]");
-            if (!container || !(container instanceof HTMLElement)) {
-              return;
-            }
-            const select = appendGlobalEditNewTargetRow(container);
-            populateGlobalEditNewTabSelect(select, row);
-          })();
-          return;
-        }
-        if (t.closest("[data-global-edit-remove-target]")) {
-          e.preventDefault();
-          const tr = t.closest("[data-global-edit-target-row]");
-          tr?.remove();
-          return;
-        }
-        if (t.closest("[data-global-edit-save]")) {
-          void (async () => {
-            const errEl = row.querySelector("[data-global-edit-error]");
-            if (errEl) {
-              errEl.textContent = "";
-            }
-            const state = await loadAppState();
-            const existing = state.globalGroups.find((x) => x.id === id);
-            if (!existing) {
-              return;
-            }
-            const name = row.querySelector("[data-global-edit-name]")?.value ?? "";
-            const interval = Number(
-              row.querySelector("[data-global-edit-interval]")?.value
-            );
-            const jitter = Number(
-              row.querySelector("[data-global-edit-jitter]")?.value
-            );
-            const targets = [];
-            const extraPatternUrls = [];
-            for (const tr of row.querySelectorAll("[data-global-edit-target-row]")) {
-              if (tr.hasAttribute("data-global-edit-new-target")) {
-                const sel = tr.querySelector("[data-global-edit-pick-tab]");
-                const urlIn = tr.querySelector("[data-global-edit-target-url]");
-                const raw = sel?.value?.trim() ?? "";
-                const urlRaw = (urlIn?.value ?? "").trim();
-                if (raw === "" && urlRaw === "") {
-                  continue;
-                }
-                if (raw === "") {
-                  const urlCheck = validateHttpUrl(urlRaw);
-                  if (!urlCheck.ok) {
-                    if (errEl) {
-                      errEl.textContent = urlCheck.error;
-                    }
-                    return;
-                  }
-                  extraPatternUrls.push(urlCheck.value);
-                  continue;
-                }
-                const tabId = Number(raw);
-                if (!Number.isInteger(tabId) || tabId < 1) {
-                  if (errEl) {
-                    errEl.textContent = "Invalid tab selection";
-                  }
-                  return;
-                }
-                const tabMeta = individualTabCache.tabs.find((x) => x.id === tabId);
-                const label = tabMeta?.title?.trim();
-                targets.push({
-                  targetUrl: urlIn?.value ?? "",
-                  ...label ? { label } : {}
-                });
-              } else {
-                const mkAttr = tr.getAttribute("data-global-edit-member-key") ?? "";
-                const urlIn = tr.querySelector("[data-global-edit-target-url]");
-                const prev = mkAttr !== "" ? existing.targets.find((x) => memberKeyFromTargetUrl(x.targetUrl) === mkAttr) : void 0;
-                targets.push({
-                  targetUrl: urlIn?.value ?? "",
-                  ...prev?.label ? { label: prev.label } : {}
-                });
-              }
-            }
-            const patternsField = row.querySelector("[data-global-edit-url-patterns]")?.value ?? "";
-            const patternsRaw = mergeDistinctPatternLines(patternsField, extraPatternUrls);
-            const built = buildGlobalGroupUpdateFromForm(
-              {
-                name,
-                baseIntervalSec: interval,
-                jitterSec: jitter,
-                targets,
-                urlPatternsRaw: patternsRaw
-              },
-              existing
-            );
-            if (!built.ok) {
-              if (errEl) {
-                errEl.textContent = built.error;
-              }
-              return;
-            }
-            const enroll = await validateGlobalGroupResolvedEnrollment(
-              state,
-              built.value,
-              existing.id
-            );
-            if (!enroll.ok) {
-              if (errEl) {
-                errEl.textContent = enroll.error;
-              }
-              return;
-            }
-            const next = replaceGlobalGroup(state, built.value);
-            try {
-              await saveAppState(next);
-            } catch (err3) {
-              if (errEl) {
-                errEl.textContent = err3 instanceof Error ? err3.message : String(err3);
-              }
-              return;
-            }
-            await renderGlobalGroupsList();
-            await renderIndividualJobs(dashboardContext);
-          })();
-        }
-      });
-      if (globalGroupsList.dataset.globalEditTabPickBound !== "1") {
-        globalGroupsList.dataset.globalEditTabPickBound = "1";
-        globalGroupsList.addEventListener("change", (e) => {
-          const sel = e.target;
-          if (!(sel instanceof HTMLSelectElement) || !sel.matches("[data-global-edit-pick-tab]")) {
-            return;
-          }
-          const tr = sel.closest("[data-global-edit-target-row]");
-          const groupRow = sel.closest("[data-global-group-row]");
-          if (!tr || !groupRow) {
-            return;
-          }
-          const urlIn = tr.querySelector("[data-global-edit-target-url]");
-          if (!urlIn) {
-            return;
-          }
-          const tabId = Number(sel.value);
-          if (!Number.isInteger(tabId) || tabId < 1) {
-            urlIn.value = "";
-            return;
-          }
-          const tab = individualTabCache.tabs.find((x) => x.id === tabId);
-          if (tab) {
-            urlIn.value = defaultTargetUrlForTab(tab.url ?? "");
-          } else {
-            void chrome.tabs.get(tabId).then((ct) => {
-              if (sel.value !== String(tabId) || !urlIn) {
-                return;
-              }
-              urlIn.value = defaultTargetUrlForTab(ct.url ?? "");
-            });
-          }
-          for (const other of groupRow.querySelectorAll(
-            "[data-global-edit-pick-tab]"
-          )) {
-            if (other !== sel) {
-              populateGlobalEditNewTabSelect(other, groupRow);
-            }
-          }
-        });
-      }
-    }
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName !== "local" || !(STORAGE_KEY in changes)) {
-        return;
-      }
-      const ch = changes[STORAGE_KEY];
-      if (onlyNonLayoutAppStateDiff(ch.oldValue, ch.newValue)) {
-        void tickCountdowns();
-        return;
-      }
-      void renderIndividualJobs(dashboardContext);
-      void renderGlobalGroupsList();
-    });
+    wireDashboardStorageSync(dashboardContext);
+    bindGlobalTwitchFavsHint(dashboardContext);
     bindJobsListEvents(dashboardContext);
     bindAddIndividualJobForm(dashboardContext);
     bindIndividualTabPickerUi(dashboardContext, individualTabCache);
-    bindGlobalGroupsListEvents();
+    bindGlobalGroupsListEvents(dashboardContext, individualTabCache, renderIndividualJobs);
+    bindGlobalTabBrowserUi(dashboardContext);
+    bindGlobalGroupForm(dashboardContext, renderIndividualJobs);
     wireCrossSurfaceLinks(dashboardContext);
-    window.setInterval(() => void tickCountdowns(), 1e3);
-    if (globalRefreshTabs) {
-      globalRefreshTabs.addEventListener("click", () => void renderGlobalTabBrowser());
-    }
-    if (globalTabSearch && globalTabSearch.dataset.filterBound !== "1") {
-      globalTabSearch.dataset.filterBound = "1";
-      globalTabSearch.addEventListener("input", () => applyGlobalTabSearchFilter());
-    }
-    if (globalGroupForm && globalGroupName && globalTabBrowser && globalIntervalInput && globalJitterInput) {
-      globalGroupForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        void (async () => {
-          if (globalFormError) {
-            globalFormError.textContent = "";
-          }
-          const targets = [];
-          for (const li of globalTabBrowser.querySelectorAll("[data-global-tab-row]")) {
-            const checked = li.querySelector("[data-global-tab-include]")?.checked;
-            if (!checked) {
-              continue;
-            }
-            const targetUrl = li.querySelector("[data-global-target-url]")?.value ?? "";
-            const label = li.querySelector("[data-global-tab-title]")?.textContent?.trim();
-            targets.push({
-              targetUrl,
-              ...label ? { label } : {}
-            });
-          }
-          const built = buildGlobalGroupFromForm({
-            name: globalGroupName.value,
-            baseIntervalSec: Number(globalIntervalInput.value),
-            jitterSec: Number(globalJitterInput.value),
-            targets,
-            urlPatternsRaw: globalUrlPatterns?.value
-          });
-          if (!built.ok) {
-            if (globalFormError) {
-              globalFormError.textContent = built.error;
-            }
-            return;
-          }
-          const state = await loadAppState();
-          const enroll = await validateGlobalGroupResolvedEnrollment(state, built.value);
-          if (!enroll.ok) {
-            if (globalFormError) {
-              globalFormError.textContent = enroll.error;
-            }
-            return;
-          }
-          const next = { ...state, globalGroups: [...state.globalGroups, built.value] };
-          try {
-            await saveAppState(next);
-          } catch (err3) {
-            if (globalFormError) {
-              globalFormError.textContent = err3 instanceof Error ? err3.message : String(err3);
-            }
-            return;
-          }
-          globalGroupName.value = "";
-          if (globalUrlPatterns) {
-            globalUrlPatterns.value = "";
-          }
-          await renderGlobalGroupsList();
-          await renderIndividualJobs(dashboardContext);
-        })();
-      });
-    }
     void Promise.all([
       populateIndividualTabSelect(dashboardContext, individualTabCache),
-      renderGlobalTabBrowser(),
-      renderGlobalGroupsList()
+      renderGlobalTabBrowser(dashboardContext),
+      renderGlobalGroupsList(dashboardContext)
     ]).then(() => renderIndividualJobs(dashboardContext));
   }
 
