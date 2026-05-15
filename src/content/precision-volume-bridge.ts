@@ -3,7 +3,7 @@
  */
 import {
   PV_MIN_GAIN_EXP,
-  clampLinearGain,
+  clampSignedLinearGain,
   stepGainDownLinear,
   stepGainUpLinear,
 } from '../lib/precision-volume-gain';
@@ -102,42 +102,56 @@ function tryHookMediaElement(el: HTMLMediaElement): HookState | null {
   }
 }
 
-function readEffectiveLinearGain(param: AudioParam): number {
+function readSignedLinearGain(param: AudioParam): number {
   const v = param.value;
-  if (!Number.isFinite(v) || v <= 0) {
-    return 0;
-  }
-  return v;
+  return Number.isFinite(v) ? v : 0;
 }
 
-/** Schedule linear-domain target `targetLinear` on the gain AudioParam (smooth + exponential-safe). */
+/** Non-negative loudness for shortcut stepping (phase-inverted reads as 0). */
+function readEffectiveLinearGain(param: AudioParam): number {
+  return Math.max(0, readSignedLinearGain(param));
+}
+
+/**
+ * Schedule linear-domain target on the gain AudioParam.
+ * Signed targets or negative current use linear ramps (exponential curves are invalid for ≤0).
+ */
 function scheduleGainLinearTarget(
   gainParam: AudioParam,
   context: AudioContext,
   targetLinear: number
 ): void {
   const now = context.currentTime;
+  const T = clampSignedLinearGain(targetLinear);
+  const cur = readSignedLinearGain(gainParam);
+
+  if (T < 0 || cur < 0) {
+    gainParam.cancelScheduledValues(now);
+    gainParam.setValueAtTime(cur, now);
+    gainParam.linearRampToValueAtTime(T, now + RAMP_SEC);
+    return;
+  }
+
   gainParam.cancelScheduledValues(now);
-  const T = clampLinearGain(targetLinear);
-  const cur = readEffectiveLinearGain(gainParam);
+  const curPos = readEffectiveLinearGain(gainParam);
 
   if (T === 0) {
-    if (cur <= 0) {
+    if (curPos <= 0) {
       gainParam.setValueAtTime(0, now);
       return;
     }
-    if (cur <= PV_MIN_GAIN_EXP) {
+    if (curPos <= PV_MIN_GAIN_EXP) {
       gainParam.linearRampToValueAtTime(0, now + RAMP_SEC);
       return;
     }
-    gainParam.setValueAtTime(cur, now);
+    gainParam.setValueAtTime(curPos, now);
     gainParam.exponentialRampToValueAtTime(PV_MIN_GAIN_EXP, now + RAMP_SEC * 0.45);
     gainParam.linearRampToValueAtTime(0, now + RAMP_SEC);
     return;
   }
 
   const safeT = Math.max(T, PV_MIN_GAIN_EXP);
-  if (cur < PV_MIN_GAIN_EXP) {
+  if (curPos < PV_MIN_GAIN_EXP) {
     const tLin = now + ZERO_UNBLAST_SEC;
     gainParam.setValueAtTime(0, now);
     gainParam.linearRampToValueAtTime(PV_MIN_GAIN_EXP, tLin);
@@ -145,7 +159,7 @@ function scheduleGainLinearTarget(
     return;
   }
 
-  gainParam.setValueAtTime(cur, now);
+  gainParam.setValueAtTime(curPos, now);
   gainParam.exponentialRampToValueAtTime(safeT, now + RAMP_SEC);
 }
 
@@ -192,7 +206,7 @@ function handlePrecisionVolumeSetLinearGain(linearGain: number): void {
   }
   const { context, gainNode } = hook;
   void context.resume();
-  scheduleGainLinearTarget(gainNode.gain, context, clampLinearGain(linearGain));
+  scheduleGainLinearTarget(gainNode.gain, context, clampSignedLinearGain(linearGain));
 }
 
 function handlePrecisionVolumeApply(msg: PrecisionVolumeApplyMessage): void {

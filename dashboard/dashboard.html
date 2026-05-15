@@ -117,6 +117,126 @@
       </label>
     </section>
 
+    <section
+      style="margin-top: 1.25rem"
+      aria-labelledby="precision-volume-heading"
+      data-precision-volume-section
+    >
+      <h2
+        id="precision-volume-heading"
+        style="font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem"
+      >
+        Precision volume
+      </h2>
+      <p style="margin: 0 0 0.75rem; color: #9aa0a6; font-size: 0.9rem">
+        Fine-grained in-page volume for the selected tab’s primary media. Hold
+        <kbd style="background: #303134; padding: 0.1rem 0.35rem; border-radius: 4px">Shift</kbd>
+        while dragging the fader for 10× finer steps. Negative percentages phase-invert.
+      </p>
+      <div
+        style="
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        "
+      >
+        <button
+          type="button"
+          data-precision-volume-tab-refresh
+          style="
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid #5f6368;
+            background: #303134;
+            color: #e8eaed;
+            cursor: pointer;
+          "
+        >
+          Refresh tab list
+        </button>
+      </div>
+      <label style="display: flex; flex-direction: column; gap: 0.25rem; max-width: 36rem">
+        <span>Target tab</span>
+        <input
+          type="search"
+          data-precision-volume-tab-search
+          placeholder="Filter tabs…"
+          autocomplete="off"
+          aria-label="Filter precision volume tab list"
+          style="
+            padding: 0.35rem 0.5rem;
+            border-radius: 6px;
+            border: 1px solid #5f6368;
+            background: #303134;
+            color: #e8eaed;
+          "
+        />
+        <select
+          data-precision-volume-tab
+          aria-label="Tab for precision volume"
+          style="
+            padding: 0.35rem 0.5rem;
+            border-radius: 6px;
+            border: 1px solid #5f6368;
+            background: #303134;
+            color: #e8eaed;
+          "
+        >
+          <option value="">Select a tab…</option>
+        </select>
+      </label>
+      <div
+        style="
+          margin-top: 0.75rem;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 0.75rem;
+        "
+      >
+        <label
+          style="display: flex; flex-direction: column; gap: 0.25rem; min-width: 12rem; flex: 1"
+        >
+          <span>Fader</span>
+          <input
+            type="range"
+            data-precision-volume-fader
+            min="0"
+            max="10000"
+            step="1"
+            value="5253"
+            aria-label="Precision volume fader"
+            style="width: 100%"
+          />
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 0.25rem; width: 8rem">
+          <span>Numeric (%)</span>
+          <input
+            type="text"
+            inputmode="decimal"
+            data-precision-volume-numeric
+            autocomplete="off"
+            aria-label="Volume as percent of unity; negative phase inverts"
+            style="
+              padding: 0.35rem 0.5rem;
+              border-radius: 6px;
+              border: 1px solid #5f6368;
+              background: #303134;
+              color: #e8eaed;
+            "
+          />
+        </label>
+      </div>
+      <p
+        data-precision-volume-phase-label
+        style="display: none; margin: 0.5rem 0 0; color: #f9ab00; font-size: 0.85rem"
+      >
+        Phase inverted (negative gain).
+      </p>
+    </section>
+
     <div data-browse-layout>
       <section aria-labelledby="global-group-heading">
         <h2

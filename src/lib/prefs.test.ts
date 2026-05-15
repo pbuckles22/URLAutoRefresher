@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   DEFAULT_PREFS,
+  DEFAULT_PRECISION_VOLUME,
   loadExtensionPrefs,
   parsePrefs,
   PREFS_STORAGE_KEY,
@@ -20,6 +21,26 @@ describe('prefs', () => {
 
   it('showPageOverlayTimer true when set', () => {
     expect(parsePrefs({ showPageOverlayTimer: true }).showPageOverlayTimer).toBe(true);
+  });
+
+  it('parses precisionVolume when present', () => {
+    expect(
+      parsePrefs({
+        showPageOverlayTimer: true,
+        precisionVolume: { lastTabId: 42, lastLinearGain: -0.25 },
+      })
+    ).toEqual({
+      showPageOverlayTimer: true,
+      precisionVolume: { lastTabId: 42, lastLinearGain: -0.25 },
+    });
+  });
+
+  it('ignores invalid precisionVolume fields', () => {
+    expect(
+      parsePrefs({
+        precisionVolume: { lastTabId: 'x', lastLinearGain: Number.NaN },
+      }).precisionVolume
+    ).toEqual(DEFAULT_PRECISION_VOLUME);
   });
 
   it('ignores invalid showPageOverlayTimer', () => {
@@ -56,7 +77,13 @@ describe('extension prefs in chrome.storage.local (Epic 3.0)', () => {
 
   it('saveExtensionPrefs and loadExtensionPrefs round-trip', async () => {
     await saveExtensionPrefs({ showPageOverlayTimer: false });
-    await expect(loadExtensionPrefs()).resolves.toEqual({ showPageOverlayTimer: false });
-    expect(mem[PREFS_STORAGE_KEY]).toEqual({ showPageOverlayTimer: false });
+    await expect(loadExtensionPrefs()).resolves.toEqual({
+      ...DEFAULT_PREFS,
+      showPageOverlayTimer: false,
+    });
+    expect(mem[PREFS_STORAGE_KEY]).toEqual({
+      showPageOverlayTimer: false,
+      precisionVolume: DEFAULT_PRECISION_VOLUME,
+    });
   });
 });

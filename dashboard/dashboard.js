@@ -1370,14 +1370,17 @@
       urlInput.value = defaultTargetUrlForTab(t.url ?? "");
     });
   }
-  function bindIndividualTabPickerUi(ctx, cache) {
+  function bindIndividualTabPickerUi(ctx, cache, options) {
     const { jobTabSearch, jobTabRefresh, tabSelect } = ctx.dom;
     if (jobTabSearch && jobTabSearch.dataset.filterBound !== "1") {
       jobTabSearch.dataset.filterBound = "1";
       jobTabSearch.addEventListener("input", () => applyIndividualTabSelectFilter(ctx, cache));
     }
     if (jobTabRefresh) {
-      jobTabRefresh.addEventListener("click", () => void populateIndividualTabSelect(ctx, cache));
+      jobTabRefresh.addEventListener(
+        "click",
+        () => void populateIndividualTabSelect(ctx, cache).then(() => options?.afterTabListRefresh?.())
+      );
     }
     if (tabSelect && tabSelect.dataset.targetSyncBound !== "1") {
       tabSelect.dataset.targetSyncBound = "1";
@@ -2292,26 +2295,349 @@
     });
   }
 
+  // src/lib/precision-volume-gain.ts
+  var PV_MAX_GAIN_LINEAR = 16;
+  var STEP_DB = 2;
+  var STEP_RATIO = 10 ** (STEP_DB / 20);
+  function clampSignedLinearGain(g) {
+    if (!Number.isFinite(g)) {
+      return 0;
+    }
+    if (g < -PV_MAX_GAIN_LINEAR) {
+      return -PV_MAX_GAIN_LINEAR;
+    }
+    if (g > PV_MAX_GAIN_LINEAR) {
+      return PV_MAX_GAIN_LINEAR;
+    }
+    return g;
+  }
+
+  // src/lib/precision-volume-fader.ts
+  var PV_FADER_LOW_REGION_END_GAIN = 0.2;
+  var HALF = 0.5;
+  function clampUnit(p) {
+    if (!Number.isFinite(p)) {
+      return 0;
+    }
+    if (p <= 0) {
+      return 0;
+    }
+    if (p >= 1) {
+      return 1;
+    }
+    return p;
+  }
+  function linearGainFromFaderPosition(position) {
+    const pos = clampUnit(position);
+    if (pos <= HALF) {
+      return pos / HALF * PV_FADER_LOW_REGION_END_GAIN;
+    }
+    const u = (pos - HALF) / HALF;
+    return PV_FADER_LOW_REGION_END_GAIN + u * (PV_MAX_GAIN_LINEAR - PV_FADER_LOW_REGION_END_GAIN);
+  }
+  function faderPositionFromLinearGain(linearGain) {
+    const g = Math.max(0, Number.isFinite(linearGain) ? linearGain : 0);
+    if (g <= PV_FADER_LOW_REGION_END_GAIN) {
+      return HALF * (g / PV_FADER_LOW_REGION_END_GAIN);
+    }
+    const span = PV_MAX_GAIN_LINEAR - PV_FADER_LOW_REGION_END_GAIN;
+    if (span <= 0) {
+      return 1;
+    }
+    return HALF + HALF * Math.min(1, (g - PV_FADER_LOW_REGION_END_GAIN) / span);
+  }
+  function faderValueToPosition(value) {
+    return clampUnit(value / 1e4);
+  }
+  function linearGainToFaderValue(linearGain) {
+    return Math.round(faderPositionFromLinearGain(linearGain) * 1e4);
+  }
+  function faderValueToLinearGain(value) {
+    return linearGainFromFaderPosition(faderValueToPosition(value));
+  }
+  function applyShiftFineFaderPosition(previousPosition, rawPointerPosition, shiftHeld) {
+    const raw = clampUnit(rawPointerPosition);
+    const prev = clampUnit(previousPosition);
+    if (!shiftHeld) {
+      return raw;
+    }
+    return clampUnit(prev + (raw - prev) * 0.1);
+  }
+  function percentToLinearGain(percent) {
+    if (!Number.isFinite(percent)) {
+      return 0;
+    }
+    return percent / 100;
+  }
+  function linearGainToPercent(linearGain) {
+    if (!Number.isFinite(linearGain)) {
+      return 0;
+    }
+    return linearGain * 100;
+  }
+  function parsePercentInput(raw) {
+    const s = raw.trim();
+    if (s === "") {
+      return null;
+    }
+    const n = Number(s);
+    if (!Number.isFinite(n)) {
+      return null;
+    }
+    return n;
+  }
+  function formatPercentInput(percent) {
+    if (!Number.isFinite(percent)) {
+      return "";
+    }
+    const rounded = Math.round(percent * 1e3) / 1e3;
+    if (Object.is(rounded, -0)) {
+      return "0";
+    }
+    return String(rounded);
+  }
+
   // src/lib/prefs.ts
   var PREFS_STORAGE_KEY = "urlAutoRefresher_prefs_v1";
-  var DEFAULT_PREFS = {
-    showPageOverlayTimer: true
+  var DEFAULT_PRECISION_VOLUME = {
+    lastTabId: null,
+    lastLinearGain: 1
   };
+  var DEFAULT_PREFS = {
+    showPageOverlayTimer: true,
+    precisionVolume: { ...DEFAULT_PRECISION_VOLUME }
+  };
+  function parsePrecisionVolumePrefs(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return { ...DEFAULT_PRECISION_VOLUME };
+    }
+    const o = raw;
+    let lastTabId = DEFAULT_PRECISION_VOLUME.lastTabId;
+    const tid = o.lastTabId;
+    if (tid === null) {
+      lastTabId = null;
+    } else if (typeof tid === "number" && Number.isInteger(tid) && tid >= 0) {
+      lastTabId = tid;
+    }
+    let lastLinearGain = DEFAULT_PRECISION_VOLUME.lastLinearGain;
+    if (typeof o.lastLinearGain === "number" && Number.isFinite(o.lastLinearGain)) {
+      lastLinearGain = o.lastLinearGain;
+    }
+    return { lastTabId, lastLinearGain };
+  }
   function parsePrefs(raw) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-      return { ...DEFAULT_PREFS };
+      return { ...DEFAULT_PREFS, precisionVolume: { ...DEFAULT_PRECISION_VOLUME } };
     }
     const o = raw;
     const show = typeof o.showPageOverlayTimer === "boolean" ? o.showPageOverlayTimer : DEFAULT_PREFS.showPageOverlayTimer;
-    return { showPageOverlayTimer: show };
+    return {
+      showPageOverlayTimer: show,
+      precisionVolume: parsePrecisionVolumePrefs(o.precisionVolume)
+    };
   }
   async function loadExtensionPrefs() {
     const data = await chrome.storage.local.get(PREFS_STORAGE_KEY);
     const raw = data[PREFS_STORAGE_KEY];
     return parsePrefs(raw);
   }
-  async function saveExtensionPrefs(prefs) {
-    await chrome.storage.local.set({ [PREFS_STORAGE_KEY]: prefs });
+  async function saveExtensionPrefs(partial) {
+    const existing = await loadExtensionPrefs();
+    const next = {
+      showPageOverlayTimer: partial.showPageOverlayTimer ?? existing.showPageOverlayTimer,
+      precisionVolume: {
+        ...existing.precisionVolume,
+        ...partial.precisionVolume ?? {}
+      }
+    };
+    await chrome.storage.local.set({ [PREFS_STORAGE_KEY]: next });
+  }
+
+  // src/lib/extension-runtime-send.ts
+  function extensionRuntimeContextLikelyAlive() {
+    return typeof chrome !== "undefined" && typeof chrome.runtime !== "undefined" && !!chrome.runtime.id;
+  }
+  async function sendExtensionMessageAsync(message) {
+    if (!extensionRuntimeContextLikelyAlive()) {
+      return void 0;
+    }
+    try {
+      return await chrome.runtime.sendMessage(message);
+    } catch {
+      return void 0;
+    }
+  }
+
+  // src/lib/messages.ts
+  var PRECISION_VOLUME_TAB_REQUEST = "urlAutoRefresher:precisionVolumeTabRequest";
+
+  // src/lib/precision-volume-tab-client.ts
+  async function sendPrecisionVolumeTabRequest(tabId, apply) {
+    const msg = {
+      type: PRECISION_VOLUME_TAB_REQUEST,
+      tabId,
+      ...apply
+    };
+    return sendExtensionMessageAsync(msg);
+  }
+
+  // src/dashboard/dashboard-precision-volume.ts
+  function applyPrecisionVolumeTabSelectFilter(ctx, cache) {
+    const { precisionVolumeTabSelect, precisionVolumeTabSearch } = ctx.dom;
+    if (!precisionVolumeTabSelect) {
+      return;
+    }
+    const q = (precisionVolumeTabSearch?.value ?? "").trim().toLowerCase();
+    const prev = precisionVolumeTabSelect.value;
+    precisionVolumeTabSelect.innerHTML = '<option value="">Select a tab\u2026</option>';
+    for (const t of cache.tabs) {
+      const label = t.title?.trim() || t.url || `Tab ${t.id}`;
+      const url = t.url ?? "";
+      const hay = `${label} (${t.id}) ${url}`.toLowerCase();
+      if (q !== "" && !hay.includes(q)) {
+        continue;
+      }
+      const opt = document.createElement("option");
+      opt.value = String(t.id);
+      opt.textContent = `${label} (${t.id})`;
+      precisionVolumeTabSelect.appendChild(opt);
+    }
+    const stillValid = prev !== "" && [...precisionVolumeTabSelect.options].some((o) => o.value === prev);
+    precisionVolumeTabSelect.value = stillValid ? prev : "";
+  }
+  async function populatePrecisionVolumeTabSelect(ctx, cache) {
+    await refreshIndividualTabPickerCache(cache);
+    applyIndividualTabSelectFilter(ctx, cache);
+    applyPrecisionVolumeTabSelectFilter(ctx, cache);
+  }
+  function updatePhaseLabel(ctx, linearGain) {
+    const el = ctx.dom.precisionVolumePhaseLabel;
+    if (!el) {
+      return;
+    }
+    el.style.display = linearGain < 0 ? "block" : "none";
+  }
+  function bindPrecisionVolumeUi(ctx, cache) {
+    const {
+      precisionVolumeTabSelect,
+      precisionVolumeTabSearch,
+      precisionVolumeTabRefresh,
+      precisionVolumeFader,
+      precisionVolumeNumeric
+    } = ctx.dom;
+    if (!precisionVolumeFader || !precisionVolumeNumeric || !precisionVolumeTabSelect) {
+      return;
+    }
+    let lastFaderPosition = faderValueToPosition(precisionVolumeFader.valueAsNumber);
+    let currentLinearGain = clampSignedLinearGain(
+      faderValueToLinearGain(precisionVolumeFader.valueAsNumber)
+    );
+    let applyTimer;
+    let saveTimer;
+    const readTabId = () => {
+      const raw = precisionVolumeTabSelect.value;
+      if (raw === "") {
+        return null;
+      }
+      const id = Number(raw);
+      return Number.isInteger(id) && id >= 0 ? id : null;
+    };
+    const scheduleApply = (linearGain) => {
+      const tabId = readTabId();
+      if (tabId === null) {
+        return;
+      }
+      const g = clampSignedLinearGain(linearGain);
+      window.clearTimeout(applyTimer);
+      applyTimer = window.setTimeout(() => {
+        void sendPrecisionVolumeTabRequest(tabId, { kind: "set-linear-gain", linearGain: g });
+      }, 70);
+    };
+    const scheduleSave = (linearGain) => {
+      window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(() => {
+        const tabId = readTabId();
+        void saveExtensionPrefs({
+          precisionVolume: {
+            lastTabId: tabId,
+            lastLinearGain: clampSignedLinearGain(linearGain)
+          }
+        });
+      }, 450);
+    };
+    const syncControlsFromLinearGain = (linearGain) => {
+      const g = clampSignedLinearGain(linearGain);
+      currentLinearGain = g;
+      precisionVolumeNumeric.value = formatPercentInput(linearGainToPercent(g));
+      if (g >= 0) {
+        const fv = linearGainToFaderValue(g);
+        precisionVolumeFader.valueAsNumber = fv;
+        lastFaderPosition = faderValueToPosition(fv);
+      } else {
+        precisionVolumeFader.valueAsNumber = 0;
+        lastFaderPosition = 0;
+      }
+      updatePhaseLabel(ctx, g);
+    };
+    void loadExtensionPrefs().then((p) => {
+      const pv = p.precisionVolume;
+      syncControlsFromLinearGain(pv.lastLinearGain);
+      if (pv.lastTabId !== null) {
+        const idStr = String(pv.lastTabId);
+        if ([...precisionVolumeTabSelect.options].some((o) => o.value === idStr)) {
+          precisionVolumeTabSelect.value = idStr;
+        }
+      }
+    });
+    if (precisionVolumeTabSearch && precisionVolumeTabSearch.dataset.pvFilterBound !== "1") {
+      precisionVolumeTabSearch.dataset.pvFilterBound = "1";
+      precisionVolumeTabSearch.addEventListener(
+        "input",
+        () => applyPrecisionVolumeTabSelectFilter(ctx, cache)
+      );
+    }
+    if (precisionVolumeTabRefresh) {
+      precisionVolumeTabRefresh.addEventListener("click", () => {
+        void populatePrecisionVolumeTabSelect(ctx, cache);
+      });
+    }
+    precisionVolumeFader.addEventListener("pointerdown", () => {
+      lastFaderPosition = faderValueToPosition(precisionVolumeFader.valueAsNumber);
+    });
+    precisionVolumeFader.addEventListener("input", (ev) => {
+      const rawPos = faderValueToPosition(precisionVolumeFader.valueAsNumber);
+      const shift = ev.shiftKey === true;
+      const effectivePos = applyShiftFineFaderPosition(lastFaderPosition, rawPos, shift);
+      lastFaderPosition = effectivePos;
+      precisionVolumeFader.valueAsNumber = Math.round(effectivePos * 1e4);
+      const g = linearGainFromFaderPosition(effectivePos);
+      currentLinearGain = g;
+      precisionVolumeNumeric.value = formatPercentInput(linearGainToPercent(g));
+      updatePhaseLabel(ctx, g);
+      scheduleApply(g);
+      scheduleSave(g);
+    });
+    const applyNumeric = () => {
+      const parsed = parsePercentInput(precisionVolumeNumeric.value);
+      if (parsed === null) {
+        precisionVolumeNumeric.value = formatPercentInput(linearGainToPercent(currentLinearGain));
+        return;
+      }
+      const g = clampSignedLinearGain(percentToLinearGain(parsed));
+      syncControlsFromLinearGain(g);
+      scheduleApply(g);
+      scheduleSave(g);
+    };
+    precisionVolumeNumeric.addEventListener("change", applyNumeric);
+    precisionVolumeNumeric.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        applyNumeric();
+      }
+    });
+    precisionVolumeTabSelect.addEventListener("change", () => {
+      scheduleApply(currentLinearGain);
+      scheduleSave(currentLinearGain);
+    });
   }
 
   // src/dashboard/dashboard-shell.ts
@@ -2347,7 +2673,28 @@
         globalJitterInput: document.querySelector("[data-global-jitter]"),
         globalUrlPatterns: document.querySelector("[data-global-url-patterns]"),
         globalTwitchFavsHint: document.querySelector("[data-global-twitch-favs-hint]"),
-        globalFormError: document.querySelector("[data-global-form-error]")
+        globalFormError: document.querySelector("[data-global-form-error]"),
+        precisionVolumeSection: document.querySelector(
+          "[data-precision-volume-section]"
+        ),
+        precisionVolumeTabSelect: document.querySelector(
+          "[data-precision-volume-tab]"
+        ),
+        precisionVolumeTabSearch: document.querySelector(
+          "[data-precision-volume-tab-search]"
+        ),
+        precisionVolumeTabRefresh: document.querySelector(
+          "[data-precision-volume-tab-refresh]"
+        ),
+        precisionVolumeFader: document.querySelector(
+          "[data-precision-volume-fader]"
+        ),
+        precisionVolumeNumeric: document.querySelector(
+          "[data-precision-volume-numeric]"
+        ),
+        precisionVolumePhaseLabel: document.querySelector(
+          "[data-precision-volume-phase-label]"
+        )
       }
     };
   }
@@ -2466,13 +2813,17 @@
     bindGlobalTwitchFavsHint(dashboardContext);
     bindJobsListEvents(dashboardContext);
     bindAddIndividualJobForm(dashboardContext);
-    bindIndividualTabPickerUi(dashboardContext, individualTabCache);
+    bindIndividualTabPickerUi(dashboardContext, individualTabCache, {
+      afterTabListRefresh: () => applyPrecisionVolumeTabSelectFilter(dashboardContext, individualTabCache)
+    });
+    bindPrecisionVolumeUi(dashboardContext, individualTabCache);
     bindGlobalGroupsListEvents(dashboardContext, individualTabCache, renderIndividualJobs);
     bindGlobalTabBrowserUi(dashboardContext);
     bindGlobalGroupForm(dashboardContext, renderIndividualJobs);
     wireCrossSurfaceLinks(dashboardContext);
     void Promise.all([
       populateIndividualTabSelect(dashboardContext, individualTabCache),
+      populatePrecisionVolumeTabSelect(dashboardContext, individualTabCache),
       renderGlobalTabBrowser(dashboardContext),
       renderGlobalGroupsList(dashboardContext)
     ]).then(() => renderIndividualJobs(dashboardContext));

@@ -38,6 +38,14 @@ export type DashboardDom = {
   globalUrlPatterns: HTMLTextAreaElement | null;
   globalTwitchFavsHint: HTMLElement | null;
   globalFormError: HTMLElement | null;
+  /** Epic 11.5 — precision volume */
+  precisionVolumeSection: HTMLElement | null;
+  precisionVolumeTabSelect: HTMLSelectElement | null;
+  precisionVolumeTabSearch: HTMLInputElement | null;
+  precisionVolumeTabRefresh: HTMLButtonElement | null;
+  precisionVolumeFader: HTMLInputElement | null;
+  precisionVolumeNumeric: HTMLInputElement | null;
+  precisionVolumePhaseLabel: HTMLElement | null;
 };
 
 /** Single object passed into shell binders so later extractions avoid implicit `document` scope. */
@@ -78,6 +86,27 @@ export function createDashboardContext(): DashboardContext {
       globalUrlPatterns: document.querySelector<HTMLTextAreaElement>('[data-global-url-patterns]'),
       globalTwitchFavsHint: document.querySelector<HTMLElement>('[data-global-twitch-favs-hint]'),
       globalFormError: document.querySelector<HTMLElement>('[data-global-form-error]'),
+      precisionVolumeSection: document.querySelector<HTMLElement>(
+        '[data-precision-volume-section]'
+      ),
+      precisionVolumeTabSelect: document.querySelector<HTMLSelectElement>(
+        '[data-precision-volume-tab]'
+      ),
+      precisionVolumeTabSearch: document.querySelector<HTMLInputElement>(
+        '[data-precision-volume-tab-search]'
+      ),
+      precisionVolumeTabRefresh: document.querySelector<HTMLButtonElement>(
+        '[data-precision-volume-tab-refresh]'
+      ),
+      precisionVolumeFader: document.querySelector<HTMLInputElement>(
+        '[data-precision-volume-fader]'
+      ),
+      precisionVolumeNumeric: document.querySelector<HTMLInputElement>(
+        '[data-precision-volume-numeric]'
+      ),
+      precisionVolumePhaseLabel: document.querySelector<HTMLElement>(
+        '[data-precision-volume-phase-label]'
+      ),
     },
   };
 }

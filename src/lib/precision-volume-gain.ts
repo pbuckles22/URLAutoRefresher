@@ -22,6 +22,20 @@ export function clampLinearGain(g: number): number {
   return g;
 }
 
+/** Signed linear gain for dashboard + phase invert (Epic 11.5); shortcuts stay non-negative. */
+export function clampSignedLinearGain(g: number): number {
+  if (!Number.isFinite(g)) {
+    return 0;
+  }
+  if (g < -PV_MAX_GAIN_LINEAR) {
+    return -PV_MAX_GAIN_LINEAR;
+  }
+  if (g > PV_MAX_GAIN_LINEAR) {
+    return PV_MAX_GAIN_LINEAR;
+  }
+  return g;
+}
+
 /** First “up” from silence uses a small floor so exponential ramps stay valid. */
 export function stepGainUpLinear(current: number): number {
   const c = current <= 0 || !Number.isFinite(current) ? PV_MIN_GAIN_EXP : current;

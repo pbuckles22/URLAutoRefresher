@@ -10,7 +10,11 @@ import {
 } from '../lib/messages';
 
 export function isLinearGainRoutable(linearGain: number): boolean {
-  return linearGain >= 0 && linearGain <= PV_MAX_GAIN_LINEAR;
+  return (
+    Number.isFinite(linearGain) &&
+    linearGain >= -PV_MAX_GAIN_LINEAR &&
+    linearGain <= PV_MAX_GAIN_LINEAR
+  );
 }
 
 export function isTrustedPrecisionVolumeSender(sender: chrome.runtime.MessageSender): boolean {

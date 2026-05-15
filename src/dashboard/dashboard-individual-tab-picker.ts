@@ -100,7 +100,8 @@ export function syncIndividualTargetUrlFromSelectedTab(
 
 export function bindIndividualTabPickerUi(
   ctx: DashboardContext,
-  cache: IndividualTabPickerCache
+  cache: IndividualTabPickerCache,
+  options?: { afterTabListRefresh?: () => void }
 ): void {
   const { jobTabSearch, jobTabRefresh, tabSelect } = ctx.dom;
 
@@ -110,7 +111,11 @@ export function bindIndividualTabPickerUi(
   }
 
   if (jobTabRefresh) {
-    jobTabRefresh.addEventListener('click', () => void populateIndividualTabSelect(ctx, cache));
+    jobTabRefresh.addEventListener(
+      'click',
+      () =>
+        void populateIndividualTabSelect(ctx, cache).then(() => options?.afterTabListRefresh?.())
+    );
   }
 
   if (tabSelect && tabSelect.dataset.targetSyncBound !== '1') {

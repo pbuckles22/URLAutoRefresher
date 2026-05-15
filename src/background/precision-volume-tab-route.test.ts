@@ -127,10 +127,12 @@ describe('precision-volume-tab-route', () => {
     });
   });
 
-  it('isLinearGainRoutable enforces Epic 11 linear domain (phase invert deferred to 11.5)', () => {
+  it('isLinearGainRoutable allows signed Epic 11.5 domain', () => {
     expect(isLinearGainRoutable(0)).toBe(true);
     expect(isLinearGainRoutable(PV_MAX_GAIN_LINEAR)).toBe(true);
-    expect(isLinearGainRoutable(-0.001)).toBe(false);
+    expect(isLinearGainRoutable(-PV_MAX_GAIN_LINEAR)).toBe(true);
+    expect(isLinearGainRoutable(-0.001)).toBe(true);
     expect(isLinearGainRoutable(PV_MAX_GAIN_LINEAR + 0.001)).toBe(false);
+    expect(isLinearGainRoutable(-PV_MAX_GAIN_LINEAR - 0.001)).toBe(false);
   });
 });

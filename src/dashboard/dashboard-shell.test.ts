@@ -39,6 +39,13 @@ function emptyShellDom(over: Partial<DashboardDom> = {}): DashboardDom {
     globalUrlPatterns: null,
     globalTwitchFavsHint: null,
     globalFormError: null,
+    precisionVolumeSection: null,
+    precisionVolumeTabSelect: null,
+    precisionVolumeTabSearch: null,
+    precisionVolumeTabRefresh: null,
+    precisionVolumeFader: null,
+    precisionVolumeNumeric: null,
+    precisionVolumePhaseLabel: null,
     ...over,
   };
 }
@@ -108,6 +115,7 @@ describe('bindOverlayPreference', () => {
   beforeEach(() => {
     loadSpy = vi.spyOn(prefs, 'loadExtensionPrefs').mockResolvedValue({
       showPageOverlayTimer: true,
+      precisionVolume: { lastTabId: null, lastLinearGain: 1 },
     });
     saveSpy = vi.spyOn(prefs, 'saveExtensionPrefs').mockResolvedValue(undefined);
   });

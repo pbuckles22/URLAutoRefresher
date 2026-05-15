@@ -21,6 +21,11 @@ import {
   populateIndividualTabSelect,
 } from './dashboard-individual-tab-picker';
 import {
+  applyPrecisionVolumeTabSelectFilter,
+  bindPrecisionVolumeUi,
+  populatePrecisionVolumeTabSelect,
+} from './dashboard-precision-volume';
+import {
   bindOverlayPreference,
   createDashboardContext,
   wireCrossSurfaceLinks,
@@ -43,7 +48,11 @@ export function initDashboardApp(): void {
   bindGlobalTwitchFavsHint(dashboardContext);
   bindJobsListEvents(dashboardContext);
   bindAddIndividualJobForm(dashboardContext);
-  bindIndividualTabPickerUi(dashboardContext, individualTabCache);
+  bindIndividualTabPickerUi(dashboardContext, individualTabCache, {
+    afterTabListRefresh: () =>
+      applyPrecisionVolumeTabSelectFilter(dashboardContext, individualTabCache),
+  });
+  bindPrecisionVolumeUi(dashboardContext, individualTabCache);
   bindGlobalGroupsListEvents(dashboardContext, individualTabCache, renderIndividualJobs);
   bindGlobalTabBrowserUi(dashboardContext);
   bindGlobalGroupForm(dashboardContext, renderIndividualJobs);
@@ -51,6 +60,7 @@ export function initDashboardApp(): void {
 
   void Promise.all([
     populateIndividualTabSelect(dashboardContext, individualTabCache),
+    populatePrecisionVolumeTabSelect(dashboardContext, individualTabCache),
     renderGlobalTabBrowser(dashboardContext),
     renderGlobalGroupsList(dashboardContext),
   ]).then(() => renderIndividualJobs(dashboardContext));

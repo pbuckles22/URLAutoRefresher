@@ -34,7 +34,12 @@ describe('getPageOverlayUiState (Epic 3.0)', () => {
       ],
     };
     await expect(
-      getPageOverlayUiState(state, { showPageOverlayTimer: false }, 1, 'https://a.test')
+      getPageOverlayUiState(
+        state,
+        { ...DEFAULT_PREFS, showPageOverlayTimer: false },
+        1,
+        'https://a.test'
+      )
     ).resolves.toEqual({
       show: false,
     });
