@@ -22,6 +22,9 @@ export type DashboardDom = {
   liveAwareInput: HTMLInputElement | null;
   blipPhrasesAdd: HTMLTextAreaElement | null;
   blipRegexAdd: HTMLInputElement | null;
+  /** Epic 13.B3 — individual add-job tab search + refresh */
+  jobTabSearch: HTMLInputElement | null;
+  jobTabRefresh: HTMLButtonElement | null;
 };
 
 /** Single object passed into shell binders so later extractions avoid implicit `document` scope. */
@@ -48,6 +51,8 @@ export function createDashboardContext(): DashboardContext {
       liveAwareInput: document.querySelector<HTMLInputElement>('[data-job-live-aware]'),
       blipPhrasesAdd: document.querySelector<HTMLTextAreaElement>('[data-job-blip-phrases]'),
       blipRegexAdd: document.querySelector<HTMLInputElement>('[data-job-blip-regex]'),
+      jobTabSearch: document.querySelector<HTMLInputElement>('[data-job-tab-search]'),
+      jobTabRefresh: document.querySelector<HTMLButtonElement>('[data-job-tab-refresh]'),
     },
   };
 }

@@ -810,6 +810,30 @@
     return next;
   }
 
+  // src/lib/preferred-pin-tab.ts
+  function isSchedulableWebUrl(url) {
+    const u = (url ?? "").trim();
+    return u.startsWith("http://") || u.startsWith("https://");
+  }
+  async function resolvePreferredPinTabId() {
+    try {
+      const win = await chrome.windows.getLastFocused({ populate: true });
+      const tabs = win.tabs ?? [];
+      const active = tabs.find((t) => t.active);
+      if (active?.id !== void 0 && isSchedulableWebUrl(active.url)) {
+        return active.id;
+      }
+      const sorted = [...tabs].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+      for (const t of sorted) {
+        if (t.id !== void 0 && isSchedulableWebUrl(t.url)) {
+          return t.id;
+        }
+      }
+    } catch {
+    }
+    return void 0;
+  }
+
   // src/lib/app-state-list-layout.ts
   function individualJobsLayoutSignature(s) {
     return JSON.stringify(
@@ -1784,6 +1808,88 @@
     });
   }
 
+  // src/dashboard/dashboard-individual-tab-picker.ts
+  function createIndividualTabPickerCache() {
+    return { tabs: [] };
+  }
+  async function refreshIndividualTabPickerCache(cache) {
+    const [tabs, pinId] = await Promise.all([chrome.tabs.query({}), resolvePreferredPinTabId()]);
+    const withIds = tabs.filter(
+      (t) => typeof t.id === "number" && typeof t.windowId === "number"
+    );
+    withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
+    cache.tabs = pinTabIdFirst(withIds, pinId);
+  }
+  function applyIndividualTabSelectFilter(ctx, cache) {
+    const { tabSelect, jobTabSearch } = ctx.dom;
+    if (!tabSelect) {
+      return;
+    }
+    const q = (jobTabSearch?.value ?? "").trim().toLowerCase();
+    const prev = tabSelect.value;
+    tabSelect.innerHTML = '<option value="">Select a tab\u2026</option>';
+    for (const t of cache.tabs) {
+      const label = t.title?.trim() || t.url || `Tab ${t.id}`;
+      const url = t.url ?? "";
+      const hay = `${label} (${t.id}) ${url}`.toLowerCase();
+      if (q !== "" && !hay.includes(q)) {
+        continue;
+      }
+      const opt = document.createElement("option");
+      opt.value = String(t.id);
+      opt.textContent = `${label} (${t.id})`;
+      tabSelect.appendChild(opt);
+    }
+    const stillValid = prev !== "" && [...tabSelect.options].some((o) => o.value === prev);
+    tabSelect.value = stillValid ? prev : "";
+  }
+  async function populateIndividualTabSelect(ctx, cache) {
+    await refreshIndividualTabPickerCache(cache);
+    if (!ctx.dom.tabSelect) {
+      return;
+    }
+    applyIndividualTabSelectFilter(ctx, cache);
+  }
+  function syncIndividualTargetUrlFromSelectedTab(ctx, cache) {
+    const { tabSelect, urlInput } = ctx.dom;
+    if (!tabSelect || !urlInput) {
+      return;
+    }
+    const raw = tabSelect.value;
+    if (raw === "") {
+      return;
+    }
+    const tabId = Number(raw);
+    if (!Number.isInteger(tabId) || tabId < 1) {
+      return;
+    }
+    const tab = cache.tabs.find((t) => t.id === tabId);
+    if (tab) {
+      urlInput.value = defaultTargetUrlForTab(tab.url ?? "");
+      return;
+    }
+    void chrome.tabs.get(tabId).then((t) => {
+      if (tabSelect?.value !== String(tabId) || !urlInput) {
+        return;
+      }
+      urlInput.value = defaultTargetUrlForTab(t.url ?? "");
+    });
+  }
+  function bindIndividualTabPickerUi(ctx, cache) {
+    const { jobTabSearch, jobTabRefresh, tabSelect } = ctx.dom;
+    if (jobTabSearch && jobTabSearch.dataset.filterBound !== "1") {
+      jobTabSearch.dataset.filterBound = "1";
+      jobTabSearch.addEventListener("input", () => applyIndividualTabSelectFilter(ctx, cache));
+    }
+    if (jobTabRefresh) {
+      jobTabRefresh.addEventListener("click", () => void populateIndividualTabSelect(ctx, cache));
+    }
+    if (tabSelect && tabSelect.dataset.targetSyncBound !== "1") {
+      tabSelect.dataset.targetSyncBound = "1";
+      tabSelect.addEventListener("change", () => syncIndividualTargetUrlFromSelectedTab(ctx, cache));
+    }
+  }
+
   // src/lib/prefs.ts
   var PREFS_STORAGE_KEY = "urlAutoRefresher_prefs_v1";
   var DEFAULT_PREFS = {
@@ -1825,7 +1931,9 @@
         jitterInput: document.querySelector("[data-job-jitter]"),
         liveAwareInput: document.querySelector("[data-job-live-aware]"),
         blipPhrasesAdd: document.querySelector("[data-job-blip-phrases]"),
-        blipRegexAdd: document.querySelector("[data-job-blip-regex]")
+        blipRegexAdd: document.querySelector("[data-job-blip-regex]"),
+        jobTabSearch: document.querySelector("[data-job-tab-search]"),
+        jobTabRefresh: document.querySelector("[data-job-tab-refresh]")
       }
     };
   }
@@ -1862,14 +1970,12 @@
   // src/dashboard/dashboard-app.ts
   function initDashboardApp() {
     const dashboardContext = createDashboardContext();
+    const individualTabCache = createIndividualTabPickerCache();
     const title = document.querySelector("[data-app-title]");
     if (title) {
       title.textContent = chrome.runtime.getManifest().name;
     }
     bindOverlayPreference(dashboardContext);
-    const { tabSelect, urlInput } = dashboardContext.dom;
-    const jobTabSearch = document.querySelector("[data-job-tab-search]");
-    const jobTabRefresh = document.querySelector("[data-job-tab-refresh]");
     const globalGroupForm = document.querySelector("[data-global-group-form]");
     const globalGroupName = document.querySelector("[data-global-group-name]");
     const globalTabBrowser = document.querySelector("[data-global-tab-browser]");
@@ -1926,28 +2032,6 @@
         }
       }
     }
-    function isSchedulableWebUrl(url) {
-      const u = (url ?? "").trim();
-      return u.startsWith("http://") || u.startsWith("https://");
-    }
-    async function resolvePreferredPinTabId() {
-      try {
-        const win = await chrome.windows.getLastFocused({ populate: true });
-        const tabs = win.tabs ?? [];
-        const active = tabs.find((t) => t.active);
-        if (active?.id !== void 0 && isSchedulableWebUrl(active.url)) {
-          return active.id;
-        }
-        const sorted = [...tabs].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
-        for (const t of sorted) {
-          if (t.id !== void 0 && isSchedulableWebUrl(t.url)) {
-            return t.id;
-          }
-        }
-      } catch {
-      }
-      return void 0;
-    }
     async function renderGlobalTabBrowser() {
       if (!globalTabBrowser) {
         return;
@@ -2000,44 +2084,6 @@
       }
       applyGlobalTabSearchFilter();
     }
-    let cachedIndividualTabs = [];
-    function applyIndividualTabSelectFilter() {
-      if (!tabSelect) {
-        return;
-      }
-      const q = (jobTabSearch?.value ?? "").trim().toLowerCase();
-      const prev = tabSelect.value;
-      tabSelect.innerHTML = '<option value="">Select a tab\u2026</option>';
-      for (const t of cachedIndividualTabs) {
-        const label = t.title?.trim() || t.url || `Tab ${t.id}`;
-        const url = t.url ?? "";
-        const hay = `${label} (${t.id}) ${url}`.toLowerCase();
-        if (q !== "" && !hay.includes(q)) {
-          continue;
-        }
-        const opt = document.createElement("option");
-        opt.value = String(t.id);
-        opt.textContent = `${label} (${t.id})`;
-        tabSelect.appendChild(opt);
-      }
-      const stillValid = prev !== "" && [...tabSelect.options].some((o) => o.value === prev);
-      tabSelect.value = stillValid ? prev : "";
-    }
-    async function refreshCachedTabs() {
-      const [tabs, pinId] = await Promise.all([chrome.tabs.query({}), resolvePreferredPinTabId()]);
-      const withIds = tabs.filter(
-        (t) => typeof t.id === "number" && typeof t.windowId === "number"
-      );
-      withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
-      cachedIndividualTabs = pinTabIdFirst(withIds, pinId);
-    }
-    async function populateTabSelect() {
-      await refreshCachedTabs();
-      if (!tabSelect) {
-        return;
-      }
-      applyIndividualTabSelectFilter();
-    }
     function populateGlobalEditNewTabSelect(selectEl, groupRow) {
       const selfRow = selectEl.closest("[data-global-edit-target-row]");
       const taken = /* @__PURE__ */ new Set();
@@ -2054,7 +2100,7 @@
       }
       const current = selectEl.value;
       selectEl.innerHTML = '<option value="">Select a tab\u2026</option>';
-      for (const t of cachedIndividualTabs) {
+      for (const t of individualTabCache.tabs) {
         if (t.id !== Number(current) && taken.has(t.id)) {
           continue;
         }
@@ -2067,30 +2113,6 @@
       }
       const still = current !== "" && [...selectEl.options].some((o) => o.value === current);
       selectEl.value = still ? current : "";
-    }
-    function syncIndividualTargetUrlFromSelectedTab() {
-      if (!tabSelect || !urlInput) {
-        return;
-      }
-      const raw = tabSelect.value;
-      if (raw === "") {
-        return;
-      }
-      const tabId = Number(raw);
-      if (!Number.isInteger(tabId) || tabId < 1) {
-        return;
-      }
-      const tab = cachedIndividualTabs.find((t) => t.id === tabId);
-      if (tab) {
-        urlInput.value = defaultTargetUrlForTab(tab.url ?? "");
-        return;
-      }
-      void chrome.tabs.get(tabId).then((t) => {
-        if (tabSelect?.value !== String(tabId) || !urlInput) {
-          return;
-        }
-        urlInput.value = defaultTargetUrlForTab(t.url ?? "");
-      });
     }
     async function tickCountdowns() {
       const state = await loadAppState();
@@ -2165,7 +2187,7 @@
         if (t.closest("[data-global-edit-add-target]")) {
           e.preventDefault();
           void (async () => {
-            await refreshCachedTabs();
+            await refreshIndividualTabPickerCache(individualTabCache);
             const container = row.querySelector("[data-global-edit-targets]");
             if (!container || !(container instanceof HTMLElement)) {
               return;
@@ -2228,7 +2250,7 @@
                   }
                   return;
                 }
-                const tabMeta = cachedIndividualTabs.find((x) => x.id === tabId);
+                const tabMeta = individualTabCache.tabs.find((x) => x.id === tabId);
                 const label = tabMeta?.title?.trim();
                 targets.push({
                   targetUrl: urlIn?.value ?? "",
@@ -2308,7 +2330,7 @@
             urlIn.value = "";
             return;
           }
-          const tab = cachedIndividualTabs.find((x) => x.id === tabId);
+          const tab = individualTabCache.tabs.find((x) => x.id === tabId);
           if (tab) {
             urlIn.value = defaultTargetUrlForTab(tab.url ?? "");
           } else {
@@ -2343,6 +2365,7 @@
     });
     bindJobsListEvents(dashboardContext);
     bindAddIndividualJobForm(dashboardContext);
+    bindIndividualTabPickerUi(dashboardContext, individualTabCache);
     bindGlobalGroupsListEvents();
     wireCrossSurfaceLinks(dashboardContext);
     window.setInterval(() => void tickCountdowns(), 1e3);
@@ -2352,17 +2375,6 @@
     if (globalTabSearch && globalTabSearch.dataset.filterBound !== "1") {
       globalTabSearch.dataset.filterBound = "1";
       globalTabSearch.addEventListener("input", () => applyGlobalTabSearchFilter());
-    }
-    if (jobTabSearch && jobTabSearch.dataset.filterBound !== "1") {
-      jobTabSearch.dataset.filterBound = "1";
-      jobTabSearch.addEventListener("input", () => applyIndividualTabSelectFilter());
-    }
-    if (jobTabRefresh) {
-      jobTabRefresh.addEventListener("click", () => void populateTabSelect());
-    }
-    if (tabSelect && tabSelect.dataset.targetSyncBound !== "1") {
-      tabSelect.dataset.targetSyncBound = "1";
-      tabSelect.addEventListener("change", () => syncIndividualTargetUrlFromSelectedTab());
     }
     if (globalGroupForm && globalGroupName && globalTabBrowser && globalIntervalInput && globalJitterInput) {
       globalGroupForm.addEventListener("submit", (e) => {
@@ -2423,9 +2435,11 @@
         })();
       });
     }
-    void Promise.all([populateTabSelect(), renderGlobalTabBrowser(), renderGlobalGroupsList()]).then(
-      () => renderIndividualJobs(dashboardContext)
-    );
+    void Promise.all([
+      populateIndividualTabSelect(dashboardContext, individualTabCache),
+      renderGlobalTabBrowser(),
+      renderGlobalGroupsList()
+    ]).then(() => renderIndividualJobs(dashboardContext));
   }
 
   // src/dashboard/dashboard.ts

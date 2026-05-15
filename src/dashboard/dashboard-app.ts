@@ -17,11 +17,8 @@ import { memberKeyFromTargetUrl } from '../lib/member-url';
 import { isTwitchFavsGroupName, TWITCH_FAVS_PATTERN_HINT } from '../lib/twitch-favs';
 import { validateHttpUrl } from '../lib/validation';
 import { mergeDistinctPatternLines } from '../lib/url-glob';
-import {
-  defaultTargetUrlForTab,
-  pinTabIdFirst,
-  tabRowsFromWindowsSnapshot,
-} from '../lib/window-tab-browser';
+import { defaultTargetUrlForTab, tabRowsFromWindowsSnapshot } from '../lib/window-tab-browser';
+import { resolvePreferredPinTabId } from '../lib/preferred-pin-tab';
 import { onlyNonLayoutAppStateDiff } from '../lib/app-state-list-layout';
 import { validateGlobalGroupResolvedEnrollment } from '../lib/global-group-enrollment';
 import { loadAppState, saveAppState, STORAGE_KEY } from '../lib/storage';
@@ -32,6 +29,12 @@ import {
   tickIndividualJobCountdowns,
 } from './dashboard-individual-jobs';
 import {
+  bindIndividualTabPickerUi,
+  createIndividualTabPickerCache,
+  populateIndividualTabSelect,
+  refreshIndividualTabPickerCache,
+} from './dashboard-individual-tab-picker';
+import {
   bindOverlayPreference,
   createDashboardContext,
   wireCrossSurfaceLinks,
@@ -39,6 +42,7 @@ import {
 
 export function initDashboardApp(): void {
   const dashboardContext = createDashboardContext();
+  const individualTabCache = createIndividualTabPickerCache();
 
   const title = document.querySelector<HTMLElement>('[data-app-title]');
   if (title) {
@@ -46,10 +50,6 @@ export function initDashboardApp(): void {
   }
 
   bindOverlayPreference(dashboardContext);
-
-  const { tabSelect, urlInput } = dashboardContext.dom;
-  const jobTabSearch = document.querySelector<HTMLInputElement>('[data-job-tab-search]');
-  const jobTabRefresh = document.querySelector<HTMLButtonElement>('[data-job-tab-refresh]');
 
   const globalGroupForm = document.querySelector<HTMLFormElement>('[data-global-group-form]');
   const globalGroupName = document.querySelector<HTMLInputElement>('[data-global-group-name]');
@@ -113,32 +113,6 @@ export function initDashboardApp(): void {
     }
   }
 
-  function isSchedulableWebUrl(url: string | undefined): boolean {
-    const u = (url ?? '').trim();
-    return u.startsWith('http://') || u.startsWith('https://');
-  }
-
-  /** Active tab in last-focused window when it is a normal page; else first http(s) tab in that window. */
-  async function resolvePreferredPinTabId(): Promise<number | undefined> {
-    try {
-      const win = await chrome.windows.getLastFocused({ populate: true });
-      const tabs = win.tabs ?? [];
-      const active = tabs.find((t) => t.active);
-      if (active?.id !== undefined && isSchedulableWebUrl(active.url)) {
-        return active.id;
-      }
-      const sorted = [...tabs].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
-      for (const t of sorted) {
-        if (t.id !== undefined && isSchedulableWebUrl(t.url)) {
-          return t.id;
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-    return undefined;
-  }
-
   async function renderGlobalTabBrowser(): Promise<void> {
     if (!globalTabBrowser) {
       return;
@@ -196,50 +170,6 @@ export function initDashboardApp(): void {
     applyGlobalTabSearchFilter();
   }
 
-  type TabWithIds = chrome.tabs.Tab & { id: number; windowId: number };
-  let cachedIndividualTabs: TabWithIds[] = [];
-
-  function applyIndividualTabSelectFilter(): void {
-    if (!tabSelect) {
-      return;
-    }
-    const q = (jobTabSearch?.value ?? '').trim().toLowerCase();
-    const prev = tabSelect.value;
-    tabSelect.innerHTML = '<option value="">Select a tab…</option>';
-    for (const t of cachedIndividualTabs) {
-      const label = t.title?.trim() || t.url || `Tab ${t.id}`;
-      const url = t.url ?? '';
-      const hay = `${label} (${t.id}) ${url}`.toLowerCase();
-      if (q !== '' && !hay.includes(q)) {
-        continue;
-      }
-      const opt = document.createElement('option');
-      opt.value = String(t.id);
-      opt.textContent = `${label} (${t.id})`;
-      tabSelect.appendChild(opt);
-    }
-    const stillValid = prev !== '' && [...tabSelect.options].some((o) => o.value === prev);
-    tabSelect.value = stillValid ? prev : '';
-  }
-
-  async function refreshCachedTabs(): Promise<void> {
-    const [tabs, pinId] = await Promise.all([chrome.tabs.query({}), resolvePreferredPinTabId()]);
-    const withIds = tabs.filter(
-      (t): t is TabWithIds => typeof t.id === 'number' && typeof t.windowId === 'number'
-    );
-    withIds.sort((a, b) => a.windowId - b.windowId || (a.index ?? 0) - (b.index ?? 0));
-    cachedIndividualTabs = pinTabIdFirst(withIds, pinId);
-  }
-
-  async function populateTabSelect(): Promise<void> {
-    await refreshCachedTabs();
-    if (!tabSelect) {
-      return;
-    }
-    applyIndividualTabSelectFilter();
-  }
-
-  /** Options for a new global-group member row: exclude tabs already chosen on other rows. */
   function populateGlobalEditNewTabSelect(
     selectEl: HTMLSelectElement,
     groupRow: HTMLElement
@@ -259,7 +189,7 @@ export function initDashboardApp(): void {
     }
     const current = selectEl.value;
     selectEl.innerHTML = '<option value="">Select a tab…</option>';
-    for (const t of cachedIndividualTabs) {
+    for (const t of individualTabCache.tabs) {
       if (t.id !== Number(current) && taken.has(t.id)) {
         continue;
       }
@@ -272,35 +202,6 @@ export function initDashboardApp(): void {
     }
     const still = current !== '' && [...selectEl.options].some((o) => o.value === current);
     selectEl.value = still ? current : '';
-  }
-
-  /**
-   * When the user picks a tab, default Target URL to that tab’s current http(s) URL (from cache).
-   * Uses synchronous cache so we don’t race with user edits; use “Refresh tab list” if tabs moved.
-   */
-  function syncIndividualTargetUrlFromSelectedTab(): void {
-    if (!tabSelect || !urlInput) {
-      return;
-    }
-    const raw = tabSelect.value;
-    if (raw === '') {
-      return;
-    }
-    const tabId = Number(raw);
-    if (!Number.isInteger(tabId) || tabId < 1) {
-      return;
-    }
-    const tab = cachedIndividualTabs.find((t) => t.id === tabId);
-    if (tab) {
-      urlInput.value = defaultTargetUrlForTab(tab.url ?? '');
-      return;
-    }
-    void chrome.tabs.get(tabId).then((t) => {
-      if (tabSelect?.value !== String(tabId) || !urlInput) {
-        return;
-      }
-      urlInput.value = defaultTargetUrlForTab(t.url ?? '');
-    });
   }
 
   async function tickCountdowns(): Promise<void> {
@@ -381,7 +282,7 @@ export function initDashboardApp(): void {
       if (t.closest('[data-global-edit-add-target]')) {
         e.preventDefault();
         void (async () => {
-          await refreshCachedTabs();
+          await refreshIndividualTabPickerCache(individualTabCache);
           const container = row.querySelector('[data-global-edit-targets]');
           if (!container || !(container instanceof HTMLElement)) {
             return;
@@ -452,7 +353,7 @@ export function initDashboardApp(): void {
                 }
                 return;
               }
-              const tabMeta = cachedIndividualTabs.find((x) => x.id === tabId);
+              const tabMeta = individualTabCache.tabs.find((x) => x.id === tabId);
               const label = tabMeta?.title?.trim();
               targets.push({
                 targetUrl: urlIn?.value ?? '',
@@ -538,7 +439,7 @@ export function initDashboardApp(): void {
           urlIn.value = '';
           return;
         }
-        const tab = cachedIndividualTabs.find((x) => x.id === tabId);
+        const tab = individualTabCache.tabs.find((x) => x.id === tabId);
         if (tab) {
           urlIn.value = defaultTargetUrlForTab(tab.url ?? '');
         } else {
@@ -575,6 +476,7 @@ export function initDashboardApp(): void {
 
   bindJobsListEvents(dashboardContext);
   bindAddIndividualJobForm(dashboardContext);
+  bindIndividualTabPickerUi(dashboardContext, individualTabCache);
   bindGlobalGroupsListEvents();
   wireCrossSurfaceLinks(dashboardContext);
   window.setInterval(() => void tickCountdowns(), 1000);
@@ -586,20 +488,6 @@ export function initDashboardApp(): void {
   if (globalTabSearch && globalTabSearch.dataset.filterBound !== '1') {
     globalTabSearch.dataset.filterBound = '1';
     globalTabSearch.addEventListener('input', () => applyGlobalTabSearchFilter());
-  }
-
-  if (jobTabSearch && jobTabSearch.dataset.filterBound !== '1') {
-    jobTabSearch.dataset.filterBound = '1';
-    jobTabSearch.addEventListener('input', () => applyIndividualTabSelectFilter());
-  }
-
-  if (jobTabRefresh) {
-    jobTabRefresh.addEventListener('click', () => void populateTabSelect());
-  }
-
-  if (tabSelect && tabSelect.dataset.targetSyncBound !== '1') {
-    tabSelect.dataset.targetSyncBound = '1';
-    tabSelect.addEventListener('change', () => syncIndividualTargetUrlFromSelectedTab());
   }
 
   if (
@@ -669,7 +557,9 @@ export function initDashboardApp(): void {
     });
   }
 
-  void Promise.all([populateTabSelect(), renderGlobalTabBrowser(), renderGlobalGroupsList()]).then(
-    () => renderIndividualJobs(dashboardContext)
-  );
+  void Promise.all([
+    populateIndividualTabSelect(dashboardContext, individualTabCache),
+    renderGlobalTabBrowser(),
+    renderGlobalGroupsList(),
+  ]).then(() => renderIndividualJobs(dashboardContext));
 }

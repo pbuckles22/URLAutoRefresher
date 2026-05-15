@@ -25,6 +25,8 @@ function emptyShellDom(over: Partial<DashboardDom> = {}): DashboardDom {
     liveAwareInput: null,
     blipPhrasesAdd: null,
     blipRegexAdd: null,
+    jobTabSearch: null,
+    jobTabRefresh: null,
     ...over,
   };
 }
@@ -48,6 +50,8 @@ describe('createDashboardContext', () => {
       <h2 data-individual-section-heading></h2>
       <ul data-individual-jobs-list></ul>
       <form data-add-individual-form></form>
+      <input type="search" data-job-tab-search />
+      <button type="button" data-job-tab-refresh></button>
     `;
     const ctx = createDashboardContext();
     expect(ctx.dom.openSidePanel).not.toBeNull();
@@ -56,6 +60,8 @@ describe('createDashboardContext', () => {
     expect(ctx.dom.individualSectionHeading).not.toBeNull();
     expect(ctx.dom.jobsList).not.toBeNull();
     expect(ctx.dom.addJobForm).not.toBeNull();
+    expect(ctx.dom.jobTabSearch).not.toBeNull();
+    expect(ctx.dom.jobTabRefresh).not.toBeNull();
   });
 });
 
