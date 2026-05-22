@@ -10,6 +10,7 @@ All project documentation lives under **`doc/`** (lowercase). The old top-level 
 | **[`requirements/`](requirements/)**                                               | Fine-grained requirements (`product.md`, `ui-ux.md`, …) when you add them; skills point here when present.                                                                             |
 | **[`ui-reference/`](ui-reference/)**                                               | Third-party UI inspiration screenshots (not our branding); see README there.                                                                                                           |
 | **[`handoff/`](handoff/)**                                                         | On **`main`**, only **[`HANDOFF_MOVE_TO_LOCAL.md`](handoff/HANDOFF_MOVE_TO_LOCAL.md)** (generic UNC → local). Session **`HANDOFF-*.md`** files are **gitignored** (local agent notes). |
+| **[`uat/DAILY-TWITCHFAVS-ROLLOUT.md`](uat/DAILY-TWITCHFAVS-ROLLOUT.md)**           | Deploy, UAT, and daily **TwitchFavs** snap-back routine (tracked on **`main`**).                                                                                                       |
 
 ## History
 

@@ -7,6 +7,7 @@ import {
   stepGainDownLinear,
   stepGainUpLinear,
 } from '../lib/precision-volume-gain';
+import { gatherHtmlMediaUnderRoot } from '../lib/precision-volume-media-mutation';
 import {
   pickPrimaryMediaIndex,
   type PrimaryMediaPickFields,
@@ -79,6 +80,21 @@ function pickPrimaryMediaElement(): HTMLMediaElement | null {
     return null;
   }
   return list[idx] ?? null;
+}
+
+function releaseHookForMedia(el: HTMLMediaElement): void {
+  const state = hookByMedia.get(el);
+  if (!state) {
+    return;
+  }
+  try {
+    state.source.disconnect();
+    state.gainNode.disconnect();
+  } catch {
+    /* graph may already be disconnected */
+  }
+  hookByMedia.delete(el);
+  mediaHookFailed.delete(el);
 }
 
 /**
@@ -234,6 +250,61 @@ function handlePrecisionVolumeApply(msg: PrecisionVolumeApplyMessage): void {
 function isShortcutAction(a: unknown): a is PrecisionVolumeShortcutAction {
   return a === 'volume-up' || a === 'volume-down' || a === 'panic-mute';
 }
+
+/** Epic 11.3 — SPA churn: tear down Web Audio when `<video>` / `<audio>` leaves the tree (do not pre-hook adds: gain 0 would mute until user acts). */
+const MEDIA_REMOVAL_DEBOUNCE_MS = 200;
+let mediaRemovalObserver: MutationObserver | undefined;
+let mediaRemovalDebounce: ReturnType<typeof setTimeout> | undefined;
+let pendingRemovalMutations: MutationRecord[] | undefined;
+
+function flushPendingMediaRemovals(): void {
+  mediaRemovalDebounce = undefined;
+  if (!chrome.runtime?.id) {
+    mediaRemovalObserver?.disconnect();
+    mediaRemovalObserver = undefined;
+    pendingRemovalMutations = undefined;
+    return;
+  }
+  const batch = pendingRemovalMutations;
+  pendingRemovalMutations = undefined;
+  if (!batch?.length) {
+    return;
+  }
+  const seen = new Set<HTMLMediaElement>();
+  for (const m of batch) {
+    for (const n of m.removedNodes) {
+      for (const el of gatherHtmlMediaUnderRoot(n)) {
+        seen.add(el);
+      }
+    }
+  }
+  for (const el of seen) {
+    releaseHookForMedia(el);
+  }
+}
+
+function enqueueMediaRemovalMutations(records: MutationRecord[]): void {
+  if (!chrome.runtime?.id) {
+    return;
+  }
+  pendingRemovalMutations = pendingRemovalMutations
+    ? pendingRemovalMutations.concat(records)
+    : records.slice();
+  clearTimeout(mediaRemovalDebounce);
+  mediaRemovalDebounce = setTimeout(flushPendingMediaRemovals, MEDIA_REMOVAL_DEBOUNCE_MS);
+}
+
+function attachPrecisionVolumeMediaRemovalObserver(): void {
+  if (mediaRemovalObserver || typeof document === 'undefined') {
+    return;
+  }
+  mediaRemovalObserver = new MutationObserver((records) => {
+    enqueueMediaRemovalMutations(records);
+  });
+  mediaRemovalObserver.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+attachPrecisionVolumeMediaRemovalObserver();
 
 chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
   const m = msg as Partial<PrecisionVolumeApplyMessage>;

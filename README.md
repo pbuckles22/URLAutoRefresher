@@ -115,7 +115,7 @@ Registered via **`chrome.commands`** in [`manifest.json`](manifest.json) (defaul
 
 Only key names [documented for `chrome.commands`](https://developer.chrome.com/docs/extensions/reference/api/commands#supported_keys) are valid (e.g. `Up`, `Down`, `0`–`9`, `Comma`, `Period` — not `Equal`, `Minus`, or `Digit0`). Remap under **edge://extensions/shortcuts** if a chord conflicts with the browser or OS.
 
-The active tab’s content script receives the command and applies **Web Audio** gain on the primary `<video>` / `<audio>` (**11.1** commands + **11.2** hook). **11.3+** adds SPA discovery, dashboard control, and OSD.
+The active tab’s content script receives the command and applies **Web Audio** gain on the primary `<video>` / `<audio>` (**11.1** commands + **11.2** hook). **11.3** tears down stale graphs when SPA navigation removes media nodes; **11.4–11.7** add tab-routed messaging, dashboard / side panel controls, shortcut OSD, and tests.
 
 ## Manual QA (releases)
 
