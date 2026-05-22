@@ -46,6 +46,7 @@ export type DashboardDom = {
   precisionVolumeFader: HTMLInputElement | null;
   precisionVolumeNumeric: HTMLInputElement | null;
   precisionVolumePhaseLabel: HTMLElement | null;
+  precisionVolumeApplyHint: HTMLElement | null;
 };
 
 /** Single object passed into shell binders so later extractions avoid implicit `document` scope. */
@@ -106,6 +107,9 @@ export function createDashboardContext(): DashboardContext {
       ),
       precisionVolumePhaseLabel: document.querySelector<HTMLElement>(
         '[data-precision-volume-phase-label]'
+      ),
+      precisionVolumeApplyHint: document.querySelector<HTMLElement>(
+        '[data-precision-volume-apply-hint]'
       ),
     },
   };

@@ -22,6 +22,48 @@ import {
 } from './dashboard-individual-tab-picker';
 import type { DashboardContext } from './dashboard-shell';
 
+type PrecisionVolumeController = {
+  readTabId: () => number | null;
+  syncControlsFromLinearGain: (linearGain: number) => void;
+  applyToSelectedTab: (linearGain: number) => void;
+};
+
+let precisionVolumeController: PrecisionVolumeController | null = null;
+
+function updatePrecisionVolumeApplyHint(ctx: DashboardContext): void {
+  const hint = ctx.dom.precisionVolumeApplyHint;
+  const tabId = precisionVolumeController?.readTabId() ?? null;
+  if (!hint) {
+    return;
+  }
+  hint.style.display = tabId === null ? 'block' : 'none';
+}
+
+/** After tab list is populated, restore saved tab + push gain to that tab (fixes silent 0% UI). */
+export async function restorePrecisionVolumeAfterTabListReady(
+  ctx: DashboardContext
+): Promise<void> {
+  const ctrl = precisionVolumeController;
+  const { precisionVolumeTabSelect } = ctx.dom;
+  if (!ctrl || !precisionVolumeTabSelect) {
+    return;
+  }
+  const p = await loadExtensionPrefs();
+  const pv = p.precisionVolume;
+  ctrl.syncControlsFromLinearGain(pv.lastLinearGain);
+  if (pv.lastTabId !== null) {
+    const idStr = String(pv.lastTabId);
+    if ([...precisionVolumeTabSelect.options].some((o) => o.value === idStr)) {
+      precisionVolumeTabSelect.value = idStr;
+    }
+  }
+  updatePrecisionVolumeApplyHint(ctx);
+  const tabId = ctrl.readTabId();
+  if (tabId !== null) {
+    ctrl.applyToSelectedTab(pv.lastLinearGain);
+  }
+}
+
 export function applyPrecisionVolumeTabSelectFilter(
   ctx: DashboardContext,
   cache: IndividualTabPickerCache
@@ -57,6 +99,7 @@ export async function populatePrecisionVolumeTabSelect(
   await refreshIndividualTabPickerCache(cache);
   applyIndividualTabSelectFilter(ctx, cache);
   applyPrecisionVolumeTabSelectFilter(ctx, cache);
+  await restorePrecisionVolumeAfterTabListReady(ctx);
 }
 
 function updatePhaseLabel(ctx: DashboardContext, linearGain: number): void {
@@ -139,16 +182,14 @@ export function bindPrecisionVolumeUi(
     updatePhaseLabel(ctx, g);
   };
 
-  void loadExtensionPrefs().then((p) => {
-    const pv = p.precisionVolume;
-    syncControlsFromLinearGain(pv.lastLinearGain);
-    if (pv.lastTabId !== null) {
-      const idStr = String(pv.lastTabId);
-      if ([...precisionVolumeTabSelect.options].some((o) => o.value === idStr)) {
-        precisionVolumeTabSelect.value = idStr;
-      }
-    }
-  });
+  precisionVolumeController = {
+    readTabId,
+    syncControlsFromLinearGain,
+    applyToSelectedTab: (linearGain: number) => {
+      scheduleApply(linearGain);
+    },
+  };
+  updatePrecisionVolumeApplyHint(ctx);
 
   if (precisionVolumeTabSearch && precisionVolumeTabSearch.dataset.pvFilterBound !== '1') {
     precisionVolumeTabSearch.dataset.pvFilterBound = '1';
@@ -201,6 +242,7 @@ export function bindPrecisionVolumeUi(
   });
 
   precisionVolumeTabSelect.addEventListener('change', () => {
+    updatePrecisionVolumeApplyHint(ctx);
     scheduleApply(currentLinearGain);
     scheduleSave(currentLinearGain);
   });

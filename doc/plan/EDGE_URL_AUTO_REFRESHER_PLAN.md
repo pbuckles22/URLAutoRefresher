@@ -547,6 +547,11 @@ Tracked here until scheduled into an epic or story. **Normative shipped scope** 
 
    - **Likely touch:** [`src/content/page-overlay.ts`](../../src/content/page-overlay.ts) (shadow DOM + CSS), prefs in [`src/lib/prefs.ts`](../../src/lib/prefs.ts) if persisted.
 
+9. **Precision volume — default to active (focused) tab** — Today **11.5** requires an explicit **Target tab** in the dashboard/side panel; fader and **0%** do nothing until the user picks a tab (shortcuts already target the **active** tab in the last-focused window via [`volume-commands.ts`](../../src/background/volume-commands.ts)). **User intent:** precision volume should behave like shortcuts—**the tab you are on**—so **0%** means mute **current** media without a separate picker step.
+   - **Outcome:** Dashboard/side panel volume UI and prefs apply to **`chrome.tabs.query({ active: true, lastFocusedWindow: true })`** by default (or keep optional override picker for “control another tab”).
+   - **Likely touch:** [`src/dashboard/dashboard-precision-volume.ts`](../../src/dashboard/dashboard-precision-volume.ts), [`src/lib/prefs.ts`](../../src/lib/prefs.ts) (`precisionVolume.lastTabId` semantics), [`src/background/precision-volume-tab-route.ts`](../../src/background/precision-volume-tab-route.ts); align copy in [`dashboard/dashboard.html`](../../dashboard/dashboard.html). **Tier 1/2:** extend dashboard or E2E when behavior changes.
+   - **Relation to Epic 11:** Post–11.7 polish; does not renumber shipped stories.
+
 ---
 
 ## Dependency diagram
