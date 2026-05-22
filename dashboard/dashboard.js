@@ -2482,6 +2482,36 @@
   }
 
   // src/dashboard/dashboard-precision-volume.ts
+  var precisionVolumeController = null;
+  function updatePrecisionVolumeApplyHint(ctx) {
+    const hint = ctx.dom.precisionVolumeApplyHint;
+    const tabId = precisionVolumeController?.readTabId() ?? null;
+    if (!hint) {
+      return;
+    }
+    hint.style.display = tabId === null ? "block" : "none";
+  }
+  async function restorePrecisionVolumeAfterTabListReady(ctx) {
+    const ctrl = precisionVolumeController;
+    const { precisionVolumeTabSelect } = ctx.dom;
+    if (!ctrl || !precisionVolumeTabSelect) {
+      return;
+    }
+    const p = await loadExtensionPrefs();
+    const pv = p.precisionVolume;
+    ctrl.syncControlsFromLinearGain(pv.lastLinearGain);
+    if (pv.lastTabId !== null) {
+      const idStr = String(pv.lastTabId);
+      if ([...precisionVolumeTabSelect.options].some((o) => o.value === idStr)) {
+        precisionVolumeTabSelect.value = idStr;
+      }
+    }
+    updatePrecisionVolumeApplyHint(ctx);
+    const tabId = ctrl.readTabId();
+    if (tabId !== null) {
+      ctrl.applyToSelectedTab(pv.lastLinearGain);
+    }
+  }
   function applyPrecisionVolumeTabSelectFilter(ctx, cache) {
     const { precisionVolumeTabSelect, precisionVolumeTabSearch } = ctx.dom;
     if (!precisionVolumeTabSelect) {
@@ -2509,6 +2539,7 @@
     await refreshIndividualTabPickerCache(cache);
     applyIndividualTabSelectFilter(ctx, cache);
     applyPrecisionVolumeTabSelectFilter(ctx, cache);
+    await restorePrecisionVolumeAfterTabListReady(ctx);
   }
   function updatePhaseLabel(ctx, linearGain) {
     const el = ctx.dom.precisionVolumePhaseLabel;
@@ -2579,16 +2610,14 @@
       }
       updatePhaseLabel(ctx, g);
     };
-    void loadExtensionPrefs().then((p) => {
-      const pv = p.precisionVolume;
-      syncControlsFromLinearGain(pv.lastLinearGain);
-      if (pv.lastTabId !== null) {
-        const idStr = String(pv.lastTabId);
-        if ([...precisionVolumeTabSelect.options].some((o) => o.value === idStr)) {
-          precisionVolumeTabSelect.value = idStr;
-        }
+    precisionVolumeController = {
+      readTabId,
+      syncControlsFromLinearGain,
+      applyToSelectedTab: (linearGain) => {
+        scheduleApply(linearGain);
       }
-    });
+    };
+    updatePrecisionVolumeApplyHint(ctx);
     if (precisionVolumeTabSearch && precisionVolumeTabSearch.dataset.pvFilterBound !== "1") {
       precisionVolumeTabSearch.dataset.pvFilterBound = "1";
       precisionVolumeTabSearch.addEventListener(
@@ -2635,6 +2664,7 @@
       }
     });
     precisionVolumeTabSelect.addEventListener("change", () => {
+      updatePrecisionVolumeApplyHint(ctx);
       scheduleApply(currentLinearGain);
       scheduleSave(currentLinearGain);
     });
@@ -2694,6 +2724,9 @@
         ),
         precisionVolumePhaseLabel: document.querySelector(
           "[data-precision-volume-phase-label]"
+        ),
+        precisionVolumeApplyHint: document.querySelector(
+          "[data-precision-volume-apply-hint]"
         )
       }
     };

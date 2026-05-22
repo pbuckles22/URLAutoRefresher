@@ -129,7 +129,8 @@
         Precision volume
       </h2>
       <p style="margin: 0 0 0.75rem; color: #9aa0a6; font-size: 0.9rem">
-        Fine-grained in-page volume for the selected tab’s primary media. Hold
+        Fine-grained in-page volume for the <strong>target tab</strong> you pick below—not
+        automatically the active tab. Hold
         <kbd style="background: #303134; padding: 0.1rem 0.35rem; border-radius: 4px">Shift</kbd>
         while dragging the fader for 10× finer steps. Negative percentages phase-invert.
       </p>
@@ -186,6 +187,19 @@
         >
           <option value="">Select a tab…</option>
         </select>
+        <p
+          data-precision-volume-apply-hint
+          style="
+            margin: 0.35rem 0 0;
+            font-size: 0.85rem;
+            color: #fdd663;
+            line-height: 1.35;
+            display: none;
+          "
+        >
+          Choose a target tab—the fader and 0% only apply after you select one (or change the fader
+          again).
+        </p>
       </label>
       <div
         style="
