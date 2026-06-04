@@ -156,6 +156,28 @@ describe('alignGlobalGroupsState', () => {
     });
   });
 
+  it('keeps memberNextFireAt for enrolled targets when tab URL drifted (no resolved tab)', async () => {
+    const future = now + 600_000;
+    mockedResolve.mockResolvedValue([]);
+    const state = minimalState({
+      globalGroups: [
+        {
+          id: 'g1',
+          name: 'TwitchFavs',
+          targets: [{ targetUrl: 'https://www.twitch.tv/djsonnyd' }],
+          baseIntervalSec: 500,
+          jitterSec: 30,
+          enabled: true,
+          memberNextFireAt: { 'twitch.tv/djsonnyd': future },
+        },
+      ],
+    });
+    const out = await alignGlobalGroupsState(state, now);
+    expect(out.globalGroups[0].memberNextFireAt).toEqual({
+      'twitch.tv/djsonnyd': future,
+    });
+  });
+
   it('assigns stagger when enabled and resolver returns new member', async () => {
     mockedResolve.mockResolvedValue([
       { tabId: 2, windowId: 1, targetUrl: 'https://example.com/foo' },

@@ -21,17 +21,17 @@ describe('persistTwitchFavsUpsertFromTabUrl', () => {
     const empty: AppState = { schemaVersion: 3, globalGroups: [], individualJobs: [] };
     const loadAppState = vi.fn().mockResolvedValue(empty);
     const saveAppState = vi.fn().mockResolvedValue(undefined);
-    const bootstrapScheduling = vi.fn().mockResolvedValue(undefined);
+    const rescheduleIfMemberTabOpen = vi.fn().mockResolvedValue(undefined);
 
     const changed = await persistTwitchFavsUpsertFromTabUrl('https://example.com/', {
       loadAppState,
       saveAppState,
-      bootstrapScheduling,
+      rescheduleIfMemberTabOpen,
     });
 
     expect(changed).toBe(false);
     expect(saveAppState).not.toHaveBeenCalled();
-    expect(bootstrapScheduling).not.toHaveBeenCalled();
+    expect(rescheduleIfMemberTabOpen).toHaveBeenCalledWith('https://example.com/');
   });
 
   it('saves and reschedules when a favorite channel tab URL adds a target', async () => {
@@ -42,12 +42,12 @@ describe('persistTwitchFavsUpsertFromTabUrl', () => {
     };
     const loadAppState = vi.fn().mockResolvedValue(state);
     const saveAppState = vi.fn().mockResolvedValue(undefined);
-    const bootstrapScheduling = vi.fn().mockResolvedValue(undefined);
+    const rescheduleIfMemberTabOpen = vi.fn().mockResolvedValue(undefined);
 
     const changed = await persistTwitchFavsUpsertFromTabUrl('https://www.twitch.tv/vitestch', {
       loadAppState,
       saveAppState,
-      bootstrapScheduling,
+      rescheduleIfMemberTabOpen,
     });
 
     expect(changed).toBe(true);
@@ -56,6 +56,28 @@ describe('persistTwitchFavsUpsertFromTabUrl', () => {
     expect(saved.globalGroups[0]?.targets).toEqual([
       { targetUrl: canonicalTwitchChannelUrl('vitestch') },
     ]);
-    expect(bootstrapScheduling).toHaveBeenCalledTimes(1);
+    expect(rescheduleIfMemberTabOpen).toHaveBeenCalledWith('https://www.twitch.tv/vitestch');
+  });
+
+  it('reschedules without saving when the favorite target row already exists', async () => {
+    const canon = canonicalTwitchChannelUrl('vitestch');
+    const state: AppState = {
+      schemaVersion: 3,
+      globalGroups: [twitchGroup({ targets: [{ targetUrl: canon }] })],
+      individualJobs: [],
+    };
+    const loadAppState = vi.fn().mockResolvedValue(state);
+    const saveAppState = vi.fn().mockResolvedValue(undefined);
+    const rescheduleIfMemberTabOpen = vi.fn().mockResolvedValue(undefined);
+
+    const changed = await persistTwitchFavsUpsertFromTabUrl('https://www.twitch.tv/vitestch', {
+      loadAppState,
+      saveAppState,
+      rescheduleIfMemberTabOpen,
+    });
+
+    expect(changed).toBe(false);
+    expect(saveAppState).not.toHaveBeenCalled();
+    expect(rescheduleIfMemberTabOpen).toHaveBeenCalledWith('https://www.twitch.tv/vitestch');
   });
 });

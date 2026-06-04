@@ -91,9 +91,14 @@ export async function alignGlobalGroupsState(state: AppState, now: number): Prom
     }
 
     for (const key of Object.keys(memberNextFireAt)) {
-      if (!activeMemberKeys.has(key)) {
-        delete memberNextFireAt[key];
+      if (activeMemberKeys.has(key)) {
+        continue;
       }
+      const stillEnrolled = g.targets.some((t) => memberKeyFromTargetUrl(t.targetUrl) === key);
+      if (stillEnrolled && !paused.has(key)) {
+        continue;
+      }
+      delete memberNextFireAt[key];
     }
 
     globalGroups.push({

@@ -5,7 +5,7 @@ import { applyTwitchFavsUpsertFromTabUrl } from '../lib/twitch-favs';
 import { isTwitchChannelRootUrl } from '../lib/twitch-live-detect';
 import { loadAppState, saveAppState } from '../lib/storage';
 import type { AppState } from '../lib/types';
-import { bootstrapScheduling } from './scheduler';
+import { rescheduleIfMemberTabOpen } from './scheduler';
 
 let twitchFavsDebounce: ReturnType<typeof setTimeout> | undefined;
 
@@ -13,13 +13,13 @@ let twitchFavsDebounce: ReturnType<typeof setTimeout> | undefined;
 export type TwitchFavsPersistDeps = {
   loadAppState: () => Promise<AppState>;
   saveAppState: (state: AppState) => Promise<void>;
-  bootstrapScheduling: () => Promise<void>;
+  rescheduleIfMemberTabOpen: (tabUrl: string) => Promise<void>;
 };
 
 export const defaultTwitchFavsPersistDeps: TwitchFavsPersistDeps = {
   loadAppState,
   saveAppState,
-  bootstrapScheduling,
+  rescheduleIfMemberTabOpen,
 };
 
 /**
@@ -32,12 +32,11 @@ export async function persistTwitchFavsUpsertFromTabUrl(
 ): Promise<boolean> {
   const state = await deps.loadAppState();
   const { next, changed } = applyTwitchFavsUpsertFromTabUrl(state, tabUrl);
-  if (!changed) {
-    return false;
+  if (changed) {
+    await deps.saveAppState(next);
   }
-  await deps.saveAppState(next);
-  await deps.bootstrapScheduling();
-  return true;
+  await deps.rescheduleIfMemberTabOpen(tabUrl);
+  return changed;
 }
 
 export function attachTwitchFavsTabListener(): void {
