@@ -21,6 +21,24 @@ describe('pageMatchesExplicitTarget (re-export contract)', () => {
   it('matches glob and www variants', () => {
     expect(pageMatchesExplicitTarget('https://www.a.com/x', 'https://a.com/x')).toBe(true);
   });
+
+  it('does not match twitch homepage to a channel target', () => {
+    expect(
+      pageMatchesExplicitTarget('https://www.twitch.tv/', 'https://www.twitch.tv/nyybeats')
+    ).toBe(false);
+    expect(
+      pageMatchesExplicitTarget('https://www.twitch.tv', 'https://www.twitch.tv/nyybeats')
+    ).toBe(false);
+  });
+
+  it('still matches channel subpaths to channel root', () => {
+    expect(
+      pageMatchesExplicitTarget(
+        'https://www.twitch.tv/nyybeats/videos',
+        'https://www.twitch.tv/nyybeats'
+      )
+    ).toBe(true);
+  });
 });
 
 describe('pickBestOpenTabForMemberTarget', () => {

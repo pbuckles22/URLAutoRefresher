@@ -42,6 +42,12 @@ export function pageMatchesExplicitTarget(pageUrl: string | undefined, targetUrl
   if (kp === kt) {
     return true;
   }
+  /* Site root (e.g. twitch.tv homepage) must not match every channel under that host. */
+  const kpHasPath = kp.includes('/');
+  const ktHasPath = kt.includes('/');
+  if (!kpHasPath || !ktHasPath) {
+    return false;
+  }
   /* Same channel, extra path segments (e.g. /videos) */
   return kp.startsWith(`${kt}/`) || kt.startsWith(`${kp}/`);
 }
