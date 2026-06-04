@@ -8,6 +8,7 @@ import {
   type PageOverlayStateResponse,
 } from '../lib/messages';
 import { getBlipWatchForTab } from '../lib/blip-tab-state';
+import { getPageOverlaySnapBackDebug } from '../lib/page-overlay-debug';
 import { resolveGlobalGroupTargets } from '../lib/global-group-targets';
 import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from '../lib/member-url';
 import { getPageOverlayVmForTab } from '../lib/page-overlay-state';
@@ -189,6 +190,10 @@ export function attachPageOverlayMessageHandler(): void {
         const [state, prefs] = await Promise.all([loadAppState(), loadExtensionPrefs()]);
         const vm = await getPageOverlayVmForTab(state, prefs, tabId, tabUrl);
         const blip = getBlipWatchForTab(state, tabUrl);
+        const debug =
+          prefs.showOverlaySnapBackDebug && tabUrl
+            ? await getPageOverlaySnapBackDebug(state, tabId, tabUrl)
+            : undefined;
         if (!vm.show) {
           response = blip ? { ok: true, show: false, blip } : { ok: true, show: false };
         } else if (vm.mode === 'paused') {
@@ -200,6 +205,7 @@ export function attachPageOverlayMessageHandler(): void {
                   mode: 'paused',
                   individualJobId: vm.individualJobId,
                   ...(blip ? { blip } : {}),
+                  ...(debug ? { debug } : {}),
                 }
               : {
                   ok: true,
@@ -207,6 +213,7 @@ export function attachPageOverlayMessageHandler(): void {
                   mode: 'paused',
                   globalGroupId: vm.globalGroupId,
                   ...(blip ? { blip } : {}),
+                  ...(debug ? { debug } : {}),
                 };
         } else {
           response = {
@@ -217,6 +224,7 @@ export function attachPageOverlayMessageHandler(): void {
             ...(vm.globalGroupId !== undefined ? { globalGroupId: vm.globalGroupId } : {}),
             ...(vm.individualJobId !== undefined ? { individualJobId: vm.individualJobId } : {}),
             ...(blip ? { blip } : {}),
+            ...(debug ? { debug } : {}),
           };
         }
       } catch {

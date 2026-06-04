@@ -31,8 +31,13 @@ describe('prefs', () => {
       })
     ).toEqual({
       showPageOverlayTimer: true,
+      showOverlaySnapBackDebug: true,
       precisionVolume: { lastTabId: 42, lastLinearGain: -0.25 },
     });
+  });
+
+  it('showOverlaySnapBackDebug false when set', () => {
+    expect(parsePrefs({ showOverlaySnapBackDebug: false }).showOverlaySnapBackDebug).toBe(false);
   });
 
   it('ignores invalid precisionVolume fields', () => {
@@ -83,6 +88,7 @@ describe('extension prefs in chrome.storage.local (Epic 3.0)', () => {
     });
     expect(mem[PREFS_STORAGE_KEY]).toEqual({
       showPageOverlayTimer: false,
+      showOverlaySnapBackDebug: true,
       precisionVolume: DEFAULT_PRECISION_VOLUME,
     });
   });

@@ -14,7 +14,7 @@ function emptyShellDom(over: Partial<DashboardDom> = {}): DashboardDom {
     openSidePanel: null,
     openDashboardInTab: null,
     overlayPreference: null,
-    individualSectionHeading: null,
+    overlaySnapBackDebugPreference: null,
     jobsList: null,
     addJobForm: null,
     addJobError: null,
@@ -115,6 +115,7 @@ describe('bindOverlayPreference', () => {
   beforeEach(() => {
     loadSpy = vi.spyOn(prefs, 'loadExtensionPrefs').mockResolvedValue({
       showPageOverlayTimer: true,
+      showOverlaySnapBackDebug: true,
       precisionVolume: { lastTabId: null, lastLinearGain: 1 },
     });
     saveSpy = vi.spyOn(prefs, 'saveExtensionPrefs').mockResolvedValue(undefined);

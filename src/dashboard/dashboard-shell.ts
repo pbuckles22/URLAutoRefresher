@@ -10,6 +10,7 @@ export type DashboardDom = {
   openSidePanel: HTMLElement | null;
   openDashboardInTab: HTMLElement | null;
   overlayPreference: HTMLInputElement | null;
+  overlaySnapBackDebugPreference: HTMLInputElement | null;
   /** Epic 13.B2 — individual jobs list + add-job form */
   individualSectionHeading: HTMLElement | null;
   jobsList: HTMLUListElement | null;
@@ -60,6 +61,9 @@ export function createDashboardContext(): DashboardContext {
       openSidePanel: document.querySelector<HTMLElement>('[data-open-side-panel]'),
       openDashboardInTab: document.querySelector<HTMLElement>('[data-open-in-tab]'),
       overlayPreference: document.querySelector<HTMLInputElement>('[data-pref-overlay]'),
+      overlaySnapBackDebugPreference: document.querySelector<HTMLInputElement>(
+        '[data-pref-overlay-debug]'
+      ),
       individualSectionHeading: document.querySelector<HTMLElement>(
         '[data-individual-section-heading]'
       ),
@@ -117,14 +121,23 @@ export function createDashboardContext(): DashboardContext {
 
 export function bindOverlayPreference(ctx: DashboardContext): void {
   const overlayPref = ctx.dom.overlayPreference;
-  if (!overlayPref) {
+  const debugPref = ctx.dom.overlaySnapBackDebugPreference;
+  if (!overlayPref && !debugPref) {
     return;
   }
   void loadExtensionPrefs().then((p) => {
-    overlayPref.checked = p.showPageOverlayTimer;
+    if (overlayPref) {
+      overlayPref.checked = p.showPageOverlayTimer;
+    }
+    if (debugPref) {
+      debugPref.checked = p.showOverlaySnapBackDebug;
+    }
   });
-  overlayPref.addEventListener('change', () => {
+  overlayPref?.addEventListener('change', () => {
     void saveExtensionPrefs({ showPageOverlayTimer: overlayPref.checked });
+  });
+  debugPref?.addEventListener('change', () => {
+    void saveExtensionPrefs({ showOverlaySnapBackDebug: debugPref.checked });
   });
 }
 

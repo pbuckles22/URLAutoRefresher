@@ -10,17 +10,21 @@ export type PrecisionVolumePrefs = {
 export type ExtensionPrefs = {
   /** Large Min/Sec countdown injected on pages with an active refresh job. Default true. */
   showPageOverlayTimer: boolean;
+  /** Show tab id / refresh URL debug strip on the overlay (snap-back UAT). Default true. */
+  showOverlaySnapBackDebug: boolean;
   /** Epic 11.5 — precision volume dashboard state. */
   precisionVolume: PrecisionVolumePrefs;
 };
 
 export const DEFAULT_PRECISION_VOLUME: PrecisionVolumePrefs = {
   lastTabId: null,
-  lastLinearGain: 1,
+  /** Zero-blast default: silent until the user raises the fader (saved value auto-applies on each page). */
+  lastLinearGain: 0,
 };
 
 export const DEFAULT_PREFS: ExtensionPrefs = {
   showPageOverlayTimer: true,
+  showOverlaySnapBackDebug: true,
   precisionVolume: { ...DEFAULT_PRECISION_VOLUME },
 };
 
@@ -52,8 +56,13 @@ export function parsePrefs(raw: unknown): ExtensionPrefs {
     typeof o.showPageOverlayTimer === 'boolean'
       ? o.showPageOverlayTimer
       : DEFAULT_PREFS.showPageOverlayTimer;
+  const showDebug =
+    typeof o.showOverlaySnapBackDebug === 'boolean'
+      ? o.showOverlaySnapBackDebug
+      : DEFAULT_PREFS.showOverlaySnapBackDebug;
   return {
     showPageOverlayTimer: show,
+    showOverlaySnapBackDebug: showDebug,
     precisionVolume: parsePrecisionVolumePrefs(o.precisionVolume),
   };
 }
@@ -66,6 +75,7 @@ export async function loadExtensionPrefs(): Promise<ExtensionPrefs> {
 
 export type SaveExtensionPrefsInput = {
   showPageOverlayTimer?: boolean;
+  showOverlaySnapBackDebug?: boolean;
   precisionVolume?: Partial<PrecisionVolumePrefs>;
 };
 
@@ -73,6 +83,7 @@ export async function saveExtensionPrefs(partial: SaveExtensionPrefsInput): Prom
   const existing = await loadExtensionPrefs();
   const next: ExtensionPrefs = {
     showPageOverlayTimer: partial.showPageOverlayTimer ?? existing.showPageOverlayTimer,
+    showOverlaySnapBackDebug: partial.showOverlaySnapBackDebug ?? existing.showOverlaySnapBackDebug,
     precisionVolume: {
       ...existing.precisionVolume,
       ...(partial.precisionVolume ?? {}),

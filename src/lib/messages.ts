@@ -1,3 +1,7 @@
+import type { PageOverlaySnapBackDebug } from './page-overlay-debug';
+
+export type { PageOverlaySnapBackDebug };
+
 /** Content script asks background for overlay visibility + schedule for sender tab. */
 export const PAGE_OVERLAY_GET_STATE = 'urlAutoRefresher:pageOverlayGetState' as const;
 
@@ -20,9 +24,25 @@ export type PageOverlayStateResponse =
       /** Set when this tab is driven by an individual job (overlay pause). */
       individualJobId?: string;
       blip?: PageOverlayBlipPack;
+      /** Snap-back testing strip (when pref on). */
+      debug?: PageOverlaySnapBackDebug;
     }
-  | { ok: true; show: true; mode: 'paused'; globalGroupId: string; blip?: PageOverlayBlipPack }
-  | { ok: true; show: true; mode: 'paused'; individualJobId: string; blip?: PageOverlayBlipPack };
+  | {
+      ok: true;
+      show: true;
+      mode: 'paused';
+      globalGroupId: string;
+      blip?: PageOverlayBlipPack;
+      debug?: PageOverlaySnapBackDebug;
+    }
+  | {
+      ok: true;
+      show: true;
+      mode: 'paused';
+      individualJobId: string;
+      blip?: PageOverlayBlipPack;
+      debug?: PageOverlaySnapBackDebug;
+    };
 
 /** Page → background: user-configured blip pattern matched; request target refresh (Epic 9). */
 export const BLIP_REFRESH_REQUEST = 'urlAutoRefresher:blipRefreshRequest' as const;
@@ -72,7 +92,8 @@ export type PrecisionVolumeApplyMessage = {
 
 export type PrecisionVolumeTabRequestMessage = {
   type: typeof PRECISION_VOLUME_TAB_REQUEST;
-  tabId: number;
+  /** `null` = background resolves target (active / last content tab / override from prefs not used here). */
+  tabId: number | null;
 } & PrecisionVolumeApplyPayload;
 
 export type PrecisionVolumeTabRouteResponse =

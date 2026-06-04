@@ -8,9 +8,11 @@ import {
   INDIVIDUAL_JOB_OVERLAY_PAUSE,
   PAGE_OVERLAY_GET_STATE,
   type PageOverlayBlipPack,
+  type PageOverlaySnapBackDebug,
   type PageOverlayStateResponse,
 } from '../lib/messages';
 import { compileBlipRegex, sampleDocumentText, textMatchesBlip } from '../lib/blip-match';
+import { formatOverlayDebugLines } from '../lib/page-overlay-debug';
 import {
   sendExtensionMessageAsync,
   sendExtensionMessageFireAndForget,
@@ -27,6 +29,8 @@ let uiKind: UiKind = 'hidden';
 let nextFireAt: number | undefined;
 let overlayGroupId: string | undefined;
 let overlayIndividualJobId: string | undefined;
+let overlayDebug: PageOverlaySnapBackDebug | undefined;
+let overlayMinimized = false;
 let shadowRoot: ShadowRoot | null = null;
 let tickHandle: ReturnType<typeof setInterval> | undefined;
 
@@ -45,6 +49,8 @@ function clearUi() {
   uiKind = 'hidden';
   overlayGroupId = undefined;
   overlayIndividualJobId = undefined;
+  overlayDebug = undefined;
+  overlayMinimized = false;
 }
 
 function clearBlipWatcher(): void {
@@ -118,6 +124,78 @@ function shadowCss(): string {
       border-radius: 16px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
       box-sizing: border-box;
+    }
+    .card--minimized {
+      padding: 4px 8px;
+      min-width: 0;
+      border-radius: 10px;
+    }
+    .m-badge {
+      display: block;
+      border: none;
+      background: transparent;
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1;
+      color: #111;
+      cursor: pointer;
+      padding: 2px 4px;
+      font-family: inherit;
+    }
+    .m-badge:hover {
+      color: #1a73e8;
+    }
+    .minimize-hit {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      z-index: 2;
+      border: none;
+      background: transparent;
+      color: #5f6368;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 4px;
+      font-family: inherit;
+    }
+    .minimize-hit:hover {
+      color: #111;
+    }
+    .card-body {
+      position: relative;
+    }
+    .card-body--has-minimize {
+      padding-top: 2px;
+      padding-right: 18px;
+    }
+    .debug-strip {
+      margin: 0 0 6px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      background: #f1f3f4;
+      font-size: 9px;
+      line-height: 1.35;
+      font-family: ui-monospace, Consolas, monospace;
+      color: #3c4043;
+      word-break: break-all;
+      cursor: pointer;
+      user-select: text;
+    }
+    .debug-strip:hover {
+      background: #e8eaed;
+    }
+    .debug-line {
+      margin: 0;
+    }
+    .debug-line--live {
+      color: #137333;
+      font-weight: 600;
+    }
+    .debug-line--warn {
+      color: #c5221f;
+      font-weight: 600;
     }
     .card--timer {
       padding: 8px 10px 10px;
@@ -238,6 +316,18 @@ function ensureShadowClickDelegation(root: ShadowRoot): void {
         clearBlipWatcher();
       }
     };
+    if (t.closest('[data-overlay-minimize]') || t.closest('[data-overlay-debug-minimize]')) {
+      e.preventDefault();
+      overlayMinimized = true;
+      remountOverlayCard();
+      return;
+    }
+    if (t.closest('[data-overlay-expand]')) {
+      e.preventDefault();
+      overlayMinimized = false;
+      remountOverlayCard();
+      return;
+    }
     if (t.closest('[data-overlay-pause]')) {
       e.preventDefault();
       if (gid) {
@@ -282,6 +372,37 @@ function ensureShadowClickDelegation(root: ShadowRoot): void {
   });
 }
 
+function escapeHtmlText(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function buildDebugHtml(debug: PageOverlaySnapBackDebug | undefined): string {
+  if (!debug) {
+    return '';
+  }
+  const lines = formatOverlayDebugLines(debug);
+  const inner = lines
+    .map((line, i) => {
+      let cls = 'debug-line';
+      if (i === 0 && debug.schedulerUsesThisTab) {
+        cls += ' debug-line--live';
+      } else if (line.includes('Page URL')) {
+        cls += ' debug-line--warn';
+      }
+      return `<p class="${cls}">${escapeHtmlText(line)}</p>`;
+    })
+    .join('');
+  return `<div class="debug-strip" data-overlay-debug-minimize title="Click to minimize overlay">${inner}</div>`;
+}
+
+function buildMinimizedHtml(): string {
+  return `<button type="button" class="m-badge" data-overlay-expand title="Expand overlay">M</button>`;
+}
+
 function buildTimerHtml(showPause: boolean): string {
   const pauseBtn = showPause
     ? `<button type="button" class="pause-btn" data-overlay-pause title="Pause auto-refresh for this tab">Pause</button>`
@@ -290,12 +411,16 @@ function buildTimerHtml(showPause: boolean): string {
     ? 'timer-compact-row timer-compact-row--with-pause'
     : 'timer-compact-row';
   return `
-    <div class="${rowClass}">
-      ${pauseBtn}
-      <div class="timer-readout">
-        <div class="digits-row" data-min-digits></div>
-        <span class="colon">:</span>
-        <div class="digits-row" data-sec-digits></div>
+    <button type="button" class="minimize-hit" data-overlay-minimize title="Minimize overlay" aria-label="Minimize overlay">−</button>
+    ${buildDebugHtml(overlayDebug)}
+    <div class="timer-compact-row-wrap">
+      <div class="${rowClass}">
+        ${pauseBtn}
+        <div class="timer-readout">
+          <div class="digits-row" data-min-digits></div>
+          <span class="colon">:</span>
+          <div class="digits-row" data-sec-digits></div>
+        </div>
       </div>
     </div>
   `;
@@ -303,6 +428,8 @@ function buildTimerHtml(showPause: boolean): string {
 
 function buildPausedHtml(): string {
   return `
+    <button type="button" class="minimize-hit" data-overlay-minimize title="Minimize overlay" aria-label="Minimize overlay">−</button>
+    ${buildDebugHtml(overlayDebug)}
     <div class="paused-compact-row">
       <p class="paused-text">Auto refresh paused</p>
       <button type="button" class="resume-btn" data-overlay-resume title="Resume auto-refresh">Play</button>
@@ -320,11 +447,34 @@ function ensureShadowHost(): HTMLDivElement {
   return host;
 }
 
+function remountOverlayCard(): void {
+  if (!shadowRoot) {
+    return;
+  }
+  const card = shadowRoot.querySelector('.card');
+  if (!card) {
+    return;
+  }
+  if (overlayMinimized) {
+    card.className = 'card card--minimized';
+    card.innerHTML = buildMinimizedHtml();
+    return;
+  }
+  const showPause = overlayGroupId !== undefined || overlayIndividualJobId !== undefined;
+  if (uiKind === 'paused') {
+    card.className = 'card card--paused';
+    card.innerHTML = buildPausedHtml();
+  } else if (uiKind === 'timer') {
+    card.className = 'card card--timer';
+    card.innerHTML = buildTimerHtml(showPause);
+    paintDigits();
+  }
+}
+
 function mountTimerOverlay(opts: { globalGroupId?: string; individualJobId?: string }): void {
   overlayGroupId = opts.globalGroupId;
   overlayIndividualJobId = opts.individualJobId;
   const host = ensureShadowHost();
-  const showPause = opts.globalGroupId !== undefined || opts.individualJobId !== undefined;
   if (!shadowRoot) {
     shadowRoot = host.attachShadow({ mode: 'open' });
     ensureShadowClickDelegation(shadowRoot);
@@ -332,17 +482,12 @@ function mountTimerOverlay(opts: { globalGroupId?: string; individualJobId?: str
     style.textContent = shadowCss();
     const card = document.createElement('div');
     card.className = 'card card--timer';
-    card.innerHTML = buildTimerHtml(showPause);
     shadowRoot.append(style, card);
   } else {
     ensureShadowClickDelegation(shadowRoot);
-    const card = shadowRoot.querySelector('.card');
-    if (card) {
-      card.className = 'card card--timer';
-      card.innerHTML = buildTimerHtml(showPause);
-    }
   }
   uiKind = 'timer';
+  remountOverlayCard();
 }
 
 function mountPausedOverlay(
@@ -363,17 +508,12 @@ function mountPausedOverlay(
     style.textContent = shadowCss();
     const card = document.createElement('div');
     card.className = 'card card--paused';
-    card.innerHTML = buildPausedHtml();
     shadowRoot.append(style, card);
   } else {
     ensureShadowClickDelegation(shadowRoot);
-    const card = shadowRoot.querySelector('.card');
-    if (card) {
-      card.className = 'card card--paused';
-      card.innerHTML = buildPausedHtml();
-    }
   }
   uiKind = 'paused';
+  remountOverlayCard();
 }
 
 function formatParts(nowMs: number): { minDigits: string[]; secTens: string; secOnes: string } {
@@ -397,7 +537,7 @@ function formatParts(nowMs: number): { minDigits: string[]; secTens: string; sec
 }
 
 function paintDigits() {
-  if (!shadowRoot || uiKind !== 'timer') {
+  if (!shadowRoot || uiKind !== 'timer' || overlayMinimized) {
     return;
   }
   const minRow = shadowRoot.querySelector('[data-min-digits]');
@@ -464,6 +604,7 @@ async function syncFromBackground(): Promise<void> {
     return;
   }
   setBlipWatcher(res.blip);
+  overlayDebug = res.debug;
   if (!res.show) {
     clearUi();
     return;
@@ -479,13 +620,21 @@ async function syncFromBackground(): Promise<void> {
   showTimer(res.globalGroupId, res.individualJobId, res.nextFireAt);
 }
 
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local') {
-    return;
-  }
-  if (PREFS_STORAGE_KEY in changes || STORAGE_KEY in changes) {
-    void syncFromBackground();
-  }
-});
+const overlayGlobal = globalThis as typeof globalThis & {
+  __urlarPageOverlayBootstrapped?: boolean;
+};
 
-void syncFromBackground();
+if (!overlayGlobal.__urlarPageOverlayBootstrapped) {
+  overlayGlobal.__urlarPageOverlayBootstrapped = true;
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') {
+      return;
+    }
+    if (PREFS_STORAGE_KEY in changes || STORAGE_KEY in changes) {
+      void syncFromBackground();
+    }
+  });
+
+  void syncFromBackground();
+}
