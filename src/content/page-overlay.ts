@@ -7,6 +7,7 @@ import {
   GLOBAL_GROUP_TAB_PAUSE,
   INDIVIDUAL_JOB_OVERLAY_PAUSE,
   PAGE_OVERLAY_GET_STATE,
+  PAGE_OVERLAY_SYNC_REQUEST,
   type PageOverlayBlipPack,
   type PageOverlaySnapBackDebug,
   type PageOverlayStateResponse,
@@ -437,6 +438,38 @@ function buildPausedHtml(): string {
   `;
 }
 
+function resolveShadowRoot(host: HTMLDivElement): ShadowRoot | null {
+  if (host.shadowRoot) {
+    shadowRoot = host.shadowRoot;
+    ensureShadowClickDelegation(shadowRoot);
+    return shadowRoot;
+  }
+  try {
+    shadowRoot = host.attachShadow({ mode: 'open' });
+  } catch {
+    shadowRoot = host.shadowRoot ?? null;
+  }
+  if (!shadowRoot) {
+    return null;
+  }
+  ensureShadowClickDelegation(shadowRoot);
+  return shadowRoot;
+}
+
+function ensureShadowCard(root: ShadowRoot): HTMLDivElement {
+  if (!root.querySelector('style')) {
+    const style = document.createElement('style');
+    style.textContent = shadowCss();
+    root.append(style);
+  }
+  let card = root.querySelector('.card');
+  if (!card) {
+    card = document.createElement('div');
+    root.append(card);
+  }
+  return card as HTMLDivElement;
+}
+
 function ensureShadowHost(): HTMLDivElement {
   let host = document.getElementById(ROOT_ID) as HTMLDivElement | null;
   if (!host) {
@@ -474,18 +507,11 @@ function remountOverlayCard(): void {
 function mountTimerOverlay(opts: { globalGroupId?: string; individualJobId?: string }): void {
   overlayGroupId = opts.globalGroupId;
   overlayIndividualJobId = opts.individualJobId;
-  const host = ensureShadowHost();
-  if (!shadowRoot) {
-    shadowRoot = host.attachShadow({ mode: 'open' });
-    ensureShadowClickDelegation(shadowRoot);
-    const style = document.createElement('style');
-    style.textContent = shadowCss();
-    const card = document.createElement('div');
-    card.className = 'card card--timer';
-    shadowRoot.append(style, card);
-  } else {
-    ensureShadowClickDelegation(shadowRoot);
+  const root = resolveShadowRoot(ensureShadowHost());
+  if (!root) {
+    return;
   }
+  ensureShadowCard(root);
   uiKind = 'timer';
   remountOverlayCard();
 }
@@ -500,18 +526,11 @@ function mountPausedOverlay(
     overlayGroupId = undefined;
     overlayIndividualJobId = scope.jobId;
   }
-  const host = ensureShadowHost();
-  if (!shadowRoot) {
-    shadowRoot = host.attachShadow({ mode: 'open' });
-    ensureShadowClickDelegation(shadowRoot);
-    const style = document.createElement('style');
-    style.textContent = shadowCss();
-    const card = document.createElement('div');
-    card.className = 'card card--paused';
-    shadowRoot.append(style, card);
-  } else {
-    ensureShadowClickDelegation(shadowRoot);
+  const root = resolveShadowRoot(ensureShadowHost());
+  if (!root) {
+    return;
   }
+  ensureShadowCard(root);
   uiKind = 'paused';
   remountOverlayCard();
 }
@@ -594,7 +613,7 @@ function showPaused(
   mountPausedOverlay(scope);
 }
 
-async function syncFromBackground(): Promise<void> {
+async function syncFromBackgroundInner(): Promise<void> {
   const res = await sendExtensionMessageAsync<PageOverlayStateResponse>({
     type: PAGE_OVERLAY_GET_STATE,
   });
@@ -620,12 +639,31 @@ async function syncFromBackground(): Promise<void> {
   showTimer(res.globalGroupId, res.individualJobId, res.nextFireAt);
 }
 
+let overlaySyncChain: Promise<void> = Promise.resolve();
+
+async function syncFromBackground(): Promise<void> {
+  overlaySyncChain = overlaySyncChain
+    .then(() => syncFromBackgroundInner())
+    .catch(() => {
+      /* extension context or messaging may fail transiently */
+    });
+  await overlaySyncChain;
+}
+
 const overlayGlobal = globalThis as typeof globalThis & {
   __urlarPageOverlayBootstrapped?: boolean;
 };
 
 if (!overlayGlobal.__urlarPageOverlayBootstrapped) {
   overlayGlobal.__urlarPageOverlayBootstrapped = true;
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type !== PAGE_OVERLAY_SYNC_REQUEST) {
+      return;
+    }
+    void syncFromBackground().then(() => sendResponse({ ok: true }));
+    return true;
+  });
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') {
@@ -636,5 +674,17 @@ if (!overlayGlobal.__urlarPageOverlayBootstrapped) {
     }
   });
 
-  void syncFromBackground();
+  let lastOverlayPageUrl = location.href;
+  if (/twitch\.tv/i.test(location.hostname)) {
+    window.setInterval(() => {
+      const href = location.href;
+      if (href === lastOverlayPageUrl) {
+        return;
+      }
+      lastOverlayPageUrl = href;
+      void syncFromBackground();
+    }, 1500);
+  }
 }
+
+void syncFromBackground();

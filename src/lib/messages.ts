@@ -5,6 +5,9 @@ export type { PageOverlaySnapBackDebug };
 /** Content script asks background for overlay visibility + schedule for sender tab. */
 export const PAGE_OVERLAY_GET_STATE = 'urlAutoRefresher:pageOverlayGetState' as const;
 
+/** Background nudges an existing overlay content script to re-sync (no script re-inject). */
+export const PAGE_OVERLAY_SYNC_REQUEST = 'urlAutoRefresher:pageOverlaySyncRequest' as const;
+
 export type PageOverlayBlipPack = {
   phrases: string[];
   regex?: string;

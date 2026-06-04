@@ -5,19 +5,24 @@
 import { attachBadgeListeners } from './badge';
 import { attachLiveAwareListeners } from './live-aware';
 import { attachPageOverlayMessageHandler } from './page-overlay-handler';
+import { attachPrecisionVolumeAutoApply } from './precision-volume-auto-apply';
+import { attachPrecisionVolumeContentTabTracker } from './precision-volume-content-tab-tracker';
 import { attachPrecisionVolumeTabRoute } from './precision-volume-tab-route';
 import { attachSchedulingListeners, bootstrapScheduling } from './scheduler';
 import { attachTwitchFavsTabListener } from './twitch-favs-sync';
+import { syncAllOpenTwitchFavsTabs } from './twitch-open-tabs-sync';
 import { attachVolumeCommandListeners } from './volume-commands';
 
 attachSchedulingListeners();
 attachTwitchFavsTabListener();
 attachVolumeCommandListeners();
+attachPrecisionVolumeContentTabTracker();
+attachPrecisionVolumeAutoApply();
 attachPrecisionVolumeTabRoute();
 attachBadgeListeners();
 attachPageOverlayMessageHandler();
 attachLiveAwareListeners();
-void bootstrapScheduling();
+void bootstrapScheduling().then(() => syncAllOpenTwitchFavsTabs({ reinjectOverlays: false }));
 
 void chrome.sidePanel.setOptions({
   path: 'sidepanel/sidepanel.html',
@@ -29,6 +34,7 @@ chrome.runtime.onInstalled.addListener(() => {
     path: 'sidepanel/sidepanel.html',
     enabled: true,
   });
+  void bootstrapScheduling().then(() => syncAllOpenTwitchFavsTabs({ reinjectOverlays: true }));
 });
 
 chrome.action.onClicked.addListener((tab) => {

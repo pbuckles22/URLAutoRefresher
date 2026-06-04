@@ -15,6 +15,7 @@ import { getPageOverlayVmForTab } from '../lib/page-overlay-state';
 import { loadExtensionPrefs } from '../lib/prefs';
 import { loadAppState, saveAppState } from '../lib/storage';
 import { refreshActionBadge } from './badge';
+import { rememberSchedTabId } from '../lib/sched-member-tab-hint';
 import { syncAlarmsWithState } from './scheduler';
 
 const blipRefreshHits = new Map<number, number[]>();
@@ -182,9 +183,16 @@ export function attachPageOverlayMessageHandler(): void {
     if (tabId === undefined) {
       return;
     }
-    const tabUrl = sender.tab?.url;
+    let tabUrl = sender.tab?.url;
 
     void (async () => {
+      if (!tabUrl) {
+        try {
+          tabUrl = (await chrome.tabs.get(tabId)).url;
+        } catch {
+          tabUrl = undefined;
+        }
+      }
       let response: PageOverlayStateResponse;
       try {
         const [state, prefs] = await Promise.all([loadAppState(), loadExtensionPrefs()]);
@@ -194,6 +202,20 @@ export function attachPageOverlayMessageHandler(): void {
           prefs.showOverlaySnapBackDebug && tabUrl
             ? await getPageOverlaySnapBackDebug(state, tabId, tabUrl)
             : undefined;
+        if (
+          debug?.schedulerTabId !== undefined &&
+          debug.memberKey &&
+          vm.show &&
+          'globalGroupId' in vm &&
+          vm.globalGroupId
+        ) {
+          rememberSchedTabId(
+            vm.globalGroupId,
+            debug.memberKey,
+            debug.schedulerTabId,
+            debug.refreshTargetUrl
+          );
+        }
         if (!vm.show) {
           response = blip ? { ok: true, show: false, blip } : { ok: true, show: false };
         } else if (vm.mode === 'paused') {
