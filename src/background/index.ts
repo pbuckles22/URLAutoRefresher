@@ -5,8 +5,6 @@
 import { attachBadgeListeners } from './badge';
 import { attachLiveAwareListeners } from './live-aware';
 import { attachPageOverlayMessageHandler } from './page-overlay-handler';
-import { attachPrecisionVolumeAutoApply } from './precision-volume-auto-apply';
-import { attachPrecisionVolumeContentTabTracker } from './precision-volume-content-tab-tracker';
 import { attachPrecisionVolumeTabRoute } from './precision-volume-tab-route';
 import { attachSchedulingListeners, bootstrapScheduling } from './scheduler';
 import { attachTwitchFavsTabListener } from './twitch-favs-sync';
@@ -16,8 +14,6 @@ import { attachVolumeCommandListeners } from './volume-commands';
 attachSchedulingListeners();
 attachTwitchFavsTabListener();
 attachVolumeCommandListeners();
-attachPrecisionVolumeContentTabTracker();
-attachPrecisionVolumeAutoApply();
 attachPrecisionVolumeTabRoute();
 attachBadgeListeners();
 attachPageOverlayMessageHandler();
