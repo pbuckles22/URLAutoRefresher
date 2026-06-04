@@ -115,6 +115,22 @@
           Default on; you can turn it off here.</span
         >
       </label>
+      <label
+        style="
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          cursor: pointer;
+          color: #e8eaed;
+          margin-top: 0.5rem;
+        "
+      >
+        <input type="checkbox" data-pref-overlay-debug style="margin-top: 0.2rem" />
+        <span
+          >Show snap-back debug on the page overlay (tab id, refresh URL, scheduler tab). For
+          testing; default on.</span
+        >
+      </label>
     </section>
 
     <section
@@ -129,8 +145,9 @@
         Precision volume
       </h2>
       <p style="margin: 0 0 0.75rem; color: #9aa0a6; font-size: 0.9rem">
-        Fine-grained in-page volume for the <strong>target tab</strong> you pick below—not
-        automatically the active tab. Hold
+        Fine-grained in-page volume for the <strong>active tab</strong> in your focused window (same
+        as keyboard shortcuts). Pick another tab below only when you need to control a different
+        one. Hold
         <kbd style="background: #303134; padding: 0.1rem 0.35rem; border-radius: 4px">Shift</kbd>
         while dragging the fader for 10× finer steps. Negative percentages phase-invert.
       </p>
@@ -159,7 +176,7 @@
         </button>
       </div>
       <label style="display: flex; flex-direction: column; gap: 0.25rem; max-width: 36rem">
-        <span>Target tab</span>
+        <span>Tab (optional override)</span>
         <input
           type="search"
           data-precision-volume-tab-search
@@ -185,7 +202,7 @@
             color: #e8eaed;
           "
         >
-          <option value="">Select a tab…</option>
+          <option value="">Active tab (focused window)</option>
         </select>
         <p
           data-precision-volume-apply-hint
@@ -197,8 +214,9 @@
             display: none;
           "
         >
-          Choose a target tab—the fader and 0% only apply after you select one (or change the fader
-          again).
+          No page tab to control—focus a tab with video or audio, or pick one in the list below.
+          When this dashboard is the active tab, volume still applies to your page tab in this
+          window.
         </p>
       </label>
       <div

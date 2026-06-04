@@ -136,6 +136,11 @@
     if (kp === kt) {
       return true;
     }
+    const kpHasPath = kp.includes("/");
+    const ktHasPath = kt.includes("/");
+    if (!kpHasPath || !ktHasPath) {
+      return false;
+    }
     return kp.startsWith(`${kt}/`) || kt.startsWith(`${kp}/`);
   }
   function pickBestOpenTabForMemberTarget(candidates, memberTargetUrl, context) {
@@ -2401,10 +2406,12 @@
   var PREFS_STORAGE_KEY = "urlAutoRefresher_prefs_v1";
   var DEFAULT_PRECISION_VOLUME = {
     lastTabId: null,
-    lastLinearGain: 1
+    /** Zero-blast default: silent until the user raises the fader (saved value auto-applies on each page). */
+    lastLinearGain: 0
   };
   var DEFAULT_PREFS = {
     showPageOverlayTimer: true,
+    showOverlaySnapBackDebug: true,
     precisionVolume: { ...DEFAULT_PRECISION_VOLUME }
   };
   function parsePrecisionVolumePrefs(raw) {
@@ -2431,8 +2438,10 @@
     }
     const o = raw;
     const show = typeof o.showPageOverlayTimer === "boolean" ? o.showPageOverlayTimer : DEFAULT_PREFS.showPageOverlayTimer;
+    const showDebug = typeof o.showOverlaySnapBackDebug === "boolean" ? o.showOverlaySnapBackDebug : DEFAULT_PREFS.showOverlaySnapBackDebug;
     return {
       showPageOverlayTimer: show,
+      showOverlaySnapBackDebug: showDebug,
       precisionVolume: parsePrecisionVolumePrefs(o.precisionVolume)
     };
   }
@@ -2445,6 +2454,7 @@
     const existing = await loadExtensionPrefs();
     const next = {
       showPageOverlayTimer: partial.showPageOverlayTimer ?? existing.showPageOverlayTimer,
+      showOverlaySnapBackDebug: partial.showOverlaySnapBackDebug ?? existing.showOverlaySnapBackDebug,
       precisionVolume: {
         ...existing.precisionVolume,
         ...partial.precisionVolume ?? {}
@@ -2677,6 +2687,9 @@
         openSidePanel: document.querySelector("[data-open-side-panel]"),
         openDashboardInTab: document.querySelector("[data-open-in-tab]"),
         overlayPreference: document.querySelector("[data-pref-overlay]"),
+        overlaySnapBackDebugPreference: document.querySelector(
+          "[data-pref-overlay-debug]"
+        ),
         individualSectionHeading: document.querySelector(
           "[data-individual-section-heading]"
         ),
@@ -2733,14 +2746,23 @@
   }
   function bindOverlayPreference(ctx) {
     const overlayPref = ctx.dom.overlayPreference;
-    if (!overlayPref) {
+    const debugPref = ctx.dom.overlaySnapBackDebugPreference;
+    if (!overlayPref && !debugPref) {
       return;
     }
     void loadExtensionPrefs().then((p) => {
-      overlayPref.checked = p.showPageOverlayTimer;
+      if (overlayPref) {
+        overlayPref.checked = p.showPageOverlayTimer;
+      }
+      if (debugPref) {
+        debugPref.checked = p.showOverlaySnapBackDebug;
+      }
     });
-    overlayPref.addEventListener("change", () => {
+    overlayPref?.addEventListener("change", () => {
       void saveExtensionPrefs({ showPageOverlayTimer: overlayPref.checked });
+    });
+    debugPref?.addEventListener("change", () => {
+      void saveExtensionPrefs({ showOverlaySnapBackDebug: debugPref.checked });
     });
   }
   function wireCrossSurfaceLinks(ctx) {
