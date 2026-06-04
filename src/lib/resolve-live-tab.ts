@@ -32,9 +32,15 @@ async function getLastFocusedWindowId(): Promise<number | undefined> {
  * Uses the same pick rule as {@link pickBestOpenTabForMemberTarget}. If no pick matches,
  * returns `fallbackTabId` when that tab is still open and its URL matches the member URL.
  */
+export type ResolveLiveTabOptions = {
+  /** When true, use `fallbackTabId` if that tab is still open even when its URL no longer matches (raid detour). */
+  allowUrlDriftFallback?: boolean;
+};
+
 export async function resolveLiveTabIdForTargetUrl(
   memberTargetUrl: string,
-  fallbackTabId: number
+  fallbackTabId: number,
+  options?: ResolveLiveTabOptions
 ): Promise<number | undefined> {
   let tabs: chrome.tabs.Tab[];
   try {
@@ -52,6 +58,9 @@ export async function resolveLiveTabIdForTargetUrl(
   }
   const fallback = candidates.find((c) => c.id === fallbackTabId);
   if (fallback?.url && pageMatchesExplicitTarget(fallback.url, memberTargetUrl)) {
+    return fallbackTabId;
+  }
+  if (options?.allowUrlDriftFallback && fallbackTabId >= 1 && fallback !== undefined) {
     return fallbackTabId;
   }
   return undefined;

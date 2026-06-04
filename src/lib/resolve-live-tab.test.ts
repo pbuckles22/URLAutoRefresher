@@ -30,6 +30,27 @@ describe('resolveLiveTabIdForTargetUrl', () => {
     expect(id).toBe(7);
   });
 
+  it('returns fallback tab id on URL drift when allowUrlDriftFallback is set', async () => {
+    global.chrome = global.chrome ?? {};
+    global.chrome.tabs = global.chrome.tabs ?? {};
+    global.chrome.windows = global.chrome.windows ?? {};
+    global.chrome.tabs.query = vi.fn().mockResolvedValue([
+      {
+        id: 42,
+        windowId: 1,
+        url: 'https://www.twitch.tv/raided_channel?referrer=raid',
+        active: true,
+        index: 0,
+      },
+    ]);
+    global.chrome.windows.getLastFocused = vi.fn().mockResolvedValue({ id: 1 });
+
+    const id = await resolveLiveTabIdForTargetUrl('https://www.twitch.tv/djsonnyd', 42, {
+      allowUrlDriftFallback: true,
+    });
+    expect(id).toBe(42);
+  });
+
   it('returns fallback tab id when pick finds nothing but fallback URL matches', async () => {
     global.chrome = global.chrome ?? {};
     global.chrome.tabs = global.chrome.tabs ?? {};

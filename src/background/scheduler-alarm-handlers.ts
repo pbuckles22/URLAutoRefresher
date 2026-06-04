@@ -13,8 +13,10 @@ import {
   resolveGlobalGroupTargets,
 } from '../lib/global-group-targets';
 import { resolveLiveTabIdForTargetUrl } from '../lib/resolve-live-tab';
+import { schedLog } from '../lib/scheduler-debug';
 import { loadAppState, saveAppState } from '../lib/storage';
 import type { AppState } from '../lib/types';
+import { getLastSchedTabId, rememberSchedTabId } from '../lib/sched-member-tab-hint';
 
 function replaceAt<T>(arr: T[], i: number, v: T): T[] {
   const next = [...arr];
@@ -137,23 +139,44 @@ async function handleGlobalMemberAlarm(
     return;
   }
 
-  const hintTabId = resolvedHit?.tabId ?? 0;
+  const rememberedTabId = getLastSchedTabId(groupId, memberKey);
+  const hintTabId = resolvedHit?.tabId ?? rememberedTabId ?? 0;
 
   const resolvedLiveTabId = await resolveLiveTabIdForTargetUrl(
     memberUrl,
-    hintTabId >= 1 ? hintTabId : 0
+    hintTabId >= 1 ? hintTabId : 0,
+    { allowUrlDriftFallback: true }
   );
   const refreshTabId = resolvedLiveTabId ?? (hintTabId >= 1 ? hintTabId : undefined);
+
+  await schedLog('global member alarm', {
+    groupId,
+    memberKey,
+    memberUrl,
+    resolvedHitTabId: resolvedHit?.tabId,
+    rememberedTabId,
+    resolvedLiveTabId,
+    refreshTabId,
+    paused: paused.has(memberKey),
+  });
+
   if (refreshTabId === undefined) {
+    await schedLog('global member alarm: no tab to refresh (skip)', { memberKey });
     await syncAlarmsWithState(await loadAppState());
     return;
   }
 
   if (paused.has(memberKey)) {
+    await schedLog('global member alarm: member paused (skip)', { memberKey });
     await syncAlarmsWithState(await loadAppState());
     return;
   }
 
+  const storedTarget = group.targets.find(
+    (t) => memberKeyFromTargetUrl(t.targetUrl) === memberKey
+  )?.targetUrl;
+  rememberSchedTabId(groupId, memberKey, refreshTabId, storedTarget ?? memberUrl);
+  await schedLog('global member alarm: tabs.update', { refreshTabId, memberUrl });
   const ok = await safeTabsUpdate(refreshTabId, memberUrl);
 
   state = await loadAppState();
@@ -171,6 +194,7 @@ async function handleGlobalMemberAlarm(
   const memberNextFireAt = { ...(group.memberNextFireAt ?? {}) };
 
   if (!ok) {
+    await schedLog('global member alarm: tabs.update failed', { refreshTabId, memberUrl });
     delete memberNextFireAt[memberKey];
     const hasPatterns = group.urlPatterns?.some((p) => p.trim()) ?? false;
     const enabled = group.enabled && (group.targets.length > 0 || hasPatterns);
@@ -187,6 +211,10 @@ async function handleGlobalMemberAlarm(
   }
 
   memberNextFireAt[memberKey] = Date.now() + computeNextDelayMs(baseMs, jitterMs);
+  await schedLog('global member alarm: refresh ok, next tick scheduled', {
+    memberKey,
+    refreshTabId,
+  });
   const nextGroups = replaceAt(state.globalGroups, gIdx, {
     ...group,
     memberNextFireAt,

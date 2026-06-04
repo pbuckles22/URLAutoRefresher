@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { inferTwitchLiveFromScriptText, isTwitchChannelRootUrl } from './twitch-live-detect';
+import {
+  inferTwitchLiveFromScriptText,
+  isTwitchBrowseUrl,
+  isTwitchChannelRootUrl,
+} from './twitch-live-detect';
 
 describe('isTwitchChannelRootUrl', () => {
   it('accepts single-segment twitch channel URLs', () => {
@@ -11,6 +15,14 @@ describe('isTwitchChannelRootUrl', () => {
     expect(isTwitchChannelRootUrl('https://example.com/')).toBe(false);
     expect(isTwitchChannelRootUrl('https://www.twitch.tv/directory/game/Art')).toBe(false);
     expect(isTwitchChannelRootUrl('https://www.twitch.tv/ninja/videos')).toBe(false);
+  });
+});
+
+describe('isTwitchBrowseUrl', () => {
+  it('is true for twitch homepage and false for channel roots', () => {
+    expect(isTwitchBrowseUrl('https://www.twitch.tv/')).toBe(true);
+    expect(isTwitchBrowseUrl('https://www.twitch.tv/directory/all')).toBe(true);
+    expect(isTwitchBrowseUrl('https://www.twitch.tv/nyybeats')).toBe(false);
   });
 });
 

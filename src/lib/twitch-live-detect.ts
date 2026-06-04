@@ -22,7 +22,18 @@ export function isTwitchChannelRootUrl(url: string): boolean {
   }
 }
 
-/** Concatenate script bodies likely to contain Twitch boot state (browser only). */
+/** Twitch hostname but not a single-segment channel root (homepage, directory, etc.). */
+export function isTwitchBrowseUrl(url: string): boolean {
+  try {
+    const u = new URL(url.trim());
+    if (!/(^|\.)twitch\.tv$/i.test(u.hostname)) {
+      return false;
+    }
+    return !isTwitchChannelRootUrl(url);
+  } catch {
+    return false;
+  }
+}
 export function gatherTwitchBootScriptSample(doc: Document): string {
   const out: string[] = [];
   let len = 0;
