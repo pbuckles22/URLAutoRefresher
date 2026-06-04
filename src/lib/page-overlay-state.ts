@@ -1,7 +1,10 @@
 import type { ExtensionPrefs } from './prefs';
+import { getSchedHintForTab } from './sched-member-tab-hint';
 import { resolveGlobalGroupTargets } from './global-group-targets';
 import type { AppState } from './types';
 import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url';
+import { findTwitchFavsMemberForPageUrl } from './twitch-favs-member-match';
+import { isTwitchChannelRootUrl } from './twitch-live-detect';
 
 export { pageMatchesExplicitTarget } from './member-url';
 
@@ -41,6 +44,8 @@ export async function getPageOverlayVmForTab(
     return { show: true, mode: 'timer', nextFireAt: j.nextFireAt, individualJobId: j.id };
   }
 
+  const driftHint = tabUrl ? getSchedHintForTab(tabId) : undefined;
+
   for (const g of state.globalGroups) {
     if (!g.enabled) {
       continue;
@@ -51,12 +56,16 @@ export async function getPageOverlayVmForTab(
     const hitResolved = resolved.find((t) => t.tabId === tabId);
     if (hitResolved) {
       memberKey = memberKeyFromTargetUrl(hitResolved.targetUrl);
+    } else if (driftHint?.groupId === g.id && tabUrl && isTwitchChannelRootUrl(tabUrl)) {
+      memberKey = driftHint.memberKey;
     } else {
       const hit = g.targets.find((t) => pageMatchesExplicitTarget(tabUrl, t.targetUrl));
-      if (!hit) {
-        continue;
+      if (hit) {
+        memberKey = memberKeyFromTargetUrl(hit.targetUrl);
+      } else {
+        const favHit = findTwitchFavsMemberForPageUrl(g, tabUrl);
+        memberKey = favHit?.memberKey ?? null;
       }
-      memberKey = memberKeyFromTargetUrl(hit.targetUrl);
     }
     if (!memberKey) {
       continue;

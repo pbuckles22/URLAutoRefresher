@@ -3,6 +3,7 @@
  */
 import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url';
 import { resolveLiveTabIdForTargetUrl } from './resolve-live-tab';
+import { findTwitchFavsMemberForPageUrl } from './twitch-favs-member-match';
 import type { AppState } from './types';
 
 export type PageOverlaySnapBackDebug = {
@@ -95,11 +96,14 @@ export async function getPageOverlaySnapBackDebug(
       continue;
     }
     const hit = g.targets.find((t) => pageMatchesExplicitTarget(tabUrl, t.targetUrl));
-    if (!hit) {
-      continue;
+    if (hit) {
+      const mk = memberKeyFromTargetUrl(hit.targetUrl) ?? undefined;
+      return buildDebugForTarget(tabId, tabUrl, hit.targetUrl, mk, deps);
     }
-    const mk = memberKeyFromTargetUrl(hit.targetUrl) ?? undefined;
-    return buildDebugForTarget(tabId, tabUrl, hit.targetUrl, mk, deps);
+    const favHit = findTwitchFavsMemberForPageUrl(g, tabUrl);
+    if (favHit) {
+      return buildDebugForTarget(tabId, tabUrl, favHit.targetUrl, favHit.memberKey, deps);
+    }
   }
 
   return undefined;
