@@ -24,6 +24,13 @@ const OVERLAY_C = 'e2e_ov_c';
 const CLOSE_REOPEN_LOGIN = 'e2e_reopen_ch';
 const CLOSE_REOPEN_URL = twitchChannelUrl(CLOSE_REOPEN_LOGIN);
 
+/** Two favourites used to reproduce the fav→fav raid hint-poison sequence. */
+const FAV_HOME_LOGIN = 'e2e_fav_home';
+const FAV_OTHER_LOGIN = 'e2e_fav_other';
+const FAV_HOME_URL = twitchChannelUrl(FAV_HOME_LOGIN);
+const FAV_OTHER_URL = twitchChannelUrl(FAV_OTHER_LOGIN);
+const FAV_OTHER_RAID_URL = `${FAV_OTHER_URL}?referrer=raid`;
+
 /**
  * Gate 2 — TwitchFavs snap-back / overlay wiring (stubbed Twitch, default CI).
  * Backlog #10 close/reopen; immediate raid snap-back; multi-tab overlay; browse homepage.
@@ -62,6 +69,44 @@ test.describe('Epic 12 Gate 2: TwitchFavs snap-back (CI stub)', () => {
     await expect
       .poll(async () => tab.url().replace(/\/$/, ''), { timeout: 25_000 })
       .toBe(HOME_URL.replace(/\/$/, ''));
+
+    await tab.close();
+    await dash.close();
+  });
+
+  test('repeated raid to ANOTHER favourite keeps snapping back home (no hint poison)', async () => {
+    // Mirrors the manual UAT sequence: home favourite A, raid to favourite B twice.
+    // Before the hint-poison fix the second raid stayed on B (and later navigations
+    // could even snap back to B). Both raids must return to home A.
+    const dash = await context.newPage();
+    await dash.goto(dashboardUrl(extensionId));
+    await seedTwitchFavsAndOverlayPrefs(dash, {
+      channelUrls: [FAV_HOME_URL, FAV_OTHER_URL],
+    });
+
+    const tab = await context.newPage();
+    await stubTwitchChannelRoutes(tab, [FAV_HOME_LOGIN, FAV_OTHER_LOGIN]);
+
+    // Establish home on favourite A.
+    await tab.goto(FAV_HOME_URL, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await waitForExtensionDebounce();
+
+    // First raid to favourite B → snaps back to A.
+    await tab.goto(FAV_OTHER_RAID_URL, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await expect
+      .poll(async () => tab.url().replace(/\/$/, ''), { timeout: 25_000 })
+      .toBe(FAV_HOME_URL.replace(/\/$/, ''));
+    await waitForExtensionDebounce();
+
+    // Second raid to favourite B → must STILL snap back to A (regression guard).
+    await tab.goto(FAV_OTHER_RAID_URL, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await expect
+      .poll(async () => tab.url().replace(/\/$/, ''), { timeout: 25_000 })
+      .toBe(FAV_HOME_URL.replace(/\/$/, ''));
+
+    // Home must remain A and not flip to B after settling.
+    await waitForExtensionDebounce();
+    expect(tab.url().replace(/\/$/, '')).toBe(FAV_HOME_URL.replace(/\/$/, ''));
 
     await tab.close();
     await dash.close();

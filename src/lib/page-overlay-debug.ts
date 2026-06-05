@@ -3,6 +3,7 @@
  */
 import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url';
 import { resolveLiveTabIdForTargetUrl } from './resolve-live-tab';
+import { getLatestSnapBackEventForMember, type SnapBackReason } from './snap-back-events';
 import { findTwitchFavsMemberForPageUrl } from './twitch-favs-member-match';
 import type { AppState } from './types';
 
@@ -23,6 +24,10 @@ export type PageOverlaySnapBackDebug = {
   memberKey?: string;
   /** All open tab ids whose URL matches the refresh target (sorted). */
   matchingOpenTabIds: number[];
+  /** Last confirmed snap-back event for this member (if any). */
+  lastSnapBackAtMs?: number;
+  /** Reason for the last confirmed snap-back event. */
+  lastSnapBackReason?: SnapBackReason;
 };
 
 export type OverlayDebugDeps = {
@@ -61,6 +66,7 @@ async function buildDebugForTarget(
   const refreshTargetUrl = targetUrl.trim();
   const schedulerTabId = await deps.resolveLiveTabId(refreshTargetUrl, tabId);
   const matchingOpenTabIds = await listMatchingTabIds(refreshTargetUrl, deps.queryTabs);
+  const lastSnapBack = memberKey ? await getLatestSnapBackEventForMember(memberKey) : undefined;
   return {
     thisTabId: tabId,
     pageUrl: tabUrl,
@@ -70,6 +76,9 @@ async function buildDebugForTarget(
     pageMatchesTarget: pageMatchesExplicitTarget(tabUrl, refreshTargetUrl),
     ...(memberKey !== undefined ? { memberKey } : {}),
     matchingOpenTabIds,
+    ...(lastSnapBack
+      ? { lastSnapBackAtMs: lastSnapBack.atMs, lastSnapBackReason: lastSnapBack.reason }
+      : {}),
   };
 }
 
@@ -109,14 +118,36 @@ export async function getPageOverlaySnapBackDebug(
   return undefined;
 }
 
+function formatAgeSince(tsMs: number): string {
+  const deltaSec = Math.max(0, Math.floor((Date.now() - tsMs) / 1000));
+  if (deltaSec < 60) {
+    return `${deltaSec}s ago`;
+  }
+  const min = Math.floor(deltaSec / 60);
+  if (min < 60) {
+    return `${min}m ago`;
+  }
+  const hr = Math.floor(min / 60);
+  return `${hr}h ago`;
+}
+
+function formatReason(reason: SnapBackReason): string {
+  return reason === 'raid-detour' ? 'raid detour' : 'channel detour';
+}
+
 /** Compact lines for the overlay debug strip. */
 export function formatOverlayDebugLines(d: PageOverlaySnapBackDebug): string[] {
-  const sched = d.schedulerTabId !== undefined ? String(d.schedulerTabId) : '—';
+  const sched = d.schedulerTabId !== undefined ? String(d.schedulerTabId) : '-';
   const live = d.schedulerUsesThisTab ? 'LIVE' : 'other tab';
   const lines = [
-    `Tab ${d.thisTabId} · Sched ${sched} · Snap ${live}`,
+    `Tab ${d.thisTabId} · Sched ${sched} · Pick ${live}`,
     `Refresh: ${d.refreshTargetUrl}`,
   ];
+  if (d.lastSnapBackAtMs && d.lastSnapBackReason) {
+    lines.push(
+      `Last snap-back: ${formatAgeSince(d.lastSnapBackAtMs)} (${formatReason(d.lastSnapBackReason)})`
+    );
+  }
   if (d.matchingOpenTabIds.length > 0) {
     lines.push(`Open matches: ${d.matchingOpenTabIds.join(', ')}`);
   }

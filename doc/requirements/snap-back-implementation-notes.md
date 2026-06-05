@@ -16,6 +16,7 @@ When a TwitchFavs tab is on its **home channel**, the scheduler remembers that t
 6. **Overlay matches `urlPatterns`** — not only explicit `targets` rows (`findTwitchFavsMemberForPageUrl`).
 7. **Never re-inject `page-overlay.js` on routine SW wake** — use `PAGE_OVERLAY_SYNC_REQUEST`; inject only on `onInstalled` when message fails. Reuse existing shadow root on attach.
 8. **Commit after each slice** — run `npm run ci` + manual 2–3 Twitch tab check before the next change.
+9. **Overlay must not re-bind sched hint on detour** — `page-overlay-handler` `rememberSchedTabId` only when tab has no hint or same `memberKey`; otherwise fav→fav raids flip-flop home (hint poison). Gate 2 regression: repeated raid to another favourite.
 
 ## Out of scope on this branch
 

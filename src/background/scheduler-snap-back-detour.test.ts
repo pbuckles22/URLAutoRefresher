@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearSchedTabHints, rememberSchedTabId } from '../lib/sched-member-tab-hint';
+import { clearSnapBackEventsForTests } from '../lib/snap-back-events';
 import * as prefsMod from '../lib/prefs';
 import * as storageMod from '../lib/storage';
 import { maybeSnapBackRaidDetour } from './scheduler-snap-back-detour';
@@ -7,6 +8,7 @@ import { maybeSnapBackRaidDetour } from './scheduler-snap-back-detour';
 describe('maybeSnapBackRaidDetour', () => {
   beforeEach(() => {
     clearSchedTabHints();
+    clearSnapBackEventsForTests();
     vi.restoreAllMocks();
     global.chrome = global.chrome ?? {};
     global.chrome.tabs = global.chrome.tabs ?? {};

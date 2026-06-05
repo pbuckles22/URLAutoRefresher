@@ -19,6 +19,12 @@ import {
   sendExtensionMessageAsync,
   sendExtensionMessageFireAndForget,
 } from '../lib/extension-runtime-send';
+import {
+  applyTwitchWatchLayoutEnhancements,
+  createTwitchWatchLayoutState,
+  installDebouncedTwitchWatchLayoutRunner,
+  type TwitchWatchLayoutState,
+} from './twitch-watch-layout';
 import './precision-volume-bridge';
 import { PREFS_STORAGE_KEY } from '../lib/prefs';
 import { STORAGE_KEY } from '../lib/storage';
@@ -35,6 +41,8 @@ let overlayDebug: PageOverlaySnapBackDebug | undefined;
 let overlayMinimized = false;
 let shadowRoot: ShadowRoot | null = null;
 let tickHandle: ReturnType<typeof setInterval> | undefined;
+let twitchLayoutState: TwitchWatchLayoutState = createTwitchWatchLayoutState();
+let disposeTwitchLayoutRunner: (() => void) | undefined;
 
 let blipPack: PageOverlayBlipPack | null = null;
 let blipRegex: RegExp | undefined;
@@ -53,6 +61,9 @@ function clearUi() {
   overlayIndividualJobId = undefined;
   overlayDebug = undefined;
   overlayMinimized = false;
+  disposeTwitchLayoutRunner?.();
+  disposeTwitchLayoutRunner = undefined;
+  twitchLayoutState = createTwitchWatchLayoutState();
 }
 
 function clearBlipWatcher(): void {
@@ -663,6 +674,11 @@ async function syncFromBackgroundInner(): Promise<void> {
   if (!res.show) {
     clearUi();
     return;
+  }
+  if (/twitch\.tv/i.test(location.hostname) && !disposeTwitchLayoutRunner) {
+    disposeTwitchLayoutRunner = installDebouncedTwitchWatchLayoutRunner(window, () => {
+      applyTwitchWatchLayoutEnhancements(document, twitchLayoutState);
+    });
   }
   if (res.mode === 'paused') {
     if ('individualJobId' in res) {

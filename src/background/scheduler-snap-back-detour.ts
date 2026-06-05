@@ -7,6 +7,7 @@ import {
   rehydrateSchedHintsFromSession,
   rememberSchedTabId,
 } from '../lib/sched-member-tab-hint';
+import { noteSnapBackEvent } from '../lib/snap-back-events';
 import { schedLog } from '../lib/scheduler-debug';
 import { loadAppState } from '../lib/storage';
 import { isTwitchFavsGroupName, twitchChannelLoginFromUrl } from '../lib/twitch-favs';
@@ -24,23 +25,23 @@ export async function maybeSnapBackRaidDetour(
   tabId: number,
   tabUrl: string,
   previousTabUrl: string | undefined
-): Promise<void> {
+): Promise<boolean> {
   await rehydrateSchedHintsFromSession();
 
   const url = tabUrl.trim();
   if (!url || !isTwitchChannelRootUrl(url)) {
-    return;
+    return false;
   }
 
   const hint = getSchedHintForTab(tabId);
   if (!hint || pageMatchesExplicitTarget(url, hint.targetUrl)) {
-    return;
+    return false;
   }
 
   const homeLogin = twitchChannelLoginFromUrl(hint.targetUrl);
   const pageLogin = twitchChannelLoginFromUrl(url);
   if (!homeLogin || !pageLogin || homeLogin === pageLogin) {
-    return;
+    return false;
   }
 
   const isRaid = isTwitchRaidLandingUrl(url);
@@ -53,17 +54,17 @@ export async function maybeSnapBackRaidDetour(
       url,
       memberKey: hint.memberKey,
     });
-    return;
+    return false;
   }
 
   const state = await loadAppState();
   const group = state.globalGroups.find((g) => g.id === hint.groupId);
   if (!group?.enabled || !isTwitchFavsGroupName(group.name)) {
-    return;
+    return false;
   }
   const mk = memberKeyFromTargetUrl(hint.targetUrl);
   if (!mk || mk !== hint.memberKey || group.pausedMemberKeys?.includes(mk)) {
-    return;
+    return false;
   }
 
   await schedLog('raid detour snap-back', {
@@ -78,7 +79,16 @@ export async function maybeSnapBackRaidDetour(
   try {
     await chrome.tabs.update(tabId, { url: hint.targetUrl });
     rememberSchedTabId(hint.groupId, hint.memberKey, tabId, hint.targetUrl);
+    await noteSnapBackEvent(mk, {
+      atMs: Date.now(),
+      tabId,
+      fromUrl: url,
+      toUrl: hint.targetUrl,
+      reason: isRaid ? 'raid-detour' : 'channel-detour',
+    });
+    return true;
   } catch {
     await schedLog('raid detour snap-back: tabs.update failed', { tabId });
+    return false;
   }
 }

@@ -15,8 +15,8 @@ import { getPageOverlayVmForTab } from '../lib/page-overlay-state';
 import { loadExtensionPrefs } from '../lib/prefs';
 import { loadAppState, saveAppState } from '../lib/storage';
 import { refreshActionBadge } from './badge';
-import { rememberSchedTabId } from '../lib/sched-member-tab-hint';
-import { syncAlarmsWithState } from './scheduler';
+import { getSchedHintForTab, rememberSchedTabId } from '../lib/sched-member-tab-hint';
+import { observeMemberTabNavigation, syncAlarmsWithState } from './scheduler';
 
 const blipRefreshHits = new Map<number, number[]>();
 
@@ -193,6 +193,13 @@ export function attachPageOverlayMessageHandler(): void {
           tabUrl = undefined;
         }
       }
+      if (tabUrl) {
+        try {
+          await observeMemberTabNavigation(tabId, tabUrl);
+        } catch {
+          /* transient tab or storage errors during nav observation */
+        }
+      }
       let response: PageOverlayStateResponse;
       try {
         const [state, prefs] = await Promise.all([loadAppState(), loadExtensionPrefs()]);
@@ -213,12 +220,20 @@ export function attachPageOverlayMessageHandler(): void {
           'globalGroupId' in vm &&
           vm.globalGroupId
         ) {
-          rememberSchedTabId(
-            vm.globalGroupId,
-            debug.memberKey,
-            debug.schedulerTabId,
-            debug.refreshTargetUrl
-          );
+          // Do not let a tab sitting on a *different* fav channel (raid/detour) re-bind its
+          // home hint to that channel — that poisons snap-back. Only confirm/refresh the
+          // binding when this tab has no home yet or is still on its established home.
+          const existingHint = getSchedHintForTab(debug.schedulerTabId);
+          const wouldChangeHome =
+            existingHint !== undefined && existingHint.memberKey !== debug.memberKey;
+          if (!wouldChangeHome) {
+            rememberSchedTabId(
+              vm.globalGroupId,
+              debug.memberKey,
+              debug.schedulerTabId,
+              debug.refreshTargetUrl
+            );
+          }
         }
         if (!vm.show) {
           response = blip ? { ok: true, show: false, blip } : { ok: true, show: false };

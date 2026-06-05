@@ -1,12 +1,16 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_STATE } from './state';
 import {
   formatOverlayDebugLines,
   getPageOverlaySnapBackDebug,
   type OverlayDebugDeps,
 } from './page-overlay-debug';
+import { clearSnapBackEventsForTests } from './snap-back-events';
 
 describe('getPageOverlaySnapBackDebug', () => {
+  beforeEach(() => {
+    clearSnapBackEventsForTests();
+  });
   const deps: OverlayDebugDeps = {
     resolveLiveTabId: vi.fn(async () => 99),
     queryTabs: vi.fn(async () => [
@@ -80,5 +84,24 @@ describe('formatOverlayDebugLines', () => {
     expect(lines[0]).toContain('Sched 99');
     expect(lines[0]).toContain('other tab');
     expect(lines.some((l) => l.includes('Page URL'))).toBe(true);
+  });
+
+  it('shows last snap-back evidence when available', () => {
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(200_000);
+    const lines = formatOverlayDebugLines({
+      thisTabId: 7,
+      pageUrl: 'https://www.twitch.tv/ninja',
+      refreshTargetUrl: 'https://www.twitch.tv/ninja',
+      schedulerTabId: 7,
+      schedulerUsesThisTab: true,
+      pageMatchesTarget: true,
+      memberKey: 'twitch.tv/ninja',
+      matchingOpenTabIds: [7],
+      lastSnapBackAtMs: 170_000,
+      lastSnapBackReason: 'raid-detour',
+    });
+    expect(lines[0]).toContain('Pick LIVE');
+    expect(lines.some((l) => l.includes('Last snap-back: 30s ago (raid detour)'))).toBe(true);
+    nowSpy.mockRestore();
   });
 });

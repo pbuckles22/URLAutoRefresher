@@ -78,10 +78,13 @@ export async function bootstrapScheduling(): Promise<void> {
   await refreshActionBadge();
 }
 
-async function onMemberTabNavigation(tabId: number, tabUrl: string): Promise<void> {
+export async function observeMemberTabNavigation(tabId: number, tabUrl: string): Promise<void> {
   await rehydrateSchedHintsFromSession();
   const url = tabUrl.trim();
   const previousTabUrl = getLastTabUrl(tabId);
+  if (!url || previousTabUrl === url) {
+    return;
+  }
 
   if (isTwitchBrowseUrl(url)) {
     forgetSchedTabId(tabId);
@@ -89,7 +92,11 @@ async function onMemberTabNavigation(tabId: number, tabUrl: string): Promise<voi
     return;
   }
 
-  await maybeSnapBackRaidDetour(tabId, url, previousTabUrl);
+  const snappedBack = await maybeSnapBackRaidDetour(tabId, url, previousTabUrl);
+  if (snappedBack) {
+    // Do not stamp the detour as last URL; wait for the redirected home navigation event.
+    return;
+  }
   noteTabUrl(tabId, url);
   await maybeRememberSchedTabFromFavHome(tabId, url);
 }
@@ -106,7 +113,7 @@ export function attachSchedulingListeners(): void {
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     const urlFromEvent = changeInfo.url ?? (changeInfo.status === 'complete' ? tab.url : undefined);
     if (urlFromEvent) {
-      void onMemberTabNavigation(tabId, urlFromEvent).catch(() => {
+      void observeMemberTabNavigation(tabId, urlFromEvent).catch(() => {
         /* transient tab API errors */
       });
     }
