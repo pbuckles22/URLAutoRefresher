@@ -18,27 +18,38 @@ attachPrecisionVolumeTabRoute();
 attachBadgeListeners();
 attachPageOverlayMessageHandler();
 attachLiveAwareListeners();
-void bootstrapScheduling().then(() => syncAllOpenTwitchFavsTabs({ reinjectOverlays: false }));
+
+/** Serialize SW bootstrap so module load, onInstalled, and onStartup do not interleave. */
+let bootstrapChain: Promise<void> = Promise.resolve();
+
+function enqueueBootstrap(reinjectOverlays: boolean): void {
+  bootstrapChain = bootstrapChain
+    .then(async () => {
+      await bootstrapScheduling();
+      await syncAllOpenTwitchFavsTabs({ reinjectOverlays });
+    })
+    .catch(() => {
+      /* storage or alarm APIs may fail transiently on SW wake */
+    });
+}
+
+enqueueBootstrap(false);
 
 void chrome.sidePanel.setOptions({
   path: 'sidepanel/sidepanel.html',
   enabled: true,
 });
 
-function bootstrapAfterExtensionLoad(reinjectOverlays: boolean): void {
-  void bootstrapScheduling().then(() => syncAllOpenTwitchFavsTabs({ reinjectOverlays }));
-}
-
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setOptions({
     path: 'sidepanel/sidepanel.html',
     enabled: true,
   });
-  bootstrapAfterExtensionLoad(true);
+  enqueueBootstrap(true);
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  bootstrapAfterExtensionLoad(true);
+  enqueueBootstrap(true);
 });
 
 chrome.action.onClicked.addListener((tab) => {

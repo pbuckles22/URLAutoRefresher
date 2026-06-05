@@ -90,6 +90,8 @@ export async function alignGlobalGroupsState(state: AppState, now: number): Prom
       }
     }
 
+    // Drop stale keys: not on an open schedulable tab AND (unenrolled OR paused).
+    // Keep enrolled, unpaused rows when tabs drifted (URL-first — no live tab yet).
     for (const key of Object.keys(memberNextFireAt)) {
       if (activeMemberKeys.has(key)) {
         continue;

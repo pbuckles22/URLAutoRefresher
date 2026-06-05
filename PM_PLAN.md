@@ -32,13 +32,13 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 
 **Execution order:** **A** Step A snap-back UAT (Backlog **#10**) → **B** Epic **14** proactive no-raid → **C** Epic **15** viewing layout → **D** Backlog **#8** overlay drag.
 
-| Step    | Scope                                                                                 | Status                                                                                                                                                                                                          |
-| ------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A**   | TwitchFavs snap-back after raid/detour; overlay debug strip; sched-tab hints          | **Gate 2 green** (5/5 Playwright incl. fav→fav hint-poison regression); version **0.2.0**. **Gate 3 not recorded** — ~10 min real Twitch before merge to `main`; see `doc/handoff/HANDOFF-2026-06-05-105500.md` |
-| **B**   | Epic **14** — block raid navigation on TwitchFavs home tabs (before detour completes) | **Next** after Step A Gate 3 pass; normative spec **not yet** in EDGE plan — see [snap-back-implementation-notes.md](doc/requirements/snap-back-implementation-notes.md)                                        |
-| **C–D** | Theater/chat layout (partial port), overlay drag                                      | **C** partial — theater/chat one-shot on overlay attach; no pref toggle yet. **D** backlog                                                                                                                      |
+| Step    | Scope                                                                                 | Status                                                                                                                                                                                                             |
+| ------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **A**   | TwitchFavs snap-back after raid/detour; overlay debug strip; sched-tab hints          | **Gate 2 green** (7/7 Playwright); bug-review hardening + E2E regressions. Version **0.2.0**. **Gate 3 not recorded** — ~10 min real Twitch before merge to `main`; see `doc/handoff/HANDOFF-2026-06-05-113200.md` |
+| **B**   | Epic **14** — block raid navigation on TwitchFavs home tabs (before detour completes) | **Next** after Step A Gate 3 pass; normative spec **not yet** in EDGE plan — see [snap-back-implementation-notes.md](doc/requirements/snap-back-implementation-notes.md)                                           |
+| **C–D** | Theater/chat layout (partial port), overlay drag                                      | **C** partial — theater/chat one-shot on overlay attach; no pref toggle yet. **D** backlog                                                                                                                         |
 
-Handoff: `doc/handoff/HANDOFF-2026-06-05-105500.md` (local, latest). Gates: [TEST_PLAN.md](TEST_PLAN.md#release-gates-twitchfavs--snap-back). Branch: `feature/snap-back-uat`.
+Handoff: `doc/handoff/HANDOFF-2026-06-05-113200.md` (local, latest). Gates: [TEST_PLAN.md](TEST_PLAN.md#release-gates-twitchfavs--snap-back). Branch: `feature/snap-back-uat`.
 
 ## Later (see EDGE plan)
 

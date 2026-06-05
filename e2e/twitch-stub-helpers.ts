@@ -48,6 +48,22 @@ export async function stubTwitchBrowseRoute(page: Page): Promise<void> {
   });
 }
 
+/** Stub twitch.tv/videos (unrelated path segment — must not match a channel favourite). */
+export async function stubTwitchVideosRoute(page: Page): Promise<void> {
+  const videosRe = /^https:\/\/(www\.)?twitch\.tv\/videos\/?(\?.*)?$/i;
+  await page.route(videosRe, async (route) => {
+    if (route.request().resourceType() === 'document') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/html; charset=utf-8',
+        body: STUB_HTML('twitch-videos'),
+      });
+    } else {
+      await route.abort();
+    }
+  });
+}
+
 export type SeedTwitchFavsOptions = {
   groupId?: string;
   channelUrls: readonly string[];
@@ -94,7 +110,7 @@ export async function seedTwitchFavsAndOverlayPrefs(
         [prefsKey]: {
           showPageOverlayTimer: true,
           showOverlaySnapBackDebug: true,
-          precisionVolume: { lastTabId: null, lastLinearGain: 0 },
+          precisionVolume: { lastTabId: null, lastLinearGain: 1 },
         },
       });
     },

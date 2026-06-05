@@ -42,13 +42,16 @@ export function pageMatchesExplicitTarget(pageUrl: string | undefined, targetUrl
   if (kp === kt) {
     return true;
   }
-  /* Site root (e.g. twitch.tv homepage) must not match every channel under that host. */
+  /*
+   * Site root (e.g. twitch.tv homepage → key `twitch.tv`) must not prefix-match channels.
+   * When both sides have a path, only match if one key is a strict path-prefix of the other
+   * (channel home ↔ /videos subpath). Unrelated paths (e.g. /videos vs /ninja) do not match.
+   */
   const kpHasPath = kp.includes('/');
   const ktHasPath = kt.includes('/');
   if (!kpHasPath || !ktHasPath) {
     return false;
   }
-  /* Same channel, extra path segments (e.g. /videos) */
   return kp.startsWith(`${kt}/`) || kt.startsWith(`${kp}/`);
 }
 

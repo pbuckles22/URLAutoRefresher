@@ -156,6 +156,27 @@ describe('alignGlobalGroupsState', () => {
     });
   });
 
+  it('drops memberNextFireAt for enrolled but paused members with no active tab', async () => {
+    const future = now + 600_000;
+    mockedResolve.mockResolvedValue([]);
+    const state = minimalState({
+      globalGroups: [
+        {
+          id: 'g1',
+          name: 'TwitchFavs',
+          targets: [{ targetUrl: 'https://www.twitch.tv/djsonnyd' }],
+          baseIntervalSec: 500,
+          jitterSec: 30,
+          enabled: true,
+          pausedMemberKeys: ['twitch.tv/djsonnyd'],
+          memberNextFireAt: { 'twitch.tv/djsonnyd': future },
+        },
+      ],
+    });
+    const out = await alignGlobalGroupsState(state, now);
+    expect(out.globalGroups[0].memberNextFireAt).toBeUndefined();
+  });
+
   it('keeps memberNextFireAt for enrolled targets when tab URL drifted (no resolved tab)', async () => {
     const future = now + 600_000;
     mockedResolve.mockResolvedValue([]);

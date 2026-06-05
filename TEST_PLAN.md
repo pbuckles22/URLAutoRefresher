@@ -58,12 +58,12 @@ Vitest does **not** execute the real browser or extension host:
 
 Use these so **manual Twitch UAT is short** unless you are shipping Step A to `main`.
 
-| Gate  | Command / action                                                                                            | When                                                                                          |
-| ----- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| **0** | `npm test`                                                                                                  | After any logic change (~20s)                                                                 |
-| **1** | `npm run ci`                                                                                                | Pre-commit / pre-merge (lint + Vitest + build + Playwright)                                   |
-| **2** | Included in **`npm run ci`** — [`e2e/epic-12-gate2-snap-back.spec.ts`](e2e/epic-12-gate2-snap-back.spec.ts) | Stub Twitch: raid snap-back, 3-tab overlay, homepage no overlay, Backlog **#10** close/reopen |
-| **3** | **Manual** ~10 min on **real Twitch** — [Gate 3 checklist](#gate-3--manual-ship-step-a-real-twitch)         | Once before merging snap-back work to `main`; optional spot-check after Gate 2 green          |
+| Gate  | Command / action                                                                                            | When                                                                                                                                                                           |
+| ----- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **0** | `npm test`                                                                                                  | After any logic change (~20s)                                                                                                                                                  |
+| **1** | `npm run ci`                                                                                                | Pre-commit / pre-merge (lint + Vitest + build + Playwright)                                                                                                                    |
+| **2** | Included in **`npm run ci`** — [`e2e/epic-12-gate2-snap-back.spec.ts`](e2e/epic-12-gate2-snap-back.spec.ts) | Stub Twitch: raid snap-back, fav→fav hint-poison + overlay after snap-back, 3-tab overlay, homepage + `/videos` no overlay, unity default volume, Backlog **#10** close/reopen |
+| **3** | **Manual** ~10 min on **real Twitch** — [Gate 3 checklist](#gate-3--manual-ship-step-a-real-twitch)         | Once before merging snap-back work to `main`; optional spot-check after Gate 2 green                                                                                           |
 
 **Gate 2 helpers:** [`e2e/twitch-stub-helpers.ts`](e2e/twitch-stub-helpers.ts) (shared with [`e2e/epic-12-4.spec.ts`](e2e/epic-12-4.spec.ts) pattern).
 
@@ -129,7 +129,7 @@ Implementation:
 - **`e2e/epic-5.spec.ts`** — unified UI per EDGE **Epic 5**: **Global (N)** / **Individual (M)** on dashboard and generated side panel; browse layout; **Epic 5.3** cross-surface nav (side panel **Open in a tab** `[data-open-in-tab]` vs dashboard **Open side panel**); **Epic 5.4** countdown row text changes over ~2.5s (1s UI tick); extra assertions (“Backlog 1”) for top CTA DOM order + new tab opens packaged dashboard.
 - **`e2e/epic-6.spec.ts`** — **Epic 6** toolbar badge: after seeding storage, `chrome.action.getBadgeText` shows `m:ss` (not idle `×`).
 - **`e2e/epic-12-4.spec.ts`** — Epic 12.4 TwitchFavs stub channel → storage upsert.
-- **`e2e/epic-12-gate2-snap-back.spec.ts`** — Gate 2: stub snap-back, 3-tab overlay, homepage, Backlog **#10** close/reopen ([release gates](#release-gates-twitchfavs--snap-back)).
+- **`e2e/epic-12-gate2-snap-back.spec.ts`** — Gate 2: stub snap-back, fav→fav hint-poison, overlay after snap-back, 3-tab overlay, homepage + `/videos` no overlay, unity default volume, Backlog **#10** close/reopen ([release gates](#release-gates-twitchfavs--snap-back)).
 
 **Headed Chromium:** MV3 extensions are exercised with **`headless: false`** (Playwright `channel: 'chromium'`). **CI (Linux)** runs under **xvfb** so no physical display is required.
 

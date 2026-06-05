@@ -39,6 +39,15 @@ describe('pageMatchesExplicitTarget (re-export contract)', () => {
       )
     ).toBe(true);
   });
+
+  it('does not match unrelated twitch path segments (e.g. /videos vs channel)', () => {
+    expect(
+      pageMatchesExplicitTarget('https://www.twitch.tv/videos', 'https://www.twitch.tv/ninja')
+    ).toBe(false);
+    expect(
+      pageMatchesExplicitTarget('https://www.twitch.tv/ninja', 'https://www.twitch.tv/videos')
+    ).toBe(false);
+  });
 });
 
 describe('pickBestOpenTabForMemberTarget', () => {

@@ -648,23 +648,35 @@ function showPaused(
   mountPausedOverlay(scope);
 }
 
-async function requestOverlayState(): Promise<PageOverlayStateResponse | undefined> {
+type PageOverlayStateSuccess = Exclude<PageOverlayStateResponse, { ok: false }>;
+
+function isOverlayStateSuccess(
+  res: PageOverlayStateResponse | undefined
+): res is PageOverlayStateSuccess {
+  return res !== undefined && res.ok === true;
+}
+
+async function requestOverlayState(): Promise<PageOverlayStateSuccess | undefined> {
   let res = await sendExtensionMessageAsync<PageOverlayStateResponse>({
     type: PAGE_OVERLAY_GET_STATE,
   });
-  if (res?.ok) {
+  if (isOverlayStateSuccess(res)) {
     return res;
+  }
+  // Background answered definitively — do not treat { ok: false } as partial success.
+  if (res !== undefined && res.ok === false) {
+    return undefined;
   }
   await new Promise((r) => setTimeout(r, 120));
   res = await sendExtensionMessageAsync<PageOverlayStateResponse>({
     type: PAGE_OVERLAY_GET_STATE,
   });
-  return res?.ok ? res : undefined;
+  return isOverlayStateSuccess(res) ? res : undefined;
 }
 
 async function syncFromBackgroundInner(): Promise<void> {
   const res = await requestOverlayState();
-  if (!res) {
+  if (!isOverlayStateSuccess(res)) {
     clearUi();
     clearBlipWatcher();
     return;

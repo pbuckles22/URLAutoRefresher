@@ -1,12 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { dashboardUrl, launchExtensionContext } from './extension-helpers';
 import {
+  PREFS_STORAGE_KEY,
   STORAGE_KEY,
   expectOverlayAbsent,
+  expectOverlayCardVisible,
   openTwitchStubAndExpectOverlay,
   seedTwitchFavsAndOverlayPrefs,
   stubTwitchBrowseRoute,
   stubTwitchChannelRoutes,
+  stubTwitchVideosRoute,
   twitchChannelUrl,
   waitForExtensionDebounce,
 } from './twitch-stub-helpers';
@@ -33,7 +36,8 @@ const FAV_OTHER_RAID_URL = `${FAV_OTHER_URL}?referrer=raid`;
 
 /**
  * Gate 2 — TwitchFavs snap-back / overlay wiring (stubbed Twitch, default CI).
- * Backlog #10 close/reopen; immediate raid snap-back; multi-tab overlay; browse homepage.
+ * Raid snap-back, fav→fav hint-poison, overlay after snap-back, multi-tab overlay,
+ * homepage + /videos no overlay, unity default volume, Backlog #10 close/reopen.
  */
 test.describe('Epic 12 Gate 2: TwitchFavs snap-back (CI stub)', () => {
   test.describe.configure({ mode: 'serial' });
@@ -108,6 +112,9 @@ test.describe('Epic 12 Gate 2: TwitchFavs snap-back (CI stub)', () => {
     await waitForExtensionDebounce();
     expect(tab.url().replace(/\/$/, '')).toBe(FAV_HOME_URL.replace(/\/$/, ''));
 
+    // Overlay must still render on home after snap-back (no { ok: false } partial-success path).
+    await expectOverlayCardVisible(tab);
+
     await tab.close();
     await dash.close();
   });
@@ -147,6 +154,38 @@ test.describe('Epic 12 Gate 2: TwitchFavs snap-back (CI stub)', () => {
     await expectOverlayAbsent(browse);
 
     await browse.close();
+    await dash.close();
+  });
+
+  test('twitch /videos stub does not show overlay for channel favourite', async () => {
+    const dash = await context.newPage();
+    await dash.goto(dashboardUrl(extensionId));
+    await seedTwitchFavsAndOverlayPrefs(dash, { channelUrls: [HOME_URL] });
+
+    const browse = await context.newPage();
+    await stubTwitchVideosRoute(browse);
+    await browse.goto('https://www.twitch.tv/videos', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30_000,
+    });
+    await waitForExtensionDebounce();
+    await expectOverlayAbsent(browse);
+
+    await browse.close();
+    await dash.close();
+  });
+
+  test('fresh prefs default precision volume to 100% (unity gain)', async () => {
+    const dash = await context.newPage();
+    await dash.goto(dashboardUrl(extensionId));
+    await dash.evaluate(
+      async ({ prefsKey }) => {
+        await chrome.storage.local.remove(prefsKey);
+      },
+      { prefsKey: PREFS_STORAGE_KEY }
+    );
+    await dash.reload({ waitUntil: 'domcontentloaded' });
+    await expect(dash.locator('[data-precision-volume-numeric]')).toHaveValue('100');
     await dash.close();
   });
 

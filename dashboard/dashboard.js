@@ -2406,8 +2406,8 @@
   var PREFS_STORAGE_KEY = "urlAutoRefresher_prefs_v1";
   var DEFAULT_PRECISION_VOLUME = {
     lastTabId: null,
-    /** Zero-blast default: silent until the user raises the fader (saved value auto-applies on each page). */
-    lastLinearGain: 0
+    /** Unity gain when unset — no change to page audio until the user moves the fader. */
+    lastLinearGain: 1
   };
   var DEFAULT_PREFS = {
     showPageOverlayTimer: true,
