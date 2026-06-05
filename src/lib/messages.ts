@@ -16,6 +16,7 @@ export type PageOverlayBlipPack = {
 };
 
 export type PageOverlayStateResponse =
+  | { ok: false }
   | { ok: true; show: false; blip?: PageOverlayBlipPack }
   | {
       ok: true;

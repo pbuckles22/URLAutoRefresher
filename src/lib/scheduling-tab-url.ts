@@ -4,7 +4,7 @@
 
 import { globalGroupHasSchedulableConfig } from './global-group-targets';
 import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url';
-import { isTwitchFavsGroupName, tabUrlMatchesTwitchFavsFavorite } from './twitch-favs';
+import { isTwitchFavsGroupName } from './twitch-favs';
 import type { AppState } from './types';
 import { urlMatchesGlob } from './url-glob';
 
@@ -37,13 +37,15 @@ export function shouldBootstrapSchedulingForTabUrl(state: AppState, tabUrl: stri
         continue;
       }
       const match = isTwitchFavsGroupName(g.name)
-        ? tabUrlMatchesTwitchFavsFavorite(url, p)
+        ? pageMatchesExplicitTarget(url, p)
         : urlMatchesGlob(url, p);
       if (!match) {
         continue;
       }
-      const tabMk = memberKeyFromTargetUrl(url);
-      if (tabMk && paused.has(tabMk)) {
+      const memberMk = isTwitchFavsGroupName(g.name)
+        ? memberKeyFromTargetUrl(p)
+        : memberKeyFromTargetUrl(url);
+      if (memberMk && paused.has(memberMk)) {
         continue;
       }
       return true;

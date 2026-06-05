@@ -43,4 +43,33 @@ describe('sched-member-tab-hint session rehydrate', () => {
     await new Promise((r) => setTimeout(r, 120));
     expect(chrome.storage.session.set).toHaveBeenCalled();
   });
+
+  it('concurrent rehydrate calls await the same session read', async () => {
+    const stored = {
+      hints: [
+        {
+          groupId: 'g1',
+          memberKey: 'twitch.tv/djsonnyd',
+          targetUrl: 'https://www.twitch.tv/djsonnyd',
+          tabId: 99,
+        },
+      ],
+    };
+    let resolveGet!: (value: Record<string, unknown>) => void;
+    const getDeferred = new Promise<Record<string, unknown>>((resolve) => {
+      resolveGet = resolve;
+    });
+    vi.mocked(chrome.storage.session.get).mockReturnValue(getDeferred);
+
+    const first = rehydrateSchedHintsFromSession();
+    const second = rehydrateSchedHintsFromSession();
+
+    expect(getSchedHintForTab(99)).toBeUndefined();
+
+    resolveGet({ [SCHED_MEMBER_HINTS_SESSION_KEY]: stored });
+    await Promise.all([first, second]);
+
+    expect(getSchedHintForTab(99)).toEqual(stored.hints[0]);
+    expect(chrome.storage.session.get).toHaveBeenCalledTimes(1);
+  });
 });

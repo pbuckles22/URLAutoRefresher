@@ -15,6 +15,7 @@ import {
 import { compileBlipRegex, sampleDocumentText, textMatchesBlip } from '../lib/blip-match';
 import { formatOverlayDebugLines } from '../lib/page-overlay-debug';
 import {
+  extensionRuntimeContextLikelyAlive,
   sendExtensionMessageAsync,
   sendExtensionMessageFireAndForget,
 } from '../lib/extension-runtime-send';
@@ -114,13 +115,18 @@ function shadowCss(): string {
   return `
     :host {
       all: initial;
+      box-sizing: border-box;
+      display: block !important;
+      position: fixed !important;
+      top: 12px !important;
+      right: 12px !important;
+      z-index: 2147483647 !important;
+      pointer-events: none;
       font-family: system-ui, "Segoe UI", Roboto, sans-serif;
     }
     .card {
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      z-index: 2147483646;
+      position: relative;
+      pointer-events: auto;
       background: #ffffff;
       border-radius: 16px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
@@ -448,6 +454,15 @@ function resolveShadowRoot(host: HTMLDivElement): ShadowRoot | null {
     shadowRoot = host.attachShadow({ mode: 'open' });
   } catch {
     shadowRoot = host.shadowRoot ?? null;
+    if (!shadowRoot) {
+      host.remove();
+      const fresh = ensureShadowHost();
+      try {
+        shadowRoot = fresh.attachShadow({ mode: 'open' });
+      } catch {
+        shadowRoot = fresh.shadowRoot ?? null;
+      }
+    }
   }
   if (!shadowRoot) {
     return null;
@@ -465,6 +480,7 @@ function ensureShadowCard(root: ShadowRoot): HTMLDivElement {
   let card = root.querySelector('.card');
   if (!card) {
     card = document.createElement('div');
+    card.className = 'card';
     root.append(card);
   }
   return card as HTMLDivElement;
@@ -475,7 +491,10 @@ function ensureShadowHost(): HTMLDivElement {
   if (!host) {
     host = document.createElement('div');
     host.id = ROOT_ID;
-    document.documentElement.appendChild(host);
+  }
+  const mount = document.body ?? document.documentElement;
+  if (host.parentElement !== mount) {
+    mount.appendChild(host);
   }
   return host;
 }
@@ -501,10 +520,14 @@ function remountOverlayCard(): void {
     card.className = 'card card--timer';
     card.innerHTML = buildTimerHtml(showPause);
     paintDigits();
+  } else {
+    card.className = 'card';
+    card.innerHTML = '';
   }
 }
 
 function mountTimerOverlay(opts: { globalGroupId?: string; individualJobId?: string }): void {
+  overlayMinimized = false;
   overlayGroupId = opts.globalGroupId;
   overlayIndividualJobId = opts.individualJobId;
   const root = resolveShadowRoot(ensureShadowHost());
@@ -519,6 +542,7 @@ function mountTimerOverlay(opts: { globalGroupId?: string; individualJobId?: str
 function mountPausedOverlay(
   scope: { type: 'global'; groupId: string } | { type: 'individual'; jobId: string }
 ): void {
+  overlayMinimized = false;
   if (scope.type === 'global') {
     overlayGroupId = scope.groupId;
     overlayIndividualJobId = undefined;
@@ -613,11 +637,23 @@ function showPaused(
   mountPausedOverlay(scope);
 }
 
-async function syncFromBackgroundInner(): Promise<void> {
-  const res = await sendExtensionMessageAsync<PageOverlayStateResponse>({
+async function requestOverlayState(): Promise<PageOverlayStateResponse | undefined> {
+  let res = await sendExtensionMessageAsync<PageOverlayStateResponse>({
     type: PAGE_OVERLAY_GET_STATE,
   });
-  if (!res?.ok) {
+  if (res?.ok) {
+    return res;
+  }
+  await new Promise((r) => setTimeout(r, 120));
+  res = await sendExtensionMessageAsync<PageOverlayStateResponse>({
+    type: PAGE_OVERLAY_GET_STATE,
+  });
+  return res?.ok ? res : undefined;
+}
+
+async function syncFromBackgroundInner(): Promise<void> {
+  const res = await requestOverlayState();
+  if (!res) {
     clearUi();
     clearBlipWatcher();
     return;
@@ -652,9 +688,23 @@ async function syncFromBackground(): Promise<void> {
 
 const overlayGlobal = globalThis as typeof globalThis & {
   __urlarPageOverlayBootstrapped?: boolean;
+  __urlarPageOverlayRuntimeId?: string;
 };
 
-if (!overlayGlobal.__urlarPageOverlayBootstrapped) {
+/** Re-register listeners after extension reload / programmatic re-inject (same tab, new runtime id). */
+function overlayBootstrapStale(): boolean {
+  if (!extensionRuntimeContextLikelyAlive()) {
+    return false;
+  }
+  const id = chrome.runtime.id;
+  if (overlayGlobal.__urlarPageOverlayRuntimeId !== id) {
+    overlayGlobal.__urlarPageOverlayRuntimeId = id;
+    overlayGlobal.__urlarPageOverlayBootstrapped = false;
+  }
+  return !overlayGlobal.__urlarPageOverlayBootstrapped;
+}
+
+if (overlayBootstrapStale()) {
   overlayGlobal.__urlarPageOverlayBootstrapped = true;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

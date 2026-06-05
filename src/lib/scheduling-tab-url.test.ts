@@ -52,6 +52,33 @@ describe('shouldBootstrapSchedulingForTabUrl', () => {
     expect(shouldBootstrapSchedulingForTabUrl(state, canon)).toBe(false);
   });
 
+  it('returns false when paused member is on a channel sub-path matched via urlPatterns', () => {
+    const canon = canonicalTwitchChannelUrl('djsonnyd');
+    const state = stateWith(
+      twitchGroup({
+        targets: [],
+        urlPatterns: [canon],
+        pausedMemberKeys: ['twitch.tv/djsonnyd'],
+      })
+    );
+    expect(shouldBootstrapSchedulingForTabUrl(state, 'https://www.twitch.tv/djsonnyd/videos')).toBe(
+      false
+    );
+  });
+
+  it('returns true for channel sub-path when urlPattern matches and member is not paused', () => {
+    const canon = canonicalTwitchChannelUrl('djsonnyd');
+    const state = stateWith(
+      twitchGroup({
+        targets: [],
+        urlPatterns: [canon],
+      })
+    );
+    expect(shouldBootstrapSchedulingForTabUrl(state, 'https://www.twitch.tv/djsonnyd/videos')).toBe(
+      true
+    );
+  });
+
   it('returns false when the group is disabled or has no schedulable config', () => {
     const canon = canonicalTwitchChannelUrl('djsonnyd');
     expect(

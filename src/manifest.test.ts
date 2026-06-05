@@ -23,7 +23,7 @@ describe('manifest.json', () => {
 
   it('declares storage, alarms, tabs, windows, sidePanel and broad http(s) hosts', () => {
     expect(manifest.permissions).toEqual(
-      expect.arrayContaining(['storage', 'alarms', 'tabs', 'windows', 'sidePanel'])
+      expect.arrayContaining(['storage', 'alarms', 'tabs', 'windows', 'sidePanel', 'scripting'])
     );
     expect(manifest.host_permissions).toContain('http://*/*');
     expect(manifest.host_permissions).toContain('https://*/*');

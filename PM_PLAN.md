@@ -28,9 +28,21 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 - **[Epic 13](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-13--scheduler--dashboard-modularization):** **Phase 13.B shipped** (**13.B1–13.B5**); Epic **13** scheduler (**13.A**) + dashboard modularization complete — **`npm run ci`** remains the merge gate. ESLint / complexity: [.cursor/skills/code-quality-gate/SKILL.md](.cursor/skills/code-quality-gate/SKILL.md).
 - **Epic 11:** **done (11.1–11.7)** on **`main`** — precision volume + OSD + tests; UAT: [doc/uat/DAILY-TWITCHFAVS-ROLLOUT.md](doc/uat/DAILY-TWITCHFAVS-ROLLOUT.md).
 
+## In flight (branch `feature/snap-back-uat` — **not on `main`**)
+
+**Execution order:** **A** Step A snap-back UAT (Backlog **#10**) → **B** Epic **14** proactive no-raid → **C** Epic **15** viewing layout → **D** Backlog **#8** overlay drag.
+
+| Step    | Scope                                                                                 | Status                                                                                                                                                                                       |
+| ------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A**   | TwitchFavs snap-back after raid/detour; overlay debug strip; sched-tab hints          | **BLOCKED (P0)** — refresh works; **overlay not visible on real Twitch**; uncommitted overlay recovery WIP; no checkin recorded overlay pass; see `doc/handoff/HANDOFF-2026-06-04-184610.md` |
+| **B**   | Epic **14** — block raid navigation on TwitchFavs home tabs (before detour completes) | **Next** after Step A shippable; normative spec **not yet** in EDGE plan — see [snap-back-implementation-notes.md](doc/requirements/snap-back-implementation-notes.md)                       |
+| **C–D** | Theater/chat layout, overlay drag                                                     | Backlog                                                                                                                                                                                      |
+
+Handoff: `doc/handoff/HANDOFF-2026-06-04-184610.md` (local, latest). Gates: [TEST_PLAN.md](TEST_PLAN.md#release-gates-twitchfavs--snap-back).
+
 ## Later (see EDGE plan)
 
-- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5**, **6** (see EDGE plan). **Open:** **4** (Play after long idle — **on hold**); **7** _(superseded by Epic 10 — traceability only)_; **8** (overlay snap/drag); **9** (precision volume defaults to **active tab**, not manual target picker — user-requested). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
+- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5**, **6** (see EDGE plan). **Open:** **4** (Play after long idle — **on hold**); **7** _(superseded by Epic 10 — traceability only)_; **8** (overlay snap/drag); **9** (precision volume defaults to **active tab**, not manual target picker — user-requested); **10** (TwitchFavs snap-back — **Step A**, in flight above). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
 - New epics/stories should still be added to the EDGE plan and [doc/requirements/](doc/requirements/) when you formalize scope.
 
 Keep this file in sync with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) checkboxes when scope changes. Session handoff notes use `doc/handoff/HANDOFF-*.md` (gitignored — not on `main`); prefer **timestamped** names (`HANDOFF-YYYY-MM-DD-HHmmss.md`) and a **Recorded** line — [AGENT_HANDOFF.md](AGENT_HANDOFF.md). Add `doc/requirements/` when you use it.

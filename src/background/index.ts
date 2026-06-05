@@ -25,12 +25,20 @@ void chrome.sidePanel.setOptions({
   enabled: true,
 });
 
+function bootstrapAfterExtensionLoad(reinjectOverlays: boolean): void {
+  void bootstrapScheduling().then(() => syncAllOpenTwitchFavsTabs({ reinjectOverlays }));
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setOptions({
     path: 'sidepanel/sidepanel.html',
     enabled: true,
   });
-  void bootstrapScheduling().then(() => syncAllOpenTwitchFavsTabs({ reinjectOverlays: true }));
+  bootstrapAfterExtensionLoad(true);
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  bootstrapAfterExtensionLoad(true);
 });
 
 chrome.action.onClicked.addListener((tab) => {

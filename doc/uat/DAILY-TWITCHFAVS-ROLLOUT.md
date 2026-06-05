@@ -128,6 +128,19 @@ Use a **short interval (60–120 seconds)** for these tests, then lengthen the i
 
 **You are done** when Test 3 passes reliably for every channel you care about.
 
+### Gate 3 — Ship check (automation + minimal manual)
+
+Before merging snap-back work to **`main`**:
+
+1. **`npm run ci`** green (includes Gate 2 Playwright: stub snap-back, multi-tab overlay, homepage, close/reopen).
+2. **Manual ~10 min** on **2–3 real favorites** ([TEST_PLAN.md — Gate 3](../../TEST_PLAN.md#gate-3--manual-ship-step-a-real-twitch)):
+   - Each fav tab shows overlay
+   - One **timer** snap-back (wait for 0:00)
+   - One **fake raid** URL (`?referrer=raid`) snaps home immediately
+   - `https://www.twitch.tv/` shows no overlay
+
+You do **not** need the full 8-window grid unless stress-testing.
+
 ### Test 4 — Page overlay (optional)
 
 | Step                                                                     | Pass when                                   |

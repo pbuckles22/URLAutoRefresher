@@ -15,6 +15,7 @@ const hintByMember = new Map<string, MemberSchedHint>();
 const memberKeyByTabId = new Map<number, string>();
 
 let rehydratedFromSession = false;
+let rehydrateInFlight: Promise<void> | null = null;
 let persistDebounce: ReturnType<typeof setTimeout> | undefined;
 
 function hintKey(groupId: string, memberKey: string): string {
@@ -49,20 +50,30 @@ export async function rehydrateSchedHintsFromSession(): Promise<void> {
   if (rehydratedFromSession) {
     return;
   }
-  rehydratedFromSession = true;
-  try {
-    const data = await chrome.storage.session.get(SCHED_MEMBER_HINTS_SESSION_KEY);
-    const raw = data[SCHED_MEMBER_HINTS_SESSION_KEY as keyof typeof data] as
-      | { hints?: MemberSchedHint[] }
-      | undefined;
-    for (const h of raw?.hints ?? []) {
-      if (h.groupId && h.memberKey && h.targetUrl && h.tabId >= 1) {
-        applyHintToMemory(h);
-      }
-    }
-  } catch {
-    rehydratedFromSession = false;
+  if (rehydrateInFlight) {
+    return rehydrateInFlight;
   }
+
+  rehydrateInFlight = (async () => {
+    try {
+      const data = await chrome.storage.session.get(SCHED_MEMBER_HINTS_SESSION_KEY);
+      const raw = data[SCHED_MEMBER_HINTS_SESSION_KEY as keyof typeof data] as
+        | { hints?: MemberSchedHint[] }
+        | undefined;
+      for (const h of raw?.hints ?? []) {
+        if (h.groupId && h.memberKey && h.targetUrl && h.tabId >= 1) {
+          applyHintToMemory(h);
+        }
+      }
+      rehydratedFromSession = true;
+    } catch {
+      rehydratedFromSession = false;
+    } finally {
+      rehydrateInFlight = null;
+    }
+  })();
+
+  return rehydrateInFlight;
 }
 
 export function rememberSchedTabId(
@@ -113,6 +124,7 @@ export function clearSchedTabHints(): void {
   hintByMember.clear();
   memberKeyByTabId.clear();
   rehydratedFromSession = false;
+  rehydrateInFlight = null;
   clearTimeout(persistDebounce);
   persistDebounce = undefined;
 }

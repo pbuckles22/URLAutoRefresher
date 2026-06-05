@@ -54,6 +54,31 @@ Vitest does **not** execute the real browser or extension host:
 
 **Regression risk:** e.g. shadow mode (`open` vs `closed`) and double-`attachShadow` behavior: Tier 2 overlay checks complement `npm test`. **Real `chrome.alarms` → `tabs.update` refresh** is still not automated (timing/flake); badge and dashboard countdown are covered in Tier 2 as above.
 
+### Release gates (TwitchFavs / snap-back)
+
+Use these so **manual Twitch UAT is short** unless you are shipping Step A to `main`.
+
+| Gate  | Command / action                                                                                            | When                                                                                          |
+| ----- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **0** | `npm test`                                                                                                  | After any logic change (~20s)                                                                 |
+| **1** | `npm run ci`                                                                                                | Pre-commit / pre-merge (lint + Vitest + build + Playwright)                                   |
+| **2** | Included in **`npm run ci`** — [`e2e/epic-12-gate2-snap-back.spec.ts`](e2e/epic-12-gate2-snap-back.spec.ts) | Stub Twitch: raid snap-back, 3-tab overlay, homepage no overlay, Backlog **#10** close/reopen |
+| **3** | **Manual** ~10 min on **real Twitch** — [Gate 3 checklist](#gate-3--manual-ship-step-a-real-twitch)         | Once before merging snap-back work to `main`; optional spot-check after Gate 2 green          |
+
+**Gate 2 helpers:** [`e2e/twitch-stub-helpers.ts`](e2e/twitch-stub-helpers.ts) (shared with [`e2e/epic-12-4.spec.ts`](e2e/epic-12-4.spec.ts) pattern).
+
+#### Gate 3 — Manual ship (Step A, real Twitch)
+
+Prereq: `npm run ci` green on your branch; `npm run build`; reload extension.
+
+1. **Seed 2–3 favorites** in **TwitchFavs** (90s interval, jitter 0); overlay + snap-back debug prefs on.
+2. **Recognized:** open each channel tab → overlay (or paused) on every tab.
+3. **Timer snap-back:** detour one tab → wait for **0:00** → returns home.
+4. **Immediate snap-back:** home tab → `https://www.twitch.tv/otherchannel?referrer=raid` → returns home without waiting for timer.
+5. **Browse:** `https://www.twitch.tv/` → no overlay, no forced jump to a fav.
+
+Full daily routine: [doc/uat/DAILY-TWITCHFAVS-ROLLOUT.md](doc/uat/DAILY-TWITCHFAVS-ROLLOUT.md). Learnings: [doc/requirements/snap-back-implementation-notes.md](doc/requirements/snap-back-implementation-notes.md).
+
 ### CI gate (Tier 1 + build + Tier 2 E2E)
 
 Run before opening a PR and whenever you change logic, tests, or build scripts:
@@ -77,7 +102,7 @@ Use when behavior spans a real browser, extension APIs, or the content script / 
 ### Option A — Manual (always valid)
 
 - **Epic 12 (TwitchFavs / URL-first) — mental model:** In **Application → Storage → Extension**, inspect **`urlAutoRefresher_state_v1`**: `globalGroups[].targets` rows are **`{ targetUrl, label? }` only** (no persisted `tabId`). Schedule/pause maps use **member keys** (`memberNextFireAt`, `pausedMemberKeys`). Prefs: **`urlAutoRefresher_prefs_v1`**. Full detail: [EDGE plan — Epic 12.1](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-121--tester-mental-model-extension-storage-url-first).
-- **Epic 12 — TwitchFavs manual run:** Step-by-step checklist (real Twitch profile): [EDGE plan — Epic 12.2](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-122--manual-checklist-twitchfavs-real-profile). Normative IDs: [doc/requirements/twitch-favs-managed-membership.md](doc/requirements/twitch-favs-managed-membership.md). **Epic 12.4 (CI default):** [`e2e/epic-12-4.spec.ts`](e2e/epic-12-4.spec.ts) (stubbed Twitch channel document) + [`src/background/twitch-favs-sync.test.ts`](src/background/twitch-favs-sync.test.ts). **Optional live Twitch:** any future **`E2E_TWITCH_LIVE=1`** Playwright specs must stay **out of** `npm run ci` / default Playwright invocation; document the env gate in this file when added.
+- **Epic 12 — TwitchFavs manual run:** Step-by-step checklist (real Twitch profile): [EDGE plan — Epic 12.2](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-122--manual-checklist-twitchfavs-real-profile). Normative IDs: [doc/requirements/twitch-favs-managed-membership.md](doc/requirements/twitch-favs-managed-membership.md). **Epic 12.4 (CI default):** [`e2e/epic-12-4.spec.ts`](e2e/epic-12-4.spec.ts) (stubbed Twitch channel document) + [`src/background/twitch-favs-sync.test.ts`](src/background/twitch-favs-sync.test.ts). **Gate 2 snap-back (CI default):** [`e2e/epic-12-gate2-snap-back.spec.ts`](e2e/epic-12-gate2-snap-back.spec.ts) — stub raid snap-back, multi-tab overlay, homepage, Backlog **#10** close/reopen. **Gate 3 manual ship:** [Gate 3 checklist](#gate-3--manual-ship-step-a-real-twitch) (real Twitch, ~10 min before merge). **Optional live Twitch:** any future **`E2E_TWITCH_LIVE=1`** Playwright specs must stay **out of** `npm run ci` / default Playwright invocation; document the env gate in this file when added.
 - Load unpacked in **Edge** from the repo root after `npm run build`.
 - Smoke: dashboard opens, service worker has no startup errors, toggle overlay pref, confirm overlay on a tab with an enabled job (see `AGENT_HANDOFF.md`).
 
@@ -103,6 +128,8 @@ Implementation:
 - **`e2e/epic-4-3.spec.ts`** — mutual exclusion: add global vs individual, add individual vs global, **Start** on global row when individual is enabled on the same tab (`[data-global-form-error]`, `[data-add-job-error]`, `[data-global-group-row-error]`).
 - **`e2e/epic-5.spec.ts`** — unified UI per EDGE **Epic 5**: **Global (N)** / **Individual (M)** on dashboard and generated side panel; browse layout; **Epic 5.3** cross-surface nav (side panel **Open in a tab** `[data-open-in-tab]` vs dashboard **Open side panel**); **Epic 5.4** countdown row text changes over ~2.5s (1s UI tick); extra assertions (“Backlog 1”) for top CTA DOM order + new tab opens packaged dashboard.
 - **`e2e/epic-6.spec.ts`** — **Epic 6** toolbar badge: after seeding storage, `chrome.action.getBadgeText` shows `m:ss` (not idle `×`).
+- **`e2e/epic-12-4.spec.ts`** — Epic 12.4 TwitchFavs stub channel → storage upsert.
+- **`e2e/epic-12-gate2-snap-back.spec.ts`** — Gate 2: stub snap-back, 3-tab overlay, homepage, Backlog **#10** close/reopen ([release gates](#release-gates-twitchfavs--snap-back)).
 
 **Headed Chromium:** MV3 extensions are exercised with **`headless: false`** (Playwright `channel: 'chromium'`). **CI (Linux)** runs under **xvfb** so no physical display is required.
 
@@ -110,7 +137,7 @@ Implementation:
 
 ### Further automation (optional)
 
-- **Alarms + `tabs.update`:** add E2E or integration tests that wait for a short alarm (flaky/slow) or use a test-only hook — not wired yet.
+- **Alarms + `tabs.update`:** add E2E or integration tests that wait for a short alarm (flaky/slow) or use a test-only hook — not wired yet; Gate 3 manual step 3 covers timer snap-back on real Twitch.
 - **Message contract:** `getPageOverlayUiState` is unit-tested; E2E covers the full content ↔ background path.
 
 ---

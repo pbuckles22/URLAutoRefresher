@@ -198,10 +198,14 @@ export function attachPageOverlayMessageHandler(): void {
         const [state, prefs] = await Promise.all([loadAppState(), loadExtensionPrefs()]);
         const vm = await getPageOverlayVmForTab(state, prefs, tabId, tabUrl);
         const blip = getBlipWatchForTab(state, tabUrl);
-        const debug =
-          prefs.showOverlaySnapBackDebug && tabUrl
-            ? await getPageOverlaySnapBackDebug(state, tabId, tabUrl)
-            : undefined;
+        let debug: Awaited<ReturnType<typeof getPageOverlaySnapBackDebug>>;
+        if (prefs.showOverlaySnapBackDebug && tabUrl) {
+          try {
+            debug = await getPageOverlaySnapBackDebug(state, tabId, tabUrl);
+          } catch {
+            debug = undefined;
+          }
+        }
         if (
           debug?.schedulerTabId !== undefined &&
           debug.memberKey &&
@@ -250,7 +254,7 @@ export function attachPageOverlayMessageHandler(): void {
           };
         }
       } catch {
-        response = { ok: true, show: false };
+        response = { ok: false };
       }
       sendResponse(response);
     })();

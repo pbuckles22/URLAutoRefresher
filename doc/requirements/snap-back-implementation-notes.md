@@ -27,6 +27,15 @@ When a TwitchFavs tab is on its **home channel**, the scheduler remembers that t
 
 See [DAILY-TWITCHFAVS-ROLLOUT.md](../uat/DAILY-TWITCHFAVS-ROLLOUT.md). Enable **Show snap-back debug on overlay** in dashboard prefs.
 
+### Automation vs manual (Gates 2–3)
+
+| Gate  | What                                                                                                      | When you run it                      |
+| ----- | --------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| **2** | [`e2e/epic-12-gate2-snap-back.spec.ts`](../../e2e/epic-12-gate2-snap-back.spec.ts) (part of `npm run ci`) | Every merge candidate                |
+| **3** | [TEST_PLAN.md Gate 3](../../TEST_PLAN.md#gate-3--manual-ship-step-a-real-twitch) — 2–3 real favs, ~10 min | Once before merging Step A to `main` |
+
+Gate 2 covers stub snap-back, multi-tab overlay, homepage, and Backlog **#10** close/reopen. Gate 3 is the only required real-Twitch check before ship.
+
 ## Stash reference
 
 Original mixed WIP: `git stash list` → `WIP snap-back+volume mixed 2026-06-03` (precision volume files not replayed here).

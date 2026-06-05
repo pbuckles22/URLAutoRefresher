@@ -3,7 +3,7 @@
   "name": "URL Auto Refresher",
   "version": "0.1.1",
   "description": "Scheduled refreshes to a target URL per tab with optional global synchronized groups, individuals, and jitter.",
-  "permissions": ["storage", "alarms", "tabs", "windows", "sidePanel"],
+  "permissions": ["storage", "alarms", "tabs", "windows", "sidePanel", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "dist/background.js"
