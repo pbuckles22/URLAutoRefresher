@@ -113,3 +113,29 @@ export function dashboardUrl(extensionId: string): string {
 export function sidepanelUrl(extensionId: string): string {
   return `chrome-extension://${extensionId}/sidepanel/sidepanel.html`;
 }
+
+/**
+ * Nudge the MV3 service worker awake after idle gaps between serial E2E tests.
+ * Storage + runtime round-trip from an extension page is enough for listeners to attach.
+ */
+export async function ensureServiceWorkerReady(
+  context: BrowserContext,
+  extensionId: string
+): Promise<void> {
+  await waitForExtensionServiceWorker(context, 15_000);
+  const page = await context.newPage();
+  try {
+    await page.goto(dashboardUrl(extensionId), { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await page.evaluate(async () => {
+      await chrome.storage.local.get(null);
+      try {
+        await chrome.runtime.sendMessage({ type: 'urlar:e2e-sw-ping' });
+      } catch {
+        /* worker may still be starting */
+      }
+    });
+    await page.waitForTimeout(200);
+  } finally {
+    await page.close();
+  }
+}

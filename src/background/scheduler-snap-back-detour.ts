@@ -63,9 +63,12 @@ export async function maybeSnapBackRaidDetour(
     return false;
   }
   const mk = memberKeyFromTargetUrl(hint.targetUrl);
-  if (!mk || mk !== hint.memberKey || group.pausedMemberKeys?.includes(mk)) {
+  if (!mk || mk !== hint.memberKey) {
     return false;
   }
+  // Note: snap-back works even when paused. "Paused" stops the refresh timer,
+  // but raid/detour protection remains active so the user returns home if
+  // they step away and a redirect happens.
 
   await schedLog('raid detour snap-back', {
     tabId,

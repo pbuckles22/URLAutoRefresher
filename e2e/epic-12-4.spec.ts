@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { dashboardUrl, launchExtensionContext } from './extension-helpers';
+import {
+  dashboardUrl,
+  ensureServiceWorkerReady,
+  launchExtensionContext,
+} from './extension-helpers';
+import { waitForExtensionDebounce } from './twitch-stub-helpers';
 
 const STORAGE_KEY = 'urlAutoRefresher_state_v1';
 
@@ -35,6 +40,8 @@ test.describe('Epic 12.4: TwitchFavs CI-safe channel navigation', () => {
   });
 
   test('stubbed Twitch channel tab adds canonical TwitchFavs target in storage', async () => {
+    await ensureServiceWorkerReady(context, extensionId);
+
     const dash = await context.newPage();
     await dash.goto(dashboardUrl(extensionId));
 
@@ -75,6 +82,7 @@ test.describe('Epic 12.4: TwitchFavs CI-safe channel navigation', () => {
     });
 
     await twitchPage.goto(MOCK_CHANNEL_URL, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await waitForExtensionDebounce();
 
     await expect
       .poll(

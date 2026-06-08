@@ -132,4 +132,37 @@ describe('maybeSnapBackRaidDetour', () => {
     );
     expect(chrome.tabs.update).not.toHaveBeenCalled();
   });
+
+  it('snaps back even when member is paused (pause stops refresh, not snap-back)', async () => {
+    vi.spyOn(prefsMod, 'loadExtensionPrefs').mockResolvedValue({
+      showPageOverlayTimer: true,
+      showOverlaySnapBackDebug: false,
+    });
+    vi.spyOn(storageMod, 'loadAppState').mockResolvedValue({
+      schemaVersion: 3,
+      globalGroups: [
+        {
+          id: 'g-tw',
+          name: 'TwitchFavs',
+          targets: [{ targetUrl: 'https://www.twitch.tv/djsonnyd' }],
+          baseIntervalSec: 500,
+          jitterSec: 30,
+          enabled: true,
+          pausedMemberKeys: ['twitch.tv/djsonnyd'],
+        },
+      ],
+      individualJobs: [],
+    });
+    rememberSchedTabId('g-tw', 'twitch.tv/djsonnyd', 42, 'https://www.twitch.tv/djsonnyd');
+
+    await maybeSnapBackRaidDetour(
+      42,
+      'https://www.twitch.tv/dj_phil_skillz?referrer=raid',
+      'https://www.twitch.tv/djsonnyd'
+    );
+
+    expect(chrome.tabs.update).toHaveBeenCalledWith(42, {
+      url: 'https://www.twitch.tv/djsonnyd',
+    });
+  });
 });

@@ -656,22 +656,26 @@ function isOverlayStateSuccess(
   return res !== undefined && res.ok === true;
 }
 
+/** Backoff for MV3 SW wake / first-message failures (not for definitive { ok: false }). */
+const OVERLAY_STATE_RETRY_DELAYS_MS = [0, 120, 250, 500, 1000] as const;
+
 async function requestOverlayState(): Promise<PageOverlayStateSuccess | undefined> {
-  let res = await sendExtensionMessageAsync<PageOverlayStateResponse>({
-    type: PAGE_OVERLAY_GET_STATE,
-  });
-  if (isOverlayStateSuccess(res)) {
-    return res;
+  for (const delayMs of OVERLAY_STATE_RETRY_DELAYS_MS) {
+    if (delayMs > 0) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+    const res = await sendExtensionMessageAsync<PageOverlayStateResponse>({
+      type: PAGE_OVERLAY_GET_STATE,
+    });
+    if (isOverlayStateSuccess(res)) {
+      return res;
+    }
+    // Background answered definitively — do not treat { ok: false } as partial success.
+    if (res !== undefined && res.ok === false) {
+      return undefined;
+    }
   }
-  // Background answered definitively — do not treat { ok: false } as partial success.
-  if (res !== undefined && res.ok === false) {
-    return undefined;
-  }
-  await new Promise((r) => setTimeout(r, 120));
-  res = await sendExtensionMessageAsync<PageOverlayStateResponse>({
-    type: PAGE_OVERLAY_GET_STATE,
-  });
-  return isOverlayStateSuccess(res) ? res : undefined;
+  return undefined;
 }
 
 async function syncFromBackgroundInner(): Promise<void> {

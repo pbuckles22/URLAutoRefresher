@@ -1,23 +1,20 @@
-import { test, expect, type Page } from '@playwright/test';
-import { dashboardUrl, FIXTURE_ORIGIN, launchExtensionContext } from './extension-helpers';
+import { test, expect } from '@playwright/test';
+import {
+  dashboardUrl,
+  ensureServiceWorkerReady,
+  FIXTURE_ORIGIN,
+  launchExtensionContext,
+} from './extension-helpers';
+import {
+  expectOverlayCardVisible,
+  PREFS_STORAGE_KEY,
+  waitForExtensionDebounce,
+} from './twitch-stub-helpers';
 
 /** Matches fixture page URL for overlay membership (URL-first jobs). */
 const FIXTURE_PAGE_TARGET_URL = `${FIXTURE_ORIGIN}/`;
 
 const STORAGE_KEY = 'urlAutoRefresher_state_v1';
-
-async function expectOverlayCardVisible(fixturePage: Page): Promise<void> {
-  await expect
-    .poll(
-      async () =>
-        fixturePage.evaluate(() => {
-          const host = document.getElementById('url-auto-refresher-overlay-root');
-          return !!host?.shadowRoot?.querySelector('.card');
-        }),
-      { timeout: 30_000 }
-    )
-    .toBe(true);
-}
 
 test.describe.configure({ mode: 'serial' });
 
@@ -44,13 +41,23 @@ test('dashboard page loads with extension name', async () => {
 });
 
 test('content script shows overlay when tab has enabled job and pref is on', async () => {
+  await ensureServiceWorkerReady(context, extensionId);
+
   const fixturePage = await context.newPage();
   await fixturePage.goto(`${FIXTURE_ORIGIN}/`);
 
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
   await dash.evaluate(
-    async ({ storageKey, targetUrl }: { storageKey: string; targetUrl: string }) => {
+    async ({
+      storageKey,
+      prefsKey,
+      targetUrl,
+    }: {
+      storageKey: string;
+      prefsKey: string;
+      targetUrl: string;
+    }) => {
       await chrome.storage.local.set({
         [storageKey]: {
           schemaVersion: 3,
@@ -68,13 +75,13 @@ test('content script shows overlay when tab has enabled job and pref is on', asy
             },
           ],
         },
+        [prefsKey]: { showPageOverlayTimer: true },
       });
     },
-    { storageKey: STORAGE_KEY, targetUrl: FIXTURE_PAGE_TARGET_URL }
+    { storageKey: STORAGE_KEY, prefsKey: PREFS_STORAGE_KEY, targetUrl: FIXTURE_PAGE_TARGET_URL }
   );
 
-  // Let the service worker debounce + resync (storage listener) finish before the fixture tab reloads.
-  await dash.waitForTimeout(500);
+  await waitForExtensionDebounce();
 
   // Storage updates from another tab may race the content script listener; reload guarantees sync.
   await fixturePage.reload({ waitUntil: 'domcontentloaded' });
@@ -118,13 +125,23 @@ test('content script shows overlay when tab has enabled job and pref is on', asy
 });
 
 test('Backlog 3: paused overlay is compact row — Play beside copy, not stacked', async () => {
+  await ensureServiceWorkerReady(context, extensionId);
+
   const fixturePage = await context.newPage();
   await fixturePage.goto(`${FIXTURE_ORIGIN}/`);
 
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
   await dash.evaluate(
-    async ({ storageKey, targetUrl }: { storageKey: string; targetUrl: string }) => {
+    async ({
+      storageKey,
+      prefsKey,
+      targetUrl,
+    }: {
+      storageKey: string;
+      prefsKey: string;
+      targetUrl: string;
+    }) => {
       await chrome.storage.local.set({
         [storageKey]: {
           schemaVersion: 3,
@@ -143,12 +160,13 @@ test('Backlog 3: paused overlay is compact row — Play beside copy, not stacked
             },
           ],
         },
+        [prefsKey]: { showPageOverlayTimer: true },
       });
     },
-    { storageKey: STORAGE_KEY, targetUrl: FIXTURE_PAGE_TARGET_URL }
+    { storageKey: STORAGE_KEY, prefsKey: PREFS_STORAGE_KEY, targetUrl: FIXTURE_PAGE_TARGET_URL }
   );
 
-  await dash.waitForTimeout(500);
+  await waitForExtensionDebounce();
   await fixturePage.reload({ waitUntil: 'domcontentloaded' });
   await expectOverlayCardVisible(fixturePage);
 
@@ -189,13 +207,23 @@ test('Backlog 3: paused overlay is compact row — Play beside copy, not stacked
 });
 
 test('turning off overlay pref removes overlay from fixture page', async () => {
+  await ensureServiceWorkerReady(context, extensionId);
+
   const fixturePage = await context.newPage();
   await fixturePage.goto(`${FIXTURE_ORIGIN}/`);
 
   const dash = await context.newPage();
   await dash.goto(dashboardUrl(extensionId));
   await dash.evaluate(
-    async ({ storageKey, targetUrl }: { storageKey: string; targetUrl: string }) => {
+    async ({
+      storageKey,
+      prefsKey,
+      targetUrl,
+    }: {
+      storageKey: string;
+      prefsKey: string;
+      targetUrl: string;
+    }) => {
       await chrome.storage.local.set({
         [storageKey]: {
           schemaVersion: 3,
@@ -213,12 +241,13 @@ test('turning off overlay pref removes overlay from fixture page', async () => {
             },
           ],
         },
+        [prefsKey]: { showPageOverlayTimer: true },
       });
     },
-    { storageKey: STORAGE_KEY, targetUrl: FIXTURE_PAGE_TARGET_URL }
+    { storageKey: STORAGE_KEY, prefsKey: PREFS_STORAGE_KEY, targetUrl: FIXTURE_PAGE_TARGET_URL }
   );
 
-  await dash.waitForTimeout(500);
+  await waitForExtensionDebounce();
 
   await fixturePage.reload({ waitUntil: 'domcontentloaded' });
   await expectOverlayCardVisible(fixturePage);
