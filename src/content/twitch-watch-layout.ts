@@ -1,6 +1,7 @@
 /**
  * Best-effort Twitch watch-surface layout helpers reused from TwitchEnhancements.
- * Scope here is intentionally small: one-shot theater activation + one-shot chat collapse.
+ * Live sessions: theater + collapsed chat while live; user overrides stick until offline.
+ * Offline channel view: dismiss offline interstitial via Chat, then theater + collapsed chat.
  */
 
 const THEATER_MODE_ARIA_LABEL_PATTERNS: RegExp[] = [
@@ -22,6 +23,11 @@ const CHAT_COLLAPSE_ARIA_LABEL_PATTERNS: RegExp[] = [
   /hide\s*chat/i,
   /minimize\s*chat/i,
 ];
+
+const CHAT_EXPAND_ARIA_LABEL_PATTERNS: RegExp[] = [/expand\s*chat/i, /show\s*chat/i];
+
+/** Offline channel interstitial — user-facing control label is often "Chat". */
+const OFFLINE_CHANNEL_NAV_PATTERNS: RegExp[] = [/^chat$/i, /visit\s*chat/i, /open\s*chat/i];
 
 function getClickableAccessibilityLabel(node: HTMLElement): string {
   const aria = node.getAttribute('aria-label')?.trim();
@@ -110,20 +116,72 @@ function tryCollapseChatViaNativeControl(root: Document | HTMLElement): boolean 
   return true;
 }
 
+export function tryNavigateOfflineViaChatControl(root: Document | HTMLElement): boolean {
+  const btn = findClickableByAriaLabelPatternsDeep(root, OFFLINE_CHANNEL_NAV_PATTERNS);
+  if (!btn) {
+    return false;
+  }
+  btn.click();
+  return true;
+}
+
 export type TwitchWatchLayoutState = {
   theaterClickDone: boolean;
   chatCollapseDone: boolean;
+  userOverrodeTheater: boolean;
+  userOverrodeChat: boolean;
+  sessionActive: boolean;
+  offlineLayoutPassDone: boolean;
 };
 
 export function createTwitchWatchLayoutState(): TwitchWatchLayoutState {
-  return { theaterClickDone: false, chatCollapseDone: false };
+  return {
+    theaterClickDone: false,
+    chatCollapseDone: false,
+    userOverrodeTheater: false,
+    userOverrodeChat: false,
+    sessionActive: false,
+    offlineLayoutPassDone: false,
+  };
 }
+
+export function resetTwitchWatchLayoutSession(state: TwitchWatchLayoutState): void {
+  state.theaterClickDone = false;
+  state.chatCollapseDone = false;
+  state.userOverrodeTheater = false;
+  state.userOverrodeChat = false;
+  state.sessionActive = false;
+  state.offlineLayoutPassDone = false;
+}
+
+export function beginTwitchLiveWatchSession(state: TwitchWatchLayoutState): void {
+  if (state.sessionActive) {
+    return;
+  }
+  state.sessionActive = true;
+  state.theaterClickDone = false;
+  state.chatCollapseDone = false;
+  state.userOverrodeTheater = false;
+  state.userOverrodeChat = false;
+  state.offlineLayoutPassDone = false;
+}
+
+type LayoutApplyOptions = {
+  /** Apply theater + chat collapse even when not in a live session (offline channel view). */
+  offlineChannel?: boolean;
+};
 
 export function applyTwitchWatchLayoutEnhancements(
   root: Document | HTMLElement,
-  state: TwitchWatchLayoutState
+  state: TwitchWatchLayoutState,
+  options: LayoutApplyOptions = {}
 ): void {
-  if (!state.theaterClickDone) {
+  const offlineChannel = options.offlineChannel === true;
+  if (!state.sessionActive && !offlineChannel) {
+    return;
+  }
+
+  if (!state.userOverrodeTheater) {
     if (isTheaterModeLikelyActive(root)) {
       state.theaterClickDone = true;
     } else if (tryActivateTheaterMode(root)) {
@@ -131,9 +189,65 @@ export function applyTwitchWatchLayoutEnhancements(
     }
   }
 
-  if (!state.chatCollapseDone && tryCollapseChatViaNativeControl(root)) {
+  if (!state.userOverrodeChat && tryCollapseChatViaNativeControl(root)) {
     state.chatCollapseDone = true;
   }
+}
+
+export function handleTwitchOfflineChannelView(
+  root: Document | HTMLElement,
+  state: TwitchWatchLayoutState
+): void {
+  resetTwitchWatchLayoutSession(state);
+  if (tryNavigateOfflineViaChatControl(root)) {
+    state.offlineLayoutPassDone = false;
+    return;
+  }
+  if (state.offlineLayoutPassDone) {
+    return;
+  }
+  applyTwitchWatchLayoutEnhancements(root, state, { offlineChannel: true });
+  if (state.theaterClickDone && state.chatCollapseDone) {
+    state.offlineLayoutPassDone = true;
+  }
+}
+
+const overrideRoots = new WeakSet<Document | HTMLElement>();
+
+export function installTwitchWatchLayoutOverrideListeners(
+  win: Window,
+  root: Document | HTMLElement,
+  state: TwitchWatchLayoutState
+): void {
+  if (overrideRoots.has(root)) {
+    return;
+  }
+  overrideRoots.add(root);
+  root.addEventListener(
+    'click',
+    (e) => {
+      if (!state.sessionActive) {
+        return;
+      }
+      const t = e.target as HTMLElement;
+      const labelSource = t.closest<HTMLElement>('button, [role="button"], a[role="button"]');
+      if (!labelSource) {
+        return;
+      }
+      const label = getClickableAccessibilityLabel(labelSource);
+      if (!label) {
+        return;
+      }
+      if (THEATER_MODE_APPEARS_ACTIVE_LABEL_PATTERNS.some((p) => p.test(label))) {
+        state.userOverrodeTheater = true;
+        state.theaterClickDone = false;
+      } else if (CHAT_EXPAND_ARIA_LABEL_PATTERNS.some((p) => p.test(label))) {
+        state.userOverrodeChat = true;
+        state.chatCollapseDone = false;
+      }
+    },
+    true
+  );
 }
 
 export function installDebouncedTwitchWatchLayoutRunner(

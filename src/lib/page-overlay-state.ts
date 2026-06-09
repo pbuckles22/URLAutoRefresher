@@ -3,6 +3,7 @@ import { getSchedHintForTab } from './sched-member-tab-hint';
 import { resolveGlobalGroupTargets } from './global-group-targets';
 import type { AppState } from './types';
 import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url';
+import { isGlobalMemberLivePaused } from './global-live-aware';
 import { findTwitchFavsMemberForPageUrl } from './twitch-favs-member-match';
 import { isTwitchChannelRootUrl } from './twitch-live-detect';
 
@@ -17,8 +18,8 @@ export type PageOverlayVm =
       globalGroupId?: string;
       individualJobId?: string;
     }
-  | { show: true; mode: 'paused'; globalGroupId: string }
-  | { show: true; mode: 'paused'; individualJobId: string };
+  | { show: true; mode: 'paused'; globalGroupId: string; livePaused?: boolean }
+  | { show: true; mode: 'paused'; individualJobId: string; livePaused?: boolean };
 
 /**
  * Overlay visibility + mode for a tab (individual job wins over global groups).
@@ -40,6 +41,9 @@ export async function getPageOverlayVmForTab(
     }
     if (j.overlayPaused) {
       return { show: true, mode: 'paused', individualJobId: j.id };
+    }
+    if (j.liveAwareRefresh && j.streamLive === true) {
+      return { show: true, mode: 'paused', individualJobId: j.id, livePaused: true };
     }
     return { show: true, mode: 'timer', nextFireAt: j.nextFireAt, individualJobId: j.id };
   }
@@ -73,6 +77,9 @@ export async function getPageOverlayVmForTab(
 
     if (g.pausedMemberKeys?.includes(memberKey)) {
       return { show: true, mode: 'paused', globalGroupId: g.id };
+    }
+    if (isGlobalMemberLivePaused(g, memberKey)) {
+      return { show: true, mode: 'paused', globalGroupId: g.id, livePaused: true };
     }
     const next = g.memberNextFireAt?.[memberKey] ?? g.nextFireAt;
     return { show: true, mode: 'timer', nextFireAt: next, globalGroupId: g.id };

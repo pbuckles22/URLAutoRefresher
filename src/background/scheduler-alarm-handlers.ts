@@ -111,6 +111,40 @@ async function handleIndividualJobAlarm(jobId: string, initialState: AppState): 
   await syncAlarmsWithState(state);
 }
 
+async function skipGlobalMemberAlarmForLiveStream(
+  groupId: string,
+  memberKey: string
+): Promise<boolean> {
+  let state = await loadAppState();
+  const gIdx = state.globalGroups.findIndex((g) => g.id === groupId);
+  if (gIdx < 0) {
+    return false;
+  }
+  const group = state.globalGroups[gIdx];
+  if (
+    group.memberStreamLive?.[memberKey] !== true ||
+    group.liveAwareRefresh === false ||
+    !group.enabled ||
+    !globalGroupHasSchedulableConfig(group)
+  ) {
+    return false;
+  }
+  await schedLog('global member alarm: member live (live-aware skip)', { memberKey });
+  const memberNextFireAt = {
+    ...(group.memberNextFireAt ?? {}),
+    [memberKey]: Date.now() + LIVE_AWARE_POLL_MS,
+  };
+  const nextGroups = replaceAt(state.globalGroups, gIdx, {
+    ...group,
+    memberNextFireAt,
+    nextFireAt: undefined,
+  });
+  state = { ...state, globalGroups: nextGroups };
+  await saveAppState(state);
+  await syncAlarmsWithState(state);
+  return true;
+}
+
 async function handleGlobalMemberAlarm(
   groupId: string,
   memberKey: string,
@@ -169,6 +203,10 @@ async function handleGlobalMemberAlarm(
   if (paused.has(memberKey)) {
     await schedLog('global member alarm: member paused (skip)', { memberKey });
     await syncAlarmsWithState(await loadAppState());
+    return;
+  }
+
+  if (await skipGlobalMemberAlarmForLiveStream(groupId, memberKey)) {
     return;
   }
 

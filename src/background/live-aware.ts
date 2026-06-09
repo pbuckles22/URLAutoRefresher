@@ -1,11 +1,35 @@
-import { TWITCH_LIVE_REPORT, type TwitchLiveReportMessage } from '../lib/messages';
+import {
+  TWITCH_LIVE_REPORT,
+  TWITCH_LIVE_STATE_PUSH,
+  type TwitchLiveReportMessage,
+} from '../lib/messages';
 import { LIVE_AWARE_RESUME_SOON_MS } from '../lib/live-aware-constants';
+import {
+  clearGlobalStreamLiveForTabUrl,
+  isTwitchLiveWatchSessionActive,
+  patchGlobalGroupsForTwitchLiveReport,
+} from '../lib/global-live-aware';
 import { pageMatchesExplicitTarget } from '../lib/member-url';
 import { loadAppState, saveAppState } from '../lib/storage';
 import { isTwitchChannelRootUrl } from '../lib/twitch-live-detect';
 import type { AppState } from '../lib/types';
 import { refreshActionBadge } from './badge';
 import { syncAlarmsWithState } from './scheduler';
+
+async function pushTwitchLiveStateToTab(
+  tabId: number,
+  payload: { live: boolean | null; liveSessionActive: boolean }
+): Promise<void> {
+  try {
+    await chrome.tabs.sendMessage(tabId, {
+      type: TWITCH_LIVE_STATE_PUSH,
+      live: payload.live,
+      liveSessionActive: payload.liveSessionActive,
+    });
+  } catch {
+    /* tab may not have content scripts yet */
+  }
+}
 
 async function patchJobsForTwitchReport(
   state: AppState,
@@ -47,6 +71,14 @@ async function patchJobsForTwitchReport(
   return changed ? { ...state, individualJobs } : null;
 }
 
+function patchGlobalsForTwitchReport(
+  state: AppState,
+  tabUrl: string,
+  live: boolean | null
+): { state: AppState; changed: boolean; liveSessionActive: boolean } {
+  return patchGlobalGroupsForTwitchLiveReport(state, tabUrl, live, Date.now());
+}
+
 function patchJobsClearSignalWhenNotOnChannelRoot(
   state: AppState,
   tabUrl: string
@@ -69,15 +101,41 @@ function patchJobsClearSignalWhenNotOnChannelRoot(
   return changed ? { ...state, individualJobs } : null;
 }
 
+function patchGlobalsClearSignalWhenNotOnChannelRoot(
+  state: AppState,
+  tabUrl: string
+): AppState | null {
+  return clearGlobalStreamLiveForTabUrl(state, tabUrl);
+}
+
 export async function applyTwitchLiveReport(tabId: number, live: boolean | null): Promise<void> {
-  const state = await loadAppState();
-  const next = await patchJobsForTwitchReport(state, tabId, live);
-  if (!next) {
+  let tabUrl: string | undefined;
+  try {
+    tabUrl = (await chrome.tabs.get(tabId)).url;
+  } catch {
     return;
   }
-  await saveAppState(next);
-  await syncAlarmsWithState(next);
+  if (!tabUrl) {
+    return;
+  }
+
+  let state = await loadAppState();
+  const jobPatch = await patchJobsForTwitchReport(state, tabId, live);
+  const globalPatch = patchGlobalsForTwitchReport(state, tabUrl, live);
+  if (!jobPatch && !globalPatch.changed) {
+    return;
+  }
+  state = globalPatch.next;
+  if (jobPatch) {
+    state = { ...state, individualJobs: jobPatch.individualJobs };
+  }
+  await saveAppState(state);
+  await syncAlarmsWithState(state);
   await refreshActionBadge();
+  await pushTwitchLiveStateToTab(tabId, {
+    live,
+    liveSessionActive: isTwitchLiveWatchSessionActive(state, tabUrl, live),
+  });
 }
 
 export async function clearLiveAwareIfTabLeftChannelRoot(
@@ -88,12 +146,17 @@ export async function clearLiveAwareIfTabLeftChannelRoot(
     return;
   }
   const state = await loadAppState();
-  const next = patchJobsClearSignalWhenNotOnChannelRoot(state, tabUrl);
-  if (!next) {
+  const jobNext = patchJobsClearSignalWhenNotOnChannelRoot(state, tabUrl);
+  const globalNext = patchGlobalsClearSignalWhenNotOnChannelRoot(state, tabUrl);
+  if (!jobNext && !globalNext) {
     return;
   }
-  await saveAppState(next);
-  await syncAlarmsWithState(next);
+  const merged =
+    jobNext && globalNext
+      ? { ...globalNext, individualJobs: jobNext.individualJobs }
+      : (jobNext ?? globalNext ?? state);
+  await saveAppState(merged);
+  await syncAlarmsWithState(merged);
   await refreshActionBadge();
 }
 

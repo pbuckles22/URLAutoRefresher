@@ -238,6 +238,7 @@ export function attachPageOverlayMessageHandler(): void {
         if (!vm.show) {
           response = blip ? { ok: true, show: false, blip } : { ok: true, show: false };
         } else if (vm.mode === 'paused') {
+          const livePaused = vm.livePaused === true ? { livePaused: true as const } : {};
           response =
             'individualJobId' in vm
               ? {
@@ -245,6 +246,7 @@ export function attachPageOverlayMessageHandler(): void {
                   show: true,
                   mode: 'paused',
                   individualJobId: vm.individualJobId,
+                  ...livePaused,
                   ...(blip ? { blip } : {}),
                   ...(debug ? { debug } : {}),
                 }
@@ -253,6 +255,7 @@ export function attachPageOverlayMessageHandler(): void {
                   show: true,
                   mode: 'paused',
                   globalGroupId: vm.globalGroupId,
+                  ...livePaused,
                   ...(blip ? { blip } : {}),
                   ...(debug ? { debug } : {}),
                 };

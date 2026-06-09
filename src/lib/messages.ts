@@ -30,6 +30,8 @@ export type PageOverlayStateResponse =
       blip?: PageOverlayBlipPack;
       /** Snap-back testing strip (when pref on). */
       debug?: PageOverlaySnapBackDebug;
+      /** Auto-paused because Twitch reports live (live-aware). */
+      livePaused?: boolean;
     }
   | {
       ok: true;
@@ -38,6 +40,7 @@ export type PageOverlayStateResponse =
       globalGroupId: string;
       blip?: PageOverlayBlipPack;
       debug?: PageOverlaySnapBackDebug;
+      livePaused?: boolean;
     }
   | {
       ok: true;
@@ -46,6 +49,7 @@ export type PageOverlayStateResponse =
       individualJobId: string;
       blip?: PageOverlayBlipPack;
       debug?: PageOverlaySnapBackDebug;
+      livePaused?: boolean;
     };
 
 /** Page → background: user-configured blip pattern matched; request target refresh (Epic 9). */
@@ -71,6 +75,15 @@ export type IndividualJobOverlayPauseMessage = {
 
 /** Twitch bridge → background: stream live/offline/unknown (Epic 8). */
 export const TWITCH_LIVE_REPORT = 'urlAutoRefresher:twitchLiveReport' as const;
+
+/** Background → Twitch tabs: live session changed (globals live-aware + layout/minimize). */
+export const TWITCH_LIVE_STATE_PUSH = 'urlAutoRefresher:twitchLiveStatePush' as const;
+
+export type TwitchLiveStatePushMessage = {
+  type: typeof TWITCH_LIVE_STATE_PUSH;
+  live: boolean | null;
+  liveSessionActive: boolean;
+};
 
 export type TwitchLiveReportMessage = {
   type: typeof TWITCH_LIVE_REPORT;

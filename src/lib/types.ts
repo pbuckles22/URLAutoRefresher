@@ -29,6 +29,10 @@ export type GlobalGroup = {
   nextFireAt?: number;
   /** Per-member next refresh (ms). Keys match `memberKeyFromTargetUrl(targetUrl)` (Epic 10.3). */
   memberNextFireAt?: Record<string, number>;
+  /** Pause periodic refresh while Twitch reports live (default on). Opt out with `false`. */
+  liveAwareRefresh?: boolean;
+  /** Per-member live/offline from Twitch tab bridge; keys match member keys (Epic 8 globals). */
+  memberStreamLive?: Record<string, boolean>;
 };
 
 export type IndividualJob = {
