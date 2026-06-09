@@ -538,7 +538,6 @@ function remountOverlayCard(): void {
 }
 
 function mountTimerOverlay(opts: { globalGroupId?: string; individualJobId?: string }): void {
-  overlayMinimized = false;
   overlayGroupId = opts.globalGroupId;
   overlayIndividualJobId = opts.individualJobId;
   const root = resolveShadowRoot(ensureShadowHost());
@@ -553,7 +552,6 @@ function mountTimerOverlay(opts: { globalGroupId?: string; individualJobId?: str
 function mountPausedOverlay(
   scope: { type: 'global'; groupId: string } | { type: 'individual'; jobId: string }
 ): void {
-  overlayMinimized = false;
   if (scope.type === 'global') {
     overlayGroupId = scope.groupId;
     overlayIndividualJobId = undefined;
