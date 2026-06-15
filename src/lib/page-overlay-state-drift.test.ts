@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_PREFS } from './prefs';
 import { DEFAULT_STATE } from './state';
 import { clearSchedTabHints, rememberSchedTabId } from './sched-member-tab-hint';
@@ -6,6 +6,10 @@ import { getPageOverlayVmForTab } from './page-overlay-state';
 
 describe('getPageOverlayVmForTab URL drift hint', () => {
   beforeEach(() => {
+    clearSchedTabHints();
+  });
+
+  afterEach(() => {
     clearSchedTabHints();
   });
 

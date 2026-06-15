@@ -3,3 +3,6 @@ export const LIVE_AWARE_POLL_MS = 25_000;
 
 /** After stream goes offline, fire the next refresh at least this soon (ms). */
 export const LIVE_AWARE_RESUME_SOON_MS = 3_000;
+
+/** Force a refresh even when live-aware thinks the stream is live if no refresh succeeded in this long (ms). */
+export const LIVE_AWARE_MAX_IDLE_MS = 45 * 60 * 1000;

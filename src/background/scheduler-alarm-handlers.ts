@@ -7,7 +7,12 @@ import { syncAlarmsWithState } from './scheduler-sync-alarms';
 import type { ParsedAlarm } from '../lib/alarm-names';
 import { memberKeyFromTargetUrl } from '../lib/member-url';
 import { computeNextDelayMs } from '../lib/schedule';
-import { LIVE_AWARE_POLL_MS } from '../lib/live-aware-constants';
+import { LIVE_AWARE_MAX_IDLE_MS, LIVE_AWARE_POLL_MS } from '../lib/live-aware-constants';
+import {
+  getEffectiveMemberStreamLive,
+  patchGlobalMemberAfterSuccessfulRefresh,
+  shouldForceRefreshDespiteLivePause,
+} from '../lib/global-live-aware';
 import {
   globalGroupHasSchedulableConfig,
   resolveGlobalGroupTargets,
@@ -44,23 +49,31 @@ async function handleIndividualJobAlarm(jobId: string, initialState: AppState): 
     return;
   }
 
-  if (job.liveAwareRefresh && job.streamLive === true) {
-    const nextFireAt = Date.now() + LIVE_AWARE_POLL_MS;
-    state = await loadAppState();
-    idx = state.individualJobs.findIndex((j) => j.id === jobId);
-    if (idx < 0) {
-      return;
-    }
-    job = state.individualJobs[idx];
-    if (!job.enabled || !job.liveAwareRefresh || job.streamLive !== true) {
+  const effectiveLive = job.streamLiveOverride === true || job.streamLive === true;
+
+  if (job.liveAwareRefresh && effectiveLive) {
+    const now = Date.now();
+    const lastRefresh = job.lastRefreshAt;
+    const forceRefresh = lastRefresh !== undefined && now - lastRefresh >= LIVE_AWARE_MAX_IDLE_MS;
+    if (!forceRefresh) {
+      const nextFireAt = now + LIVE_AWARE_POLL_MS;
+      state = await loadAppState();
+      idx = state.individualJobs.findIndex((j) => j.id === jobId);
+      if (idx < 0) {
+        return;
+      }
+      job = state.individualJobs[idx];
+      const stillLive = job.streamLiveOverride === true || job.streamLive === true;
+      if (!job.enabled || !job.liveAwareRefresh || !stillLive) {
+        await syncAlarmsWithState(state);
+        return;
+      }
+      const nextJobs = replaceAt(state.individualJobs, idx, { ...job, nextFireAt });
+      state = { ...state, individualJobs: nextJobs };
+      await saveAppState(state);
       await syncAlarmsWithState(state);
       return;
     }
-    const nextJobs = replaceAt(state.individualJobs, idx, { ...job, nextFireAt });
-    state = { ...state, individualJobs: nextJobs };
-    await saveAppState(state);
-    await syncAlarmsWithState(state);
-    return;
   }
 
   const { targetUrl } = job.target;
@@ -104,7 +117,13 @@ async function handleIndividualJobAlarm(jobId: string, initialState: AppState): 
 
   const { baseMs, jitterMs } = baseAndJitterMs(job);
   const nextFireAt = Date.now() + computeNextDelayMs(baseMs, jitterMs);
-  const nextJob = { ...job, nextFireAt };
+  const nextJob = {
+    ...job,
+    nextFireAt,
+    lastRefreshAt: Date.now(),
+    streamLive: undefined,
+    streamLiveOverride: undefined,
+  };
   const nextJobs = replaceAt(state.individualJobs, idx, nextJob);
   state = { ...state, individualJobs: nextJobs };
   await saveAppState(state);
@@ -122,17 +141,24 @@ async function skipGlobalMemberAlarmForLiveStream(
   }
   const group = state.globalGroups[gIdx];
   if (
-    group.memberStreamLive?.[memberKey] !== true ||
+    !getEffectiveMemberStreamLive(group, memberKey) ||
     group.liveAwareRefresh === false ||
     !group.enabled ||
     !globalGroupHasSchedulableConfig(group)
   ) {
     return false;
   }
+  const now = Date.now();
+  if (shouldForceRefreshDespiteLivePause(group, memberKey, now)) {
+    await schedLog('global member alarm: max idle exceeded (force refresh despite live)', {
+      memberKey,
+    });
+    return false;
+  }
   await schedLog('global member alarm: member live (live-aware skip)', { memberKey });
   const memberNextFireAt = {
     ...(group.memberNextFireAt ?? {}),
-    [memberKey]: Date.now() + LIVE_AWARE_POLL_MS,
+    [memberKey]: now + LIVE_AWARE_POLL_MS,
   };
   const nextGroups = replaceAt(state.globalGroups, gIdx, {
     ...group,
@@ -253,8 +279,9 @@ async function handleGlobalMemberAlarm(
     memberKey,
     refreshTabId,
   });
+  const refreshedGroup = patchGlobalMemberAfterSuccessfulRefresh(group, memberKey, Date.now());
   const nextGroups = replaceAt(state.globalGroups, gIdx, {
-    ...group,
+    ...refreshedGroup,
     memberNextFireAt,
     nextFireAt: undefined,
   });

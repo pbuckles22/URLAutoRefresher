@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_STATE } from './state';
 import {
+  applyStreamLiveUserToggle,
   findGlobalMemberKeyForTwitchPageUrl,
+  getEffectiveMemberStreamLive,
   globalGroupLiveAwareEnabled,
   isGlobalMemberLivePaused,
   patchGlobalGroupsForTwitchLiveReport,
   patchGlobalGroupStreamLive,
+  patchGlobalMemberAfterSuccessfulRefresh,
+  patchGlobalMemberStreamLiveOverride,
+  shouldForceRefreshDespiteLivePause,
 } from './global-live-aware';
 
 const twitchFavsGroup = {
@@ -45,12 +50,12 @@ describe('findGlobalMemberKeyForTwitchPageUrl', () => {
 });
 
 describe('patchGlobalGroupStreamLive', () => {
-  it('stores live and clears on unknown', () => {
+  it('stores live and treats unknown as offline', () => {
     const mk = 'twitch.tv/streamer_a';
     const live = patchGlobalGroupStreamLive(twitchFavsGroup, mk, true, 1_000)!;
     expect(live.memberStreamLive?.[mk]).toBe(true);
-    const cleared = patchGlobalGroupStreamLive(live, mk, null, 1_000)!;
-    expect(cleared.memberStreamLive?.[mk]).toBeUndefined();
+    const offline = patchGlobalGroupStreamLive(live, mk, null, 1_000)!;
+    expect(offline.memberStreamLive?.[mk]).toBe(false);
   });
 
   it('caps memberNextFireAt when stream goes offline', () => {
@@ -106,5 +111,98 @@ describe('isGlobalMemberLivePaused', () => {
         'twitch.tv/streamer_a'
       )
     ).toBe(false);
+  });
+
+  it('is false when auto live but user toggled off (override cleared + auto offline)', () => {
+    expect(
+      isGlobalMemberLivePaused(
+        applyStreamLiveUserToggle(
+          {
+            ...twitchFavsGroup,
+            memberStreamLive: { 'twitch.tv/streamer_a': true },
+          },
+          'twitch.tv/streamer_a',
+          false,
+          1_000,
+          60_000
+        ),
+        'twitch.tv/streamer_a'
+      )
+    ).toBe(false);
+  });
+
+  it('is true when user toggled on', () => {
+    expect(
+      isGlobalMemberLivePaused(
+        patchGlobalMemberStreamLiveOverride(twitchFavsGroup, 'twitch.tv/streamer_a', true),
+        'twitch.tv/streamer_a'
+      )
+    ).toBe(true);
+  });
+});
+
+describe('patchGlobalMemberAfterSuccessfulRefresh', () => {
+  it('clears manual on and stale auto signal after refresh', () => {
+    const mk = 'twitch.tv/streamer_a';
+    const g = {
+      ...twitchFavsGroup,
+      memberStreamLive: { [mk]: false },
+      memberStreamLiveOverride: { [mk]: true },
+      memberLastRefreshAt: { [mk]: 1 },
+    };
+    const next = patchGlobalMemberAfterSuccessfulRefresh(g, mk, 9_000);
+    expect(next.memberLastRefreshAt?.[mk]).toBe(9_000);
+    expect(next.memberStreamLiveOverride).toBeUndefined();
+    expect(next.memberStreamLive?.[mk]).toBeUndefined();
+    expect(getEffectiveMemberStreamLive(next, mk)).toBe(false);
+  });
+});
+
+describe('applyStreamLiveUserToggle', () => {
+  it('off clears manual override, snaps auto offline, and restarts timer', () => {
+    const mk = 'twitch.tv/streamer_a';
+    const on = patchGlobalMemberStreamLiveOverride(
+      { ...twitchFavsGroup, memberStreamLive: { [mk]: true } },
+      mk,
+      true
+    );
+    const off = applyStreamLiveUserToggle(on, mk, false, 1_000, 90_000);
+    expect(off.memberStreamLiveOverride).toBeUndefined();
+    expect(off.memberStreamLive?.[mk]).toBe(false);
+    expect(off.memberNextFireAt?.[mk]).toBe(91_000);
+    expect(getEffectiveMemberStreamLive(off, mk)).toBe(false);
+  });
+});
+
+describe('shouldForceRefreshDespiteLivePause', () => {
+  it('returns true after 45 min since last refresh while live', () => {
+    const mk = 'twitch.tv/streamer_a';
+    const now = 1_000_000;
+    const g = {
+      ...twitchFavsGroup,
+      memberStreamLive: { [mk]: true },
+      memberLastRefreshAt: { [mk]: now - 46 * 60 * 1000 },
+    };
+    expect(shouldForceRefreshDespiteLivePause(g, mk, now)).toBe(true);
+  });
+
+  it('returns false when last refresh was recent', () => {
+    const mk = 'twitch.tv/streamer_a';
+    const now = 1_000_000;
+    const g = {
+      ...twitchFavsGroup,
+      memberStreamLive: { [mk]: true },
+      memberLastRefreshAt: { [mk]: now - 10 * 60 * 1000 },
+    };
+    expect(shouldForceRefreshDespiteLivePause(g, mk, now)).toBe(false);
+  });
+
+  it('returns false when never refreshed (interval handles offline path)', () => {
+    const mk = 'twitch.tv/streamer_a';
+    const g = {
+      ...twitchFavsGroup,
+      memberStreamLive: { [mk]: true },
+    };
+    expect(shouldForceRefreshDespiteLivePause(g, mk, 1_000_000)).toBe(false);
   });
 });

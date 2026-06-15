@@ -155,6 +155,33 @@ export async function expectOverlayCardVisible(page: Page): Promise<void> {
     .toBe(true);
 }
 
+/** Overlay sync may start minimized; expand before asserting timer/paused layout. */
+export async function expandOverlayIfMinimized(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const host = document.getElementById('url-auto-refresher-overlay-root');
+    const expand = host?.shadowRoot?.querySelector('[data-overlay-expand]') as HTMLElement | null;
+    expand?.click();
+  });
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const host = document.getElementById('url-auto-refresher-overlay-root');
+          const root = host?.shadowRoot;
+          if (!root) {
+            return false;
+          }
+          return !!(
+            root.querySelector('[data-overlay-pause]') ||
+            root.querySelector('.paused-compact-row') ||
+            root.querySelector('.timer-compact-row')
+          );
+        }),
+      { timeout: 10_000 }
+    )
+    .toBe(true);
+}
+
 export async function expectOverlayAbsent(page: Page): Promise<void> {
   await expect
     .poll(

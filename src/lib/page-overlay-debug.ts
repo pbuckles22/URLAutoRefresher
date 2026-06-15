@@ -5,6 +5,12 @@ import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url'
 import { resolveLiveTabIdForTargetUrl } from './resolve-live-tab';
 import { getLatestSnapBackEventForMember, type SnapBackReason } from './snap-back-events';
 import { findTwitchFavsMemberForPageUrl } from './twitch-favs-member-match';
+import {
+  getEffectiveMemberStreamLive,
+  getMemberStreamLiveAuto,
+  getMemberStreamLiveOverride,
+} from './global-live-aware';
+import { LIVE_AWARE_MAX_IDLE_MS } from './live-aware-constants';
 import type { AppState } from './types';
 
 export type PageOverlaySnapBackDebug = {
@@ -28,6 +34,14 @@ export type PageOverlaySnapBackDebug = {
   lastSnapBackAtMs?: number;
   /** Reason for the last confirmed snap-back event. */
   lastSnapBackReason?: SnapBackReason;
+  /** Last successful scheduled refresh for this member/job (ms). */
+  lastRefreshAtMs?: number;
+  /** Twitch channel live signal for scheduling (`true` = live; omit or false = offline). */
+  twitchStreamLive?: boolean;
+  /** Auto-detected live signal before manual override. */
+  twitchStreamLiveAuto?: boolean;
+  /** Present when the user forced live/offline (`manual`); absent when using auto-detect. */
+  twitchStreamLiveSource?: 'auto' | 'manual';
 };
 
 export type OverlayDebugDeps = {
@@ -56,12 +70,24 @@ async function listMatchingTabIds(
     .sort((a, b) => a - b);
 }
 
+function twitchStreamLiveForGlobal(g: AppState['globalGroups'][0], memberKey: string): boolean {
+  return getEffectiveMemberStreamLive(g, memberKey);
+}
+
+function twitchStreamLiveForJob(j: AppState['individualJobs'][0]): boolean | undefined {
+  const meta = twitchStreamLiveMetaForJob(j);
+  return meta?.twitchStreamLive;
+}
+
 async function buildDebugForTarget(
   tabId: number,
   tabUrl: string,
   targetUrl: string,
   memberKey: string | undefined,
-  deps: OverlayDebugDeps
+  deps: OverlayDebugDeps,
+  twitchStreamLive?: boolean,
+  twitchMeta?: Pick<PageOverlaySnapBackDebug, 'twitchStreamLiveAuto' | 'twitchStreamLiveSource'>,
+  lastRefreshAtMs?: number
 ): Promise<PageOverlaySnapBackDebug> {
   const refreshTargetUrl = targetUrl.trim();
   const schedulerTabId = await deps.resolveLiveTabId(refreshTargetUrl, tabId);
@@ -79,6 +105,49 @@ async function buildDebugForTarget(
     ...(lastSnapBack
       ? { lastSnapBackAtMs: lastSnapBack.atMs, lastSnapBackReason: lastSnapBack.reason }
       : {}),
+    ...(lastRefreshAtMs !== undefined ? { lastRefreshAtMs } : {}),
+    ...(twitchStreamLive !== undefined ? { twitchStreamLive } : {}),
+    ...(twitchMeta?.twitchStreamLiveAuto !== undefined
+      ? { twitchStreamLiveAuto: twitchMeta.twitchStreamLiveAuto }
+      : {}),
+    ...(twitchMeta?.twitchStreamLiveSource
+      ? { twitchStreamLiveSource: twitchMeta.twitchStreamLiveSource }
+      : {}),
+  };
+}
+
+function twitchStreamLiveMetaForGlobal(
+  g: AppState['globalGroups'][0],
+  memberKey: string
+): Pick<
+  PageOverlaySnapBackDebug,
+  'twitchStreamLive' | 'twitchStreamLiveAuto' | 'twitchStreamLiveSource'
+> {
+  const manualOn = getMemberStreamLiveOverride(g, memberKey) === true;
+  return {
+    twitchStreamLive: getEffectiveMemberStreamLive(g, memberKey),
+    twitchStreamLiveAuto: getMemberStreamLiveAuto(g, memberKey),
+    twitchStreamLiveSource: manualOn ? 'manual' : 'auto',
+  };
+}
+
+function twitchStreamLiveMetaForJob(
+  j: AppState['individualJobs'][0]
+):
+  | Pick<
+      PageOverlaySnapBackDebug,
+      'twitchStreamLive' | 'twitchStreamLiveAuto' | 'twitchStreamLiveSource'
+    >
+  | undefined {
+  if (!j.liveAwareRefresh) {
+    return undefined;
+  }
+  const manualOn = j.streamLiveOverride === true;
+  const auto = j.streamLive === true;
+  return {
+    twitchStreamLive: manualOn || auto,
+    twitchStreamLiveAuto: auto,
+    twitchStreamLiveSource: manualOn ? 'manual' : 'auto',
   };
 }
 
@@ -97,7 +166,16 @@ export async function getPageOverlaySnapBackDebug(
     if (!j.enabled || !pageMatchesExplicitTarget(tabUrl, j.target.targetUrl)) {
       continue;
     }
-    return buildDebugForTarget(tabId, tabUrl, j.target.targetUrl, undefined, deps);
+    return buildDebugForTarget(
+      tabId,
+      tabUrl,
+      j.target.targetUrl,
+      undefined,
+      deps,
+      twitchStreamLiveForJob(j),
+      twitchStreamLiveMetaForJob(j),
+      j.lastRefreshAt
+    );
   }
 
   for (const g of state.globalGroups) {
@@ -107,19 +185,37 @@ export async function getPageOverlaySnapBackDebug(
     const hit = g.targets.find((t) => pageMatchesExplicitTarget(tabUrl, t.targetUrl));
     if (hit) {
       const mk = memberKeyFromTargetUrl(hit.targetUrl) ?? undefined;
-      return buildDebugForTarget(tabId, tabUrl, hit.targetUrl, mk, deps);
+      return buildDebugForTarget(
+        tabId,
+        tabUrl,
+        hit.targetUrl,
+        mk,
+        deps,
+        mk ? twitchStreamLiveForGlobal(g, mk) : undefined,
+        mk ? twitchStreamLiveMetaForGlobal(g, mk) : undefined,
+        mk ? g.memberLastRefreshAt?.[mk] : undefined
+      );
     }
     const favHit = findTwitchFavsMemberForPageUrl(g, tabUrl);
     if (favHit) {
-      return buildDebugForTarget(tabId, tabUrl, favHit.targetUrl, favHit.memberKey, deps);
+      return buildDebugForTarget(
+        tabId,
+        tabUrl,
+        favHit.targetUrl,
+        favHit.memberKey,
+        deps,
+        twitchStreamLiveForGlobal(g, favHit.memberKey),
+        twitchStreamLiveMetaForGlobal(g, favHit.memberKey),
+        g.memberLastRefreshAt?.[favHit.memberKey]
+      );
     }
   }
 
   return undefined;
 }
 
-function formatAgeSince(tsMs: number): string {
-  const deltaSec = Math.max(0, Math.floor((Date.now() - tsMs) / 1000));
+function formatAgeSince(tsMs: number, now = Date.now()): string {
+  const deltaSec = Math.max(0, Math.floor((now - tsMs) / 1000));
   if (deltaSec < 60) {
     return `${deltaSec}s ago`;
   }
@@ -135,19 +231,64 @@ function formatReason(reason: SnapBackReason): string {
   return reason === 'raid-detour' ? 'raid detour' : 'channel detour';
 }
 
+/** Minutes since `tsMs`; `undefined` when no refresh recorded yet. */
+export function minutesSinceMs(tsMs: number | undefined, now = Date.now()): number | undefined {
+  if (tsMs === undefined) {
+    return undefined;
+  }
+  return Math.max(0, Math.floor((now - tsMs) / 60_000));
+}
+
+export function formatLastRefreshLine(
+  lastRefreshAtMs: number | undefined,
+  now = Date.now()
+): string {
+  if (lastRefreshAtMs === undefined) {
+    return 'Last refresh: never';
+  }
+  const min = minutesSinceMs(lastRefreshAtMs, now)!;
+  return `Last refresh: ${min}m ago`;
+}
+
+export function isLastRefreshOverMaxIdle(
+  lastRefreshAtMs: number | undefined,
+  now = Date.now()
+): boolean {
+  if (lastRefreshAtMs === undefined) {
+    return false;
+  }
+  return now - lastRefreshAtMs >= LIVE_AWARE_MAX_IDLE_MS;
+}
+
+function formatTwitchStreamLiveLabel(d: PageOverlaySnapBackDebug): string {
+  const status = d.twitchStreamLive === true ? 'LIVE' : 'offline';
+  if (d.twitchStreamLiveSource === 'manual') {
+    return `${status} (manual)`;
+  }
+  if (
+    d.twitchStreamLiveSource === 'auto' &&
+    d.twitchStreamLiveAuto !== undefined &&
+    d.twitchStreamLiveAuto !== d.twitchStreamLive
+  ) {
+    return `${status} (auto)`;
+  }
+  return `${status} (auto)`;
+}
+
 /** Compact lines for the overlay debug strip. */
-export function formatOverlayDebugLines(d: PageOverlaySnapBackDebug): string[] {
+export function formatOverlayDebugLines(d: PageOverlaySnapBackDebug, now = Date.now()): string[] {
   const sched = d.schedulerTabId !== undefined ? String(d.schedulerTabId) : '-';
   const live = d.schedulerUsesThisTab ? 'LIVE' : 'other tab';
   const lines = [
     `Tab ${d.thisTabId} · Sched ${sched} · Pick ${live}`,
-    `Refresh: ${d.refreshTargetUrl}`,
+    `Stream: ${formatTwitchStreamLiveLabel(d)}`,
+    formatLastRefreshLine(d.lastRefreshAtMs, now),
   ];
-  if (d.lastSnapBackAtMs && d.lastSnapBackReason) {
-    lines.push(
-      `Last snap-back: ${formatAgeSince(d.lastSnapBackAtMs)} (${formatReason(d.lastSnapBackReason)})`
-    );
+  if (d.lastSnapBackAtMs !== undefined) {
+    const reasonPart = d.lastSnapBackReason ? ` (${formatReason(d.lastSnapBackReason)})` : '';
+    lines.push(`Last snap-back: ${formatAgeSince(d.lastSnapBackAtMs, now)}${reasonPart}`);
   }
+  lines.push(`Refresh: ${d.refreshTargetUrl}`);
   if (d.matchingOpenTabIds.length > 0) {
     lines.push(`Open matches: ${d.matchingOpenTabIds.join(', ')}`);
   }

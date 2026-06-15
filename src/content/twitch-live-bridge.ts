@@ -1,27 +1,27 @@
 /**
  * Epic 8.1: report Twitch channel live/offline to the service worker (Twitch-first).
- * Live-aware globals: theater/chat layout while live; offline channel cleanup when not live.
+ * All channel visits: theater + collapsed chat; offline/unknown clicks Chat first.
  */
-import { TWITCH_LIVE_REPORT, TWITCH_LIVE_STATE_PUSH } from '../lib/messages';
 import {
-  gatherTwitchBootScriptSample,
-  inferTwitchLiveFromScriptText,
+  coalesceTwitchLiveSignal,
+  isTwitchChannelRootUrl,
+  isTwitchPopoutChatUrl,
+  twitchChannelSlugFromPopoutChatUrl,
 } from '../lib/twitch-live-detect';
+import { TWITCH_LIVE_REPORT, TWITCH_LIVE_STATE_PUSH } from '../lib/messages';
+import { inferTwitchLiveFromChannelPage } from '../lib/twitch-live-detect';
 import {
-  applyTwitchWatchLayoutEnhancements,
-  beginTwitchLiveWatchSession,
   createTwitchWatchLayoutState,
-  handleTwitchOfflineChannelView,
   installDebouncedTwitchWatchLayoutRunner,
   installTwitchWatchLayoutOverrideListeners,
-  resetTwitchWatchLayoutSession,
+  runTwitchChannelWatchLayout,
 } from './twitch-watch-layout';
 
 const POLL_MS = 22_000;
 const DEBOUNCE_MS = 1_600;
 
 function sampleLive(): boolean | null {
-  return inferTwitchLiveFromScriptText(gatherTwitchBootScriptSample(document));
+  return inferTwitchLiveFromChannelPage(document);
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -29,7 +29,6 @@ let pollTimer: ReturnType<typeof setInterval> | undefined;
 let mo: MutationObserver | undefined;
 let tornDown = false;
 let lastReportedLive: boolean | null | undefined;
-let liveSessionActive = false;
 let disposeLayoutRunner: (() => void) | undefined;
 const layoutState = createTwitchWatchLayoutState();
 
@@ -66,58 +65,86 @@ function isContextInvalidatedError(err: unknown): boolean {
   return msg.includes('Extension context invalidated') || msg.includes('context invalidated');
 }
 
+function streamIsLive(): boolean {
+  return coalesceTwitchLiveSignal(lastReportedLive ?? null);
+}
+
+function notifyOverlayMinimizeIfLive(rawLive: boolean | null): void {
+  if (!coalesceTwitchLiveSignal(rawLive)) {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent('urlar:twitch-live-session', {
+      detail: { live: true, minimizeOverlay: true },
+    })
+  );
+}
+
+function recoverPopoutChatToChannelHome(): boolean {
+  if (!isTwitchPopoutChatUrl(location.href)) {
+    return false;
+  }
+  const slug = twitchChannelSlugFromPopoutChatUrl(location.href);
+  if (!slug) {
+    return false;
+  }
+  location.replace(`https://www.twitch.tv/${slug}`);
+  return true;
+}
+
+function runWatchLayoutIfChannelPage(): void {
+  if (recoverPopoutChatToChannelHome()) {
+    return;
+  }
+  if (!isTwitchChannelRootUrl(location.href)) {
+    return;
+  }
+  if (location.href !== lastLayoutHref) {
+    lastLayoutHref = location.href;
+    layoutState.offlineNavDone = false;
+    layoutState.offlineChatNavClicked = false;
+    layoutState.theaterClickDone = false;
+    layoutState.chatCollapseDone = false;
+    layoutState.userOverrodeTheater = false;
+    layoutState.userOverrodeChat = false;
+    layoutState.watchLayoutEngaged = false;
+  }
+  ensureLayoutRunner();
+  runTwitchChannelWatchLayout(document, layoutState, streamIsLive());
+}
+
+let lastLayoutHref = location.href;
+
 function ensureLayoutRunner(): void {
   if (disposeLayoutRunner) {
     return;
   }
   installTwitchWatchLayoutOverrideListeners(window, document, layoutState);
   disposeLayoutRunner = installDebouncedTwitchWatchLayoutRunner(window, () => {
-    if (liveSessionActive) {
-      applyTwitchWatchLayoutEnhancements(document, layoutState);
-      return;
-    }
-    if (lastReportedLive === false) {
-      handleTwitchOfflineChannelView(document, layoutState);
-    }
+    runTwitchChannelWatchLayout(document, layoutState, streamIsLive());
   });
 }
 
 function applyLiveSessionState(live: boolean | null, sessionActive: boolean): void {
-  const prevLive = lastReportedLive;
+  const prevCoalesced = coalesceTwitchLiveSignal(lastReportedLive ?? null);
   lastReportedLive = live;
-  liveSessionActive = sessionActive;
 
-  if (sessionActive && live === true) {
-    beginTwitchLiveWatchSession(layoutState);
-    ensureLayoutRunner();
-    applyTwitchWatchLayoutEnhancements(document, layoutState);
-    window.dispatchEvent(
-      new CustomEvent('urlar:twitch-live-session', {
-        detail: { live: true, minimizeOverlay: true },
-      })
-    );
-    return;
-  }
-
-  if (live === false && (prevLive === true || prevLive === undefined || prevLive === null)) {
-    resetTwitchWatchLayoutSession(layoutState);
-    ensureLayoutRunner();
-    handleTwitchOfflineChannelView(document, layoutState);
+  const coalesced = coalesceTwitchLiveSignal(live);
+  if (sessionActive && coalesced) {
+    notifyOverlayMinimizeIfLive(live);
+  } else if (!coalesced && prevCoalesced) {
     window.dispatchEvent(
       new CustomEvent('urlar:twitch-live-session', {
         detail: { live: false, minimizeOverlay: false },
       })
     );
-    return;
   }
 
-  if (live === false) {
-    ensureLayoutRunner();
-    handleTwitchOfflineChannelView(document, layoutState);
-  }
+  runWatchLayoutIfChannelPage();
 }
 
-function send(live: boolean | null): void {
+function send(rawLive: boolean | null): void {
+  const live = coalesceTwitchLiveSignal(rawLive);
   try {
     if (!isExtensionContextAlive()) {
       teardown();
@@ -131,6 +158,9 @@ function send(live: boolean | null): void {
         }
       });
     }
+    lastReportedLive = rawLive;
+    notifyOverlayMinimizeIfLive(rawLive);
+    runWatchLayoutIfChannelPage();
   } catch {
     teardown();
   }

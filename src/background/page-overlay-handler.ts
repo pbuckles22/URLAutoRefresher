@@ -3,15 +3,20 @@ import {
   GLOBAL_GROUP_TAB_PAUSE,
   INDIVIDUAL_JOB_OVERLAY_PAUSE,
   PAGE_OVERLAY_GET_STATE,
+  TWITCH_LIVE_MANUAL_OVERRIDE,
   type GlobalGroupTabPauseMessage,
   type IndividualJobOverlayPauseMessage,
   type PageOverlayStateResponse,
+  type TwitchLiveManualOverrideMessage,
 } from '../lib/messages';
 import { getBlipWatchForTab } from '../lib/blip-tab-state';
 import { getPageOverlaySnapBackDebug } from '../lib/page-overlay-debug';
 import { resolveGlobalGroupTargets } from '../lib/global-group-targets';
 import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from '../lib/member-url';
 import { getPageOverlayVmForTab } from '../lib/page-overlay-state';
+import { applyStreamLiveUserToggle, isGlobalMemberLivePaused } from '../lib/global-live-aware';
+import { computeNextDelayMs } from '../lib/schedule';
+import { baseAndJitterMs } from './scheduler-align-state';
 import { loadExtensionPrefs } from '../lib/prefs';
 import { loadAppState, saveAppState } from '../lib/storage';
 import { refreshActionBadge } from './badge';
@@ -88,11 +93,18 @@ async function handleIndividualJobOverlayPause(
   if (!j.enabled || !tabUrl || !pageMatchesExplicitTarget(tabUrl, j.target.targetUrl)) {
     return false;
   }
-  const nextJ = {
-    ...j,
-    overlayPaused: paused,
-    ...(paused ? { nextFireAt: undefined as number | undefined } : {}),
-  };
+  let nextJ = { ...j, overlayPaused: paused };
+  if (paused) {
+    nextJ = { ...nextJ, nextFireAt: undefined };
+  } else if (j.liveAwareRefresh && (j.streamLiveOverride === true || j.streamLive === true)) {
+    const { baseMs, jitterMs } = baseAndJitterMs(j);
+    nextJ = {
+      ...nextJ,
+      streamLive: false,
+      nextFireAt: Date.now() + computeNextDelayMs(baseMs, jitterMs),
+    };
+    delete nextJ.streamLiveOverride;
+  }
   state = { ...state, individualJobs: replaceAt(state.individualJobs, idx, nextJ) };
   await saveAppState(state);
   await syncAlarmsWithState(state);
@@ -130,11 +142,88 @@ async function handleGlobalGroupTabPause(
     set.delete(mk);
   }
   const pausedMemberKeys = [...set].sort();
-  const nextG = replaceAt(state.globalGroups, gIdx, {
+  let nextG: typeof g = {
     ...g,
     pausedMemberKeys: pausedMemberKeys.length > 0 ? pausedMemberKeys : undefined,
-  });
-  state = { ...state, globalGroups: nextG };
+  };
+  if (!paused && isGlobalMemberLivePaused(g, mk)) {
+    const { baseMs, jitterMs } = baseAndJitterMs(g);
+    nextG = applyStreamLiveUserToggle(
+      nextG,
+      mk,
+      false,
+      Date.now(),
+      computeNextDelayMs(baseMs, jitterMs)
+    );
+  }
+  state = { ...state, globalGroups: replaceAt(state.globalGroups, gIdx, nextG) };
+  await saveAppState(state);
+  await syncAlarmsWithState(state);
+  await refreshActionBadge();
+  return true;
+}
+
+async function handleTwitchLiveManualOverride(
+  tabId: number,
+  message: TwitchLiveManualOverrideMessage
+): Promise<boolean> {
+  const { groupId, jobId, on } = message;
+  if (typeof on !== 'boolean') {
+    return false;
+  }
+  let state = await loadAppState();
+  const now = Date.now();
+
+  if (groupId) {
+    const gIdx = state.globalGroups.findIndex((g) => g.id === groupId);
+    if (gIdx < 0) {
+      return false;
+    }
+    const g = state.globalGroups[gIdx];
+    const resolved = await resolveGlobalGroupTargets(g);
+    const hit = resolved.find((t) => t.tabId === tabId);
+    if (!hit) {
+      return false;
+    }
+    const mk = memberKeyFromTargetUrl(hit.targetUrl);
+    if (!mk) {
+      return false;
+    }
+    const { baseMs, jitterMs } = baseAndJitterMs(g);
+    const nextG = applyStreamLiveUserToggle(g, mk, on, now, computeNextDelayMs(baseMs, jitterMs));
+    state = { ...state, globalGroups: replaceAt(state.globalGroups, gIdx, nextG) };
+  } else if (jobId) {
+    const idx = state.individualJobs.findIndex((j) => j.id === jobId);
+    if (idx < 0) {
+      return false;
+    }
+    const j = state.individualJobs[idx];
+    let tabUrl: string | undefined;
+    try {
+      tabUrl = (await chrome.tabs.get(tabId)).url;
+    } catch {
+      return false;
+    }
+    if (!tabUrl || !pageMatchesExplicitTarget(tabUrl, j.target.targetUrl)) {
+      return false;
+    }
+    let nextJ = { ...j };
+    if (on) {
+      nextJ = { ...nextJ, streamLiveOverride: true };
+    } else {
+      const { baseMs, jitterMs } = baseAndJitterMs(j);
+      nextJ = {
+        ...nextJ,
+        streamLive: false,
+        nextFireAt: now + computeNextDelayMs(baseMs, jitterMs),
+      };
+      delete nextJ.streamLiveOverride;
+    }
+    state = { ...state, individualJobs: replaceAt(state.individualJobs, idx, nextJ) };
+  } else {
+    return false;
+  }
+
   await saveAppState(state);
   await syncAlarmsWithState(state);
   await refreshActionBadge();
@@ -171,6 +260,18 @@ export function attachPageOverlayMessageHandler(): void {
         return true;
       }
       void handleIndividualJobOverlayPause(tabId, jobId, paused)
+        .then((ok) => sendResponse({ ok }))
+        .catch(() => sendResponse({ ok: false }));
+      return true;
+    }
+
+    if (message?.type === TWITCH_LIVE_MANUAL_OVERRIDE) {
+      const tabId = sender.tab?.id;
+      if (tabId === undefined) {
+        sendResponse({ ok: false });
+        return true;
+      }
+      void handleTwitchLiveManualOverride(tabId, message as TwitchLiveManualOverrideMessage)
         .then((ok) => sendResponse({ ok }))
         .catch(() => sendResponse({ ok: false }));
       return true;

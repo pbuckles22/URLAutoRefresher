@@ -1,10 +1,10 @@
 /**
  * Epic 8 extension — live-aware refresh for global groups / TwitchFavs.
  */
-import { LIVE_AWARE_RESUME_SOON_MS } from './live-aware-constants';
+import { LIVE_AWARE_MAX_IDLE_MS, LIVE_AWARE_RESUME_SOON_MS } from './live-aware-constants';
 import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url';
 import { findTwitchFavsMemberForPageUrl } from './twitch-favs-member-match';
-import { isTwitchChannelRootUrl } from './twitch-live-detect';
+import { isTwitchChannelRootUrl, coalesceTwitchLiveSignal } from './twitch-live-detect';
 import type { AppState, GlobalGroup } from './types';
 
 /** Live-aware is on by default for global groups (opt out with `liveAwareRefresh: false`). */
@@ -28,11 +28,124 @@ export function findGlobalMemberKeyForTwitchPageUrl(
   return fav?.memberKey ?? null;
 }
 
+export function getMemberStreamLiveAuto(g: GlobalGroup, memberKey: string): boolean {
+  return g.memberStreamLive?.[memberKey] === true;
+}
+
+export function getMemberStreamLiveOverride(
+  g: GlobalGroup,
+  memberKey: string
+): boolean | undefined {
+  return g.memberStreamLiveOverride?.[memberKey];
+}
+
+/** Effective live signal for scheduling: manual on wins over auto detection. */
+export function getEffectiveMemberStreamLive(g: GlobalGroup, memberKey: string): boolean {
+  const override = getMemberStreamLiveOverride(g, memberKey);
+  if (override === true) {
+    return true;
+  }
+  return getMemberStreamLiveAuto(g, memberKey);
+}
+
+/** Clear manual on override (`undefined` = auto-detect). */
+export function patchGlobalMemberStreamLiveOverride(
+  g: GlobalGroup,
+  memberKey: string,
+  on: boolean | null
+): GlobalGroup {
+  const memberStreamLiveOverride = { ...(g.memberStreamLiveOverride ?? {}) };
+  if (on === true) {
+    memberStreamLiveOverride[memberKey] = true;
+  } else {
+    delete memberStreamLiveOverride[memberKey];
+  }
+  return {
+    ...g,
+    memberStreamLiveOverride:
+      Object.keys(memberStreamLiveOverride).length > 0 ? memberStreamLiveOverride : undefined,
+  };
+}
+
+/**
+ * User stream On/Off toggle.
+ * Off clears manual override (auto-detect), snaps auto signal offline, and restarts the interval timer.
+ * On forces live (interval refresh paused; 45-min safety refresh still applies).
+ */
+export function applyStreamLiveUserToggle(
+  g: GlobalGroup,
+  memberKey: string,
+  on: boolean,
+  now: number,
+  nextDelayMs: number
+): GlobalGroup {
+  if (on) {
+    return patchGlobalMemberStreamLiveOverride(g, memberKey, true);
+  }
+  const memberStreamLive = { ...(g.memberStreamLive ?? {}), [memberKey]: false };
+  const memberNextFireAt = { ...(g.memberNextFireAt ?? {}), [memberKey]: now + nextDelayMs };
+  return {
+    ...patchGlobalMemberStreamLiveOverride(
+      { ...g, memberStreamLive, memberNextFireAt },
+      memberKey,
+      null
+    ),
+    memberStreamLive,
+    memberNextFireAt,
+  };
+}
+
+/** True when live-paused and at least 45 min since the last successful refresh. */
+export function shouldForceRefreshDespiteLivePause(
+  g: GlobalGroup,
+  memberKey: string,
+  now: number
+): boolean {
+  if (!getEffectiveMemberStreamLive(g, memberKey)) {
+    return false;
+  }
+  const lastRefresh = g.memberLastRefreshAt?.[memberKey];
+  return lastRefresh !== undefined && now - lastRefresh >= LIVE_AWARE_MAX_IDLE_MS;
+}
+
+export function patchGlobalMemberLastRefreshAt(
+  g: GlobalGroup,
+  memberKey: string,
+  now: number
+): GlobalGroup {
+  return {
+    ...g,
+    memberLastRefreshAt: { ...(g.memberLastRefreshAt ?? {}), [memberKey]: now },
+  };
+}
+
+/**
+ * After a successful tab refresh: record time, clear manual On override, and drop stale
+ * auto live signal so the content script re-detects from the reloaded page.
+ */
+export function patchGlobalMemberAfterSuccessfulRefresh(
+  g: GlobalGroup,
+  memberKey: string,
+  now: number
+): GlobalGroup {
+  let next = patchGlobalMemberLastRefreshAt(g, memberKey, now);
+  next = patchGlobalMemberStreamLiveOverride(next, memberKey, null);
+  if (!next.memberStreamLive || !(memberKey in next.memberStreamLive)) {
+    return next;
+  }
+  const memberStreamLive = { ...next.memberStreamLive };
+  delete memberStreamLive[memberKey];
+  return {
+    ...next,
+    memberStreamLive: Object.keys(memberStreamLive).length > 0 ? memberStreamLive : undefined,
+  };
+}
+
 export function isGlobalMemberLivePaused(g: GlobalGroup, memberKey: string): boolean {
   if (!globalGroupLiveAwareEnabled(g) || g.pausedMemberKeys?.includes(memberKey)) {
     return false;
   }
-  return g.memberStreamLive?.[memberKey] === true;
+  return getEffectiveMemberStreamLive(g, memberKey);
 }
 
 export function patchGlobalGroupStreamLive(
@@ -45,20 +158,15 @@ export function patchGlobalGroupStreamLive(
     return null;
   }
   const prev = g.memberStreamLive?.[memberKey];
-  const nextStream = live === null ? undefined : live;
+  const nextStream = coalesceTwitchLiveSignal(live);
   if (prev === nextStream) {
     return null;
   }
 
-  const memberStreamLive = { ...(g.memberStreamLive ?? {}) };
-  if (nextStream === undefined) {
-    delete memberStreamLive[memberKey];
-  } else {
-    memberStreamLive[memberKey] = nextStream;
-  }
+  const memberStreamLive = { ...(g.memberStreamLive ?? {}), [memberKey]: nextStream };
 
   const memberNextFireAt = { ...(g.memberNextFireAt ?? {}) };
-  if (prev === true && nextStream !== true && g.enabled) {
+  if (prev === true && !nextStream && g.enabled) {
     const cap = now + LIVE_AWARE_RESUME_SOON_MS;
     const cur = memberNextFireAt[memberKey];
     memberNextFireAt[memberKey] = cur === undefined ? cap : Math.min(cur, cap);
@@ -66,7 +174,7 @@ export function patchGlobalGroupStreamLive(
 
   return {
     ...g,
-    memberStreamLive: Object.keys(memberStreamLive).length > 0 ? memberStreamLive : undefined,
+    memberStreamLive,
     memberNextFireAt: Object.keys(memberNextFireAt).length > 0 ? memberNextFireAt : undefined,
   };
 }
@@ -84,10 +192,11 @@ export function patchGlobalGroupsForTwitchLiveReport(
     if (!mk) {
       return g;
     }
-    if (live === true && !g.pausedMemberKeys?.includes(mk)) {
-      liveSessionActive = true;
-    }
     const patched = patchGlobalGroupStreamLive(g, mk, live, now);
+    const nextG = patched ?? g;
+    if (coalesceTwitchLiveSignal(live) && !g.pausedMemberKeys?.includes(mk)) {
+      liveSessionActive = getEffectiveMemberStreamLive(nextG, mk);
+    }
     if (!patched) {
       return g;
     }
@@ -106,7 +215,7 @@ export function isTwitchLiveWatchSessionActive(
   tabUrl: string,
   live: boolean | null
 ): boolean {
-  if (live !== true) {
+  if (!coalesceTwitchLiveSignal(live)) {
     return false;
   }
   for (const g of state.globalGroups) {

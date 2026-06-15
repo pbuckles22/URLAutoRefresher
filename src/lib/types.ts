@@ -33,6 +33,10 @@ export type GlobalGroup = {
   liveAwareRefresh?: boolean;
   /** Per-member live/offline from Twitch tab bridge; keys match member keys (Epic 8 globals). */
   memberStreamLive?: Record<string, boolean>;
+  /** User override of auto live detection; keys match member keys (`true` = force live, `false` = force offline). */
+  memberStreamLiveOverride?: Record<string, boolean>;
+  /** Last successful scheduled refresh per member (ms). Resets the 45-min safety refresh clock. */
+  memberLastRefreshAt?: Record<string, number>;
 };
 
 export type IndividualJob = {
@@ -48,6 +52,10 @@ export type IndividualJob = {
   liveAwareRefresh?: boolean;
   /** Last live/offline signal from the Twitch tab (`undefined` = unknown). */
   streamLive?: boolean;
+  /** User override of auto live detection (`true` = force live, `false` = force offline). */
+  streamLiveOverride?: boolean;
+  /** Last successful scheduled refresh (ms). Resets the 45-min safety refresh clock. */
+  lastRefreshAt?: number;
   /** Epic 9: case-insensitive substring triggers for immediate refresh (user-defined). */
   blipWatchPhrases?: string[];
   /** Epic 9: optional user regex (case-insensitive flag). */

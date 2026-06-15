@@ -1,6 +1,7 @@
 /**
  * Immediate snap-back when a sched tab leaves its TwitchFavs home channel (raid detour).
  */
+import { patchGlobalMemberAfterSuccessfulRefresh } from '../lib/global-live-aware';
 import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from '../lib/member-url';
 import {
   getSchedHintForTab,
@@ -9,7 +10,7 @@ import {
 } from '../lib/sched-member-tab-hint';
 import { noteSnapBackEvent } from '../lib/snap-back-events';
 import { schedLog } from '../lib/scheduler-debug';
-import { loadAppState } from '../lib/storage';
+import { loadAppState, saveAppState } from '../lib/storage';
 import { isTwitchFavsGroupName, twitchChannelLoginFromUrl } from '../lib/twitch-favs';
 import { isTwitchChannelRootUrl } from '../lib/twitch-live-detect';
 
@@ -82,13 +83,24 @@ export async function maybeSnapBackRaidDetour(
   try {
     await chrome.tabs.update(tabId, { url: hint.targetUrl });
     rememberSchedTabId(hint.groupId, hint.memberKey, tabId, hint.targetUrl);
+    const now = Date.now();
     await noteSnapBackEvent(mk, {
-      atMs: Date.now(),
+      atMs: now,
       tabId,
       fromUrl: url,
       toUrl: hint.targetUrl,
       reason: isRaid ? 'raid-detour' : 'channel-detour',
     });
+    const gIdx = state.globalGroups.findIndex((g) => g.id === hint.groupId);
+    if (gIdx >= 0) {
+      const nextGroups = [...state.globalGroups];
+      nextGroups[gIdx] = patchGlobalMemberAfterSuccessfulRefresh(
+        state.globalGroups[gIdx]!,
+        mk,
+        now
+      );
+      await saveAppState({ ...state, globalGroups: nextGroups });
+    }
     return true;
   } catch {
     await schedLog('raid detour snap-back: tabs.update failed', { tabId });

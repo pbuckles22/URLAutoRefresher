@@ -11,7 +11,7 @@ import {
 } from '../lib/global-live-aware';
 import { pageMatchesExplicitTarget } from '../lib/member-url';
 import { loadAppState, saveAppState } from '../lib/storage';
-import { isTwitchChannelRootUrl } from '../lib/twitch-live-detect';
+import { coalesceTwitchLiveSignal, isTwitchChannelRootUrl } from '../lib/twitch-live-detect';
 import type { AppState } from '../lib/types';
 import { refreshActionBadge } from './badge';
 import { syncAlarmsWithState } from './scheduler';
@@ -47,8 +47,8 @@ async function patchJobsForTwitchReport(
     return null;
   }
 
+  const nextStream = coalesceTwitchLiveSignal(live);
   const now = Date.now();
-  const nextStream = live === null ? undefined : live;
   let changed = false;
 
   const individualJobs = state.individualJobs.map((j) => {
@@ -61,7 +61,7 @@ async function patchJobsForTwitchReport(
     }
     changed = true;
     let nextFireAt = j.nextFireAt;
-    if (prev === true && nextStream !== true && j.enabled) {
+    if (prev === true && !nextStream && j.enabled) {
       const cap = now + LIVE_AWARE_RESUME_SOON_MS;
       nextFireAt = nextFireAt === undefined ? cap : Math.min(nextFireAt, cap);
     }
@@ -75,7 +75,7 @@ function patchGlobalsForTwitchReport(
   state: AppState,
   tabUrl: string,
   live: boolean | null
-): { state: AppState; changed: boolean; liveSessionActive: boolean } {
+): { next: AppState; changed: boolean; liveSessionActive: boolean } {
   return patchGlobalGroupsForTwitchLiveReport(state, tabUrl, live, Date.now());
 }
 

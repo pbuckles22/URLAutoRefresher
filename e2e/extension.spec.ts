@@ -6,6 +6,7 @@ import {
   launchExtensionContext,
 } from './extension-helpers';
 import {
+  expandOverlayIfMinimized,
   expectOverlayCardVisible,
   PREFS_STORAGE_KEY,
   waitForExtensionDebounce,
@@ -86,6 +87,7 @@ test('content script shows overlay when tab has enabled job and pref is on', asy
   // Storage updates from another tab may race the content script listener; reload guarantees sync.
   await fixturePage.reload({ waitUntil: 'domcontentloaded' });
   await expectOverlayCardVisible(fixturePage);
+  await expandOverlayIfMinimized(fixturePage);
 
   const compact = await fixturePage.evaluate(() => {
     const host = document.getElementById('url-auto-refresher-overlay-root');
@@ -169,6 +171,7 @@ test('Backlog 3: paused overlay is compact row — Play beside copy, not stacked
   await waitForExtensionDebounce();
   await fixturePage.reload({ waitUntil: 'domcontentloaded' });
   await expectOverlayCardVisible(fixturePage);
+  await expandOverlayIfMinimized(fixturePage);
 
   const layout = await fixturePage.evaluate(() => {
     const host = document.getElementById('url-auto-refresher-overlay-root');

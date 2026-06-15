@@ -35,6 +35,10 @@ function applyHintToMemory(h: MemberSchedHint): void {
 function schedulePersistSession(): void {
   clearTimeout(persistDebounce);
   persistDebounce = setTimeout(() => {
+    persistDebounce = undefined;
+    if (typeof chrome === 'undefined' || !chrome.storage?.session) {
+      return;
+    }
     void chrome.storage.session
       .set({
         [SCHED_MEMBER_HINTS_SESSION_KEY]: { hints: [...hintByMember.values()] },

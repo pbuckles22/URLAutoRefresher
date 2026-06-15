@@ -8,12 +8,13 @@ import {
   INDIVIDUAL_JOB_OVERLAY_PAUSE,
   PAGE_OVERLAY_GET_STATE,
   PAGE_OVERLAY_SYNC_REQUEST,
+  TWITCH_LIVE_MANUAL_OVERRIDE,
   type PageOverlayBlipPack,
   type PageOverlaySnapBackDebug,
   type PageOverlayStateResponse,
 } from '../lib/messages';
 import { compileBlipRegex, sampleDocumentText, textMatchesBlip } from '../lib/blip-match';
-import { formatOverlayDebugLines } from '../lib/page-overlay-debug';
+import { formatOverlayDebugLines, isLastRefreshOverMaxIdle } from '../lib/page-overlay-debug';
 import {
   extensionRuntimeContextLikelyAlive,
   sendExtensionMessageAsync,
@@ -22,6 +23,7 @@ import {
 import './precision-volume-bridge';
 import { PREFS_STORAGE_KEY } from '../lib/prefs';
 import { STORAGE_KEY } from '../lib/storage';
+import { PAGE_OVERLAY_SHADOW_CSS } from './page-overlay-shadow-css';
 
 const ROOT_ID = 'url-auto-refresher-overlay-root';
 
@@ -33,6 +35,9 @@ let overlayGroupId: string | undefined;
 let overlayIndividualJobId: string | undefined;
 let overlayDebug: PageOverlaySnapBackDebug | undefined;
 let overlayMinimized = false;
+let overlayUserExpanded = false;
+let overlayStreamLive: boolean | undefined;
+let overlayLivePaused = false;
 let shadowRoot: ShadowRoot | null = null;
 let tickHandle: ReturnType<typeof setInterval> | undefined;
 
@@ -53,6 +58,9 @@ function clearUi() {
   overlayIndividualJobId = undefined;
   overlayDebug = undefined;
   overlayMinimized = false;
+  overlayUserExpanded = false;
+  overlayStreamLive = undefined;
+  overlayLivePaused = false;
 }
 
 function clearBlipWatcher(): void {
@@ -111,201 +119,6 @@ function setBlipWatcher(cfg: PageOverlayBlipPack | undefined): void {
   runBlipScan();
 }
 
-function shadowCss(): string {
-  return `
-    :host {
-      all: initial;
-      box-sizing: border-box;
-      display: block !important;
-      position: fixed !important;
-      top: 12px !important;
-      right: 12px !important;
-      z-index: 2147483647 !important;
-      pointer-events: none;
-      font-family: system-ui, "Segoe UI", Roboto, sans-serif;
-    }
-    .card {
-      position: relative;
-      pointer-events: auto;
-      background: #ffffff;
-      border-radius: 16px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-      box-sizing: border-box;
-    }
-    .card--minimized {
-      padding: 4px 8px;
-      min-width: 0;
-      border-radius: 10px;
-    }
-    .m-badge {
-      display: block;
-      border: none;
-      background: transparent;
-      font-weight: 700;
-      font-size: 14px;
-      line-height: 1;
-      color: #111;
-      cursor: pointer;
-      padding: 2px 4px;
-      font-family: inherit;
-    }
-    .m-badge:hover {
-      color: #1a73e8;
-    }
-    .minimize-hit {
-      position: absolute;
-      top: 4px;
-      right: 6px;
-      z-index: 2;
-      border: none;
-      background: transparent;
-      color: #5f6368;
-      font-size: 16px;
-      font-weight: 700;
-      line-height: 1;
-      cursor: pointer;
-      padding: 0 4px;
-      font-family: inherit;
-    }
-    .minimize-hit:hover {
-      color: #111;
-    }
-    .card-body {
-      position: relative;
-    }
-    .card-body--has-minimize {
-      padding-top: 2px;
-      padding-right: 18px;
-    }
-    .debug-strip {
-      margin: 0 0 6px;
-      padding: 4px 6px;
-      border-radius: 6px;
-      background: #f1f3f4;
-      font-size: 9px;
-      line-height: 1.35;
-      font-family: ui-monospace, Consolas, monospace;
-      color: #3c4043;
-      word-break: break-all;
-      cursor: pointer;
-      user-select: text;
-    }
-    .debug-strip:hover {
-      background: #e8eaed;
-    }
-    .debug-line {
-      margin: 0;
-    }
-    .debug-line--live {
-      color: #137333;
-      font-weight: 600;
-    }
-    .debug-line--warn {
-      color: #c5221f;
-      font-weight: 600;
-    }
-    .card--timer {
-      padding: 8px 10px 10px;
-      min-width: 0;
-    }
-    .card--paused {
-      padding: 8px 10px 10px;
-      min-width: 0;
-      max-width: min(22rem, calc(100vw - 32px));
-    }
-    .paused-compact-row {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: nowrap;
-    }
-    .timer-compact-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .timer-compact-row--with-pause {
-      min-width: 168px;
-    }
-    .timer-compact-row:not(.timer-compact-row--with-pause) {
-      justify-content: center;
-      padding: 2px 4px;
-    }
-    .timer-readout {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-    }
-    .pause-btn {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 6px;
-      border: 1px solid #5f6368;
-      background: #f1f3f4;
-      color: #202124;
-      cursor: pointer;
-    }
-    .pause-btn:hover {
-      background: #e8eaed;
-    }
-    .paused-text {
-      font-size: 13px;
-      font-weight: 600;
-      color: #111;
-      line-height: 1.25;
-      margin: 0;
-      flex: 0 1 auto;
-      min-width: 0;
-    }
-    .resume-btn {
-      flex-shrink: 0;
-      font-size: 9px;
-      font-weight: 600;
-      padding: 4px 9px;
-      border-radius: 6px;
-      border: none;
-      background: #8ab4f8;
-      color: #202124;
-      cursor: pointer;
-    }
-    .resume-btn:hover {
-      filter: brightness(1.05);
-    }
-    .digits-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-    }
-    .digit {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 21px;
-      height: 27px;
-      padding: 0 4px;
-      border-radius: 6px;
-      background: #2a2a2a;
-      color: #f5f5f5;
-      font-size: 15px;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
-    }
-    .colon {
-      font-size: 17px;
-      font-weight: 700;
-      color: #111;
-      padding: 0 1px 2px;
-      user-select: none;
-      line-height: 1;
-    }
-  `;
-}
-
 const shadowRootsWithDelegation = new WeakSet<ShadowRoot>();
 
 function ensureShadowClickDelegation(root: ShadowRoot): void {
@@ -323,14 +136,20 @@ function ensureShadowClickDelegation(root: ShadowRoot): void {
         clearBlipWatcher();
       }
     };
+    if (t.closest('[data-overlay-stream-toggle]')) {
+      e.stopPropagation();
+      return;
+    }
     if (t.closest('[data-overlay-minimize]') || t.closest('[data-overlay-debug-minimize]')) {
       e.preventDefault();
+      overlayUserExpanded = false;
       overlayMinimized = true;
       remountOverlayCard();
       return;
     }
     if (t.closest('[data-overlay-expand]')) {
       e.preventDefault();
+      overlayUserExpanded = true;
       overlayMinimized = false;
       remountOverlayCard();
       return;
@@ -387,6 +206,30 @@ function escapeHtmlText(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function buildStreamToggleHtml(debug: PageOverlaySnapBackDebug | undefined): string {
+  if (!debug || debug.twitchStreamLive === undefined) {
+    return '';
+  }
+  const on = debug.twitchStreamLive === true;
+  const checked = on ? ' checked' : '';
+  return `<label class="debug-stream-toggle" title="On pauses interval refresh; Off resumes auto-detect">
+    <span>Off</span>
+    <input type="checkbox" data-overlay-stream-toggle${checked} aria-label="Stream refresh on or off" />
+    <span>On</span>
+  </label>`;
+}
+
+function bindStreamToggleListener(root: ShadowRoot): void {
+  const input = root.querySelector<HTMLInputElement>('[data-overlay-stream-toggle]');
+  if (!input || input.dataset.bound === '1') {
+    return;
+  }
+  input.dataset.bound = '1';
+  input.addEventListener('change', () => {
+    void sendStreamRefreshToggle(input.checked);
+  });
+}
+
 function buildDebugHtml(debug: PageOverlaySnapBackDebug | undefined): string {
   if (!debug) {
     return '';
@@ -397,8 +240,21 @@ function buildDebugHtml(debug: PageOverlaySnapBackDebug | undefined): string {
       let cls = 'debug-line';
       if (i === 0 && debug.schedulerUsesThisTab) {
         cls += ' debug-line--live';
+      } else if (line.startsWith('Stream: LIVE')) {
+        cls += ' debug-line--live';
+      } else if (line.startsWith('Stream: offline')) {
+        cls += ' debug-line--warn';
+      } else if (
+        line.startsWith('Last refresh:') &&
+        debug.lastRefreshAtMs !== undefined &&
+        isLastRefreshOverMaxIdle(debug.lastRefreshAtMs)
+      ) {
+        cls += ' debug-line--warn';
       } else if (line.includes('Page URL')) {
         cls += ' debug-line--warn';
+      }
+      if (i === 1 && debug.twitchStreamLive !== undefined) {
+        return `<div class="debug-stream-row"><p class="${cls}">${escapeHtmlText(line)}</p>${buildStreamToggleHtml(debug)}</div>`;
       }
       return `<p class="${cls}">${escapeHtmlText(line)}</p>`;
     })
@@ -406,8 +262,38 @@ function buildDebugHtml(debug: PageOverlaySnapBackDebug | undefined): string {
   return `<div class="debug-strip" data-overlay-debug-minimize title="Click to minimize overlay">${inner}</div>`;
 }
 
+async function sendStreamRefreshToggle(on: boolean): Promise<void> {
+  const gid = overlayGroupId;
+  const jid = overlayIndividualJobId;
+  if (!gid && !jid) {
+    return;
+  }
+  const sent = sendExtensionMessageFireAndForget({
+    type: TWITCH_LIVE_MANUAL_OVERRIDE,
+    ...(gid ? { groupId: gid } : {}),
+    ...(jid ? { jobId: jid } : {}),
+    on,
+  });
+  if (sent) {
+    await syncFromBackground();
+  }
+}
+
 function buildMinimizedHtml(): string {
-  return `<button type="button" class="m-badge" data-overlay-expand title="Expand overlay">M</button>`;
+  const live = overlayStreamLive === true;
+  const statusClass = live ? 'm-badge--live' : 'm-badge--offline';
+  const timerRunning = uiKind === 'timer';
+  const timerPaused = uiKind === 'paused';
+  const runIcon = timerPaused ? '⏸' : timerRunning ? '▶' : '';
+  const streamWord = live ? 'Live stream' : 'Offline';
+  const timerWord = timerPaused ? 'refresh paused' : timerRunning ? 'refresh running' : '';
+  const title = timerWord
+    ? `URL Auto Refresher — ${streamWord}, ${timerWord}. Click to expand.`
+    : `URL Auto Refresher — ${streamWord}. Click to expand.`;
+  return `<button type="button" class="m-badge ${statusClass}" data-overlay-expand title="${escapeHtmlText(title)}" aria-label="${escapeHtmlText(title)}">
+    <span class="m-badge-dot" aria-hidden="true"></span>
+    ${runIcon ? `<span class="m-badge-run" aria-hidden="true">${runIcon}</span>` : ''}
+  </button>`;
 }
 
 function buildTimerHtml(showPause: boolean): string {
@@ -433,12 +319,13 @@ function buildTimerHtml(showPause: boolean): string {
   `;
 }
 
-function buildPausedHtml(): string {
+function buildPausedHtml(livePaused?: boolean): string {
+  const label = livePaused ? 'Auto refresh paused (stream live)' : 'Auto refresh paused';
   return `
     <button type="button" class="minimize-hit" data-overlay-minimize title="Minimize overlay" aria-label="Minimize overlay">−</button>
     ${buildDebugHtml(overlayDebug)}
     <div class="paused-compact-row">
-      <p class="paused-text">Auto refresh paused</p>
+      <p class="paused-text">${escapeHtmlText(label)}</p>
       <button type="button" class="resume-btn" data-overlay-resume title="Resume auto-refresh">Play</button>
     </div>
   `;
@@ -474,7 +361,7 @@ function resolveShadowRoot(host: HTMLDivElement): ShadowRoot | null {
 function ensureShadowCard(root: ShadowRoot): HTMLDivElement {
   if (!root.querySelector('style')) {
     const style = document.createElement('style');
-    style.textContent = shadowCss();
+    style.textContent = PAGE_OVERLAY_SHADOW_CSS;
     root.append(style);
   }
   let card = root.querySelector('.card');
@@ -499,10 +386,19 @@ function ensureShadowHost(): HTMLDivElement {
   return host;
 }
 
+function syncHostMinimizedClass(): void {
+  const host = document.getElementById(ROOT_ID);
+  if (!host) {
+    return;
+  }
+  host.classList.toggle('urlar-overlay--minimized', overlayMinimized);
+}
+
 function remountOverlayCard(): void {
   if (!shadowRoot) {
     return;
   }
+  syncHostMinimizedClass();
   const card = shadowRoot.querySelector('.card');
   if (!card) {
     return;
@@ -515,7 +411,7 @@ function remountOverlayCard(): void {
   const showPause = overlayGroupId !== undefined || overlayIndividualJobId !== undefined;
   if (uiKind === 'paused') {
     card.className = 'card card--paused';
-    card.innerHTML = buildPausedHtml();
+    card.innerHTML = buildPausedHtml(overlayLivePaused);
   } else if (uiKind === 'timer') {
     card.className = 'card card--timer';
     card.innerHTML = buildTimerHtml(showPause);
@@ -524,6 +420,7 @@ function remountOverlayCard(): void {
     card.className = 'card';
     card.innerHTML = '';
   }
+  bindStreamToggleListener(shadowRoot);
 }
 
 function mountTimerOverlay(opts: { globalGroupId?: string; individualJobId?: string }): void {
@@ -665,8 +562,8 @@ async function requestOverlayState(): Promise<PageOverlayStateSuccess | undefine
   return undefined;
 }
 
-function applyLiveOverlayMinimize(minimize: boolean): void {
-  if (!minimize || overlayMinimized) {
+function applyOverlayMinimize(minimize: boolean): void {
+  if (!minimize || overlayMinimized || overlayUserExpanded) {
     return;
   }
   overlayMinimized = true;
@@ -682,12 +579,11 @@ async function syncFromBackgroundInner(): Promise<void> {
   }
   setBlipWatcher(res.blip);
   overlayDebug = res.debug;
+  overlayStreamLive = res.debug?.twitchStreamLive;
+  overlayLivePaused = res.mode === 'paused' && res.livePaused === true;
   if (!res.show) {
     clearUi();
     return;
-  }
-  if (res.livePaused === true) {
-    applyLiveOverlayMinimize(true);
   }
   if (res.mode === 'paused') {
     if ('individualJobId' in res) {
@@ -695,9 +591,10 @@ async function syncFromBackgroundInner(): Promise<void> {
     } else {
       showPaused({ type: 'global', groupId: res.globalGroupId });
     }
-    return;
+  } else {
+    showTimer(res.globalGroupId, res.individualJobId, res.nextFireAt);
   }
-  showTimer(res.globalGroupId, res.individualJobId, res.nextFireAt);
+  applyOverlayMinimize(true);
 }
 
 let overlaySyncChain: Promise<void> = Promise.resolve();
@@ -734,9 +631,15 @@ if (overlayBootstrapStale()) {
 
   if (/twitch\.tv/i.test(location.hostname)) {
     window.addEventListener('urlar:twitch-live-session', (ev) => {
-      const detail = (ev as CustomEvent<{ minimizeOverlay?: boolean }>).detail;
+      const detail = (ev as CustomEvent<{ live?: boolean; minimizeOverlay?: boolean }>).detail;
+      if (detail?.live !== undefined) {
+        overlayStreamLive = detail.live;
+        if (overlayMinimized && shadowRoot) {
+          remountOverlayCard();
+        }
+      }
       if (detail?.minimizeOverlay === true) {
-        applyLiveOverlayMinimize(true);
+        applyOverlayMinimize(true);
       }
     });
   }

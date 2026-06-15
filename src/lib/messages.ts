@@ -91,6 +91,19 @@ export type TwitchLiveReportMessage = {
   live: boolean | null;
 };
 
+/** Page overlay → background: stream On/Off toggle (interval refresh pause vs resume). */
+export const TWITCH_LIVE_MANUAL_OVERRIDE = 'urlAutoRefresher:twitchLiveManualOverride' as const;
+
+export type TwitchLiveManualOverrideMessage = {
+  type: typeof TWITCH_LIVE_MANUAL_OVERRIDE;
+  /** Set for TwitchFavs / global group members. */
+  groupId?: string;
+  /** Set for individual jobs. */
+  jobId?: string;
+  /** `true` = on (pause interval refresh); `false` = off (resume interval, auto-detect). */
+  on: boolean;
+};
+
 /** Background → content: Web Audio gain change (shortcuts or dashboard-routed set) — Epic 11. */
 export const PRECISION_VOLUME_APPLY = 'urlAutoRefresher:precisionVolumeApply' as const;
 
