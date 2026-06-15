@@ -552,6 +552,8 @@ Tracked here until scheduled into an epic or story. **Normative shipped scope** 
    - **Likely touch:** [`src/dashboard/dashboard-precision-volume.ts`](../../src/dashboard/dashboard-precision-volume.ts), [`src/lib/prefs.ts`](../../src/lib/prefs.ts) (`precisionVolume.lastTabId` semantics), [`src/background/precision-volume-tab-route.ts`](../../src/background/precision-volume-tab-route.ts); align copy in [`dashboard/dashboard.html`](../../dashboard/dashboard.html). **Tier 1/2:** extend dashboard or E2E when behavior changes.
    - **Relation to Epic 11:** Post–11.7 polish; does not renumber shipped stories.
 
+10. **TwitchFavs snap-back after raid/detour (Step A)** — _(Shipped **v0.2.0** on `main`.)_ Favourite channel tabs that navigate away (raid, browse detour) **return home** on timer or immediately after raid URL detection; **sched-tab session hints** + URL-drift overlay matching; snap-back / last-refresh **debug strip** on overlay (minimize badge). **Live-aware v0.2.0:** DOM-first offline detection, stream **On/Off** toggle, **45m** safety refresh while live-paused, manual override cleared on refresh; partial **theater/chat** layout on overlay attach. **Tier 2:** [`e2e/epic-12-gate2-snap-back.spec.ts`](../../e2e/epic-12-gate2-snap-back.spec.ts) (Gate 2). **Manual:** [TEST_PLAN Gate 3](../../TEST_PLAN.md#gate-3--manual-ship-step-a-real-twitch). Learnings: [snap-back-implementation-notes.md](../requirements/snap-back-implementation-notes.md).
+
 ---
 
 ## Dependency diagram
