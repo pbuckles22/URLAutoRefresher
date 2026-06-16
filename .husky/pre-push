@@ -1,0 +1,1 @@
+node Scripts/hook-pre-push.mjs

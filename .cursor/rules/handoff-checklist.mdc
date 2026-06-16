@@ -11,8 +11,8 @@ When the user wants a handoff, or when you are writing or updating a handoff not
 ## When to create a handoff (timing)
 
 - **Right time:** You are at a real stopping point: scope is done **or** you are intentionally handing off **mid-flight** with a clear label (e.g. **WIP**, **blocked**, **needs decision**).
-- **Wrong time:** Do **not** write a handoff that reads “ship complete” if delivery is not actually finished (e.g. commits on `main` that were never pushed, CI not run, or known follow-ups omitted). If work is incomplete, **say so explicitly** in **Ship status** or a **Not done** section at the top — not only in **Next up**.
-- **Push:** When `npm run ci` is green and you committed to **`main`**, run **`git push origin main`** before ending unless the user asked you not to push, or push failed (then record the failure and that **`main` is ahead of origin**).
+- **Wrong time:** Do **not** write a handoff that reads “ship complete” if delivery is not actually finished (e.g. commits on `main` that were never pushed, **GitHub CI not green**, local CI only, or known follow-ups omitted). If work is incomplete, **say so explicitly** in **Ship status** or a **Not done** section at the top — not only in **Next up**.
+- **Push + GitHub CI:** When `npm run ci` is green and you committed to **`main`**, run **`npm run push:main`** (or `git push origin main` then **`npm run ci:watch-gh`**) and **wait for GitHub Actions green** before ending or marking shipped — see **AGENT_HANDOFF.md** → *Git workflow* step **3**. Treat “pushed but GitHub CI not watched / failed” as **unfinished** unless the user asked to stop before the watch, or `gh`/push failed (record that explicitly).
 
 **You must run all four and record results in the handoff note. Do not skip any.**
 
@@ -23,7 +23,7 @@ When the user wants a handoff, or when you are writing or updating a handoff not
 
 5. **Tier 2 (integration / E2E) if needed** — If you added or changed behavior that requires integration or E2E validation, run the Tier 2 command from TEST_PLAN.md. Note in the handoff whether Tier 2 was run and the result. See `.cursor/rules/testing.mdc` and TEST_PLAN.md.
 
-6. **Git commit + push** — If the first four checks passed: stage the changes and run `git commit` with a short message. **`git push origin main`** (or merge your branch into `main` then push) after **`npm run ci`** is green — see **AGENT_HANDOFF.md** → *Git workflow*. Treat “committed but not pushed” as **unfinished** unless the user asked to stop before push.
+6. **Git commit + push + GitHub CI** — If the first four checks passed: stage, commit, then **`npm run push:main`** (or push + **`npm run ci:watch-gh`**). Record **GitHub Actions run URL/conclusion** in the handoff under **Tests / CI**. Treat “committed but not pushed” or “pushed but GitHub CI not green” as **unfinished** unless the user asked to stop early.
 
 Then complete the rest of the handoff (update **PM_PLAN** / **EDGE plan** if product scope changed; **Done this session**, **Next up**, etc. in your **`doc/handoff/`** or `.cursor/handoff/` note — see **AGENT_HANDOFF.md**). When you summarize **Done this session** for humans, use the same **two-audience** idea as **AGENT_HANDOFF.md** → *Git workflow* step **3**: a short maintainer-oriented recap plus a **non-technical** “what someone using only the extension would notice” (see **techwriter** skill → *Dual-audience blurbs*).
 

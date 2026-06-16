@@ -15,10 +15,10 @@ description: >-
 ## Do not prompt for PRs (agents)
 
 - **Do not** tell the user to “open a PR,” paste `github.com/.../pull/new/...` links, or treat opening a PR as the normal end-of-task step.
-- **Do** treat **green `npm run ci`** plus project test discipline ([tester](../tester/SKILL.md), [TEST_TDD.md](../TEST_TDD.md), [code-quality-gate](../code-quality-gate/SKILL.md) when relevant) as **merge-ready / commit-ready**.
+- **Do** treat **green local `npm run ci`** as **commit-ready**, and **green GitHub Actions CI on `main`** as **ship-complete** (see [Post-push gate](#post-push-gate-github-actions-mandatory)).
 - **If** the user says they want a PR, GitHub review, or external reviewers: then describe or open the PR as they asked.
 
-**Completion mental model:** one branch ≈ one purpose → CI green → **commit** → **push** → merge to `main` (locally or via GitHub **only if the user uses that path**) → delete the feature branch. No roundabout “please open a PR” unless they chose that path.
+**Completion mental model:** one branch ≈ one purpose → **local** `npm run ci` green → **commit** → merge to **`main`** → **`npm run push:main`** (or push then **`npm run ci:watch-gh`**) → **GitHub CI green** → delete feature branch → update PM_PLAN/EDGE. **Ship complete** only after **both** local and GitHub CI pass. No roundabout “please open a PR” unless they chose that path.
 
 ## When to apply
 
@@ -46,13 +46,24 @@ Treat these as satisfied **before** `git commit` on anything beyond trivial doc 
 3. **Full CI** — **`npm run ci`** green (Vitest, build, Playwright E2E for this repo).
 4. **Quality** — For non-trivial edits, use [code-quality-gate](../code-quality-gate/SKILL.md) as appropriate (readability, complexity, obvious foot-guns).
 
-When 1–4 are green: **commit** (and **push** when integrating to `main` per AGENT_HANDOFF). That is the **done** state — not “waiting for the user to open a PR.”
+When 1–4 are green: **commit**. **Push / merge** per AGENT_HANDOFF. **Ship-complete** only after [Post-push gate](#post-push-gate-github-actions-mandatory) — not merely after local CI.
 
 ## Pre-checkin and pre-next-feature checks
 
 - **Before commits** that change behavior or tests (not one-line doc typos): run **`npm run ci`** — Vitest, production build, Playwright E2E — same gate as [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) for **`main`**.
 - **Before merging** to **`main`**: **`npm run ci`** green on the feature branch.
 - **Before starting the next feature** after a merged story: run **`npm run ci`** on updated **`main`** (`git checkout main && git pull`) so Tier 1 + Tier 2 still pass against **origin/main** before new work begins (catches drift if the final gate was skipped).
+
+## Post-push gate (GitHub Actions — mandatory)
+
+After **`git push origin main`** (directly or after merging a feature branch):
+
+1. **Default (automated):** **`npm install`** sets local **`git config alias.push`** → **`Scripts/git-push-wrapper.mjs`**. A normal **`git push`** while on **`main`** (or **`git push origin main`**) runs **`push-main-watch-ci.mjs`**: local **`npm run ci`** → push → **`gh run watch --exit-status`**. **`.husky/pre-push`** also runs **`npm run ci`** if someone bypasses the alias.
+2. **Manual equivalents:** **`npm run push:main`**, **`npm run ci:watch-gh`** (watch only).
+3. If GitHub CI fails: fix, commit, **`git push`** again (full cycle reruns).
+4. **Agents:** do **not** mark shipped or write “ship complete” until GitHub CI is green (unless push/`gh` failed — say so explicitly).
+
+Escape hatches: **`URLAR_SKIP_CI=1`**, **`URLAR_SKIP_GH_WATCH=1`**, or **`git -c alias.push= push --no-verify origin main`**.
 
 ## Standard sequence
 
@@ -62,13 +73,14 @@ When 1–4 are green: **commit** (and **push** when integrating to `main` per AG
 4. **Gate before commit:** meet **[Exit criteria before commit](#exit-criteria-before-commit-ship-bar)**; **`npm run ci`** is the all-in-one gate here. Locally, **Husky** runs **lint-staged** on commit to apply Prettier + ESLint `--fix` to staged files.
 5. **Commit:** clear, imperative subject line; body only if context helps (what/why, not noise). One logical commit per slice is fine; multiple small commits are fine if they tell a story.
 6. **Push:** `git push -u origin <branch>` (first time); later `git push` on that branch.
-7. **Integrate to `main`:** Prefer what the user asked for: **local merge** (`git checkout main && git pull && git merge <branch> && npm run ci && git push origin main`) when they want work on `main` without a PR, or **they** handle GitHub merge if they use the web UI. **Do not** nudge them toward opening a PR by default.
-8. **After merge to `main`:** checkout `main`, `git pull`, **delete the local feature branch** (`git branch -d <branch>`). Delete remote: `git push origin --delete <branch>` when the user wants the remote branch removed.
-9. **Update product state** if scope shipped: [PM_PLAN.md](../../PM_PLAN.md) and [EDGE plan](../../doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) checkboxes — not only git history.
+7. **Integrate to `main`:** Prefer what the user asked for: **local merge** (`git checkout main && git pull && git merge <branch> && npm run ci`) when they want work on **`main`** without a PR, or **they** handle GitHub merge if they use the web UI. **Do not** nudge them toward opening a PR by default.
+8. **Push + GitHub CI (automated on `main`):** merge to **`main`**, then **`git push origin main`** (alias runs local CI + push + GH watch). Or **`npm run push:main`**. See [Post-push gate](#post-push-gate-github-actions-mandatory).
+9. **After merge to `main`:** checkout `main`, `git pull`, **delete the local feature branch** (`git branch -d <branch>`). Delete remote: `git push origin --delete <branch>` when the user wants the remote branch removed.
+10. **Update product state** if scope shipped: [PM_PLAN.md](../../PM_PLAN.md) and [EDGE plan](../../doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) checkboxes — not only git history.
 
 **PR (explicit opt-in only):** If and only if the user asked for a PR or GitHub review, add a PR with a short title and note **`npm run ci` green**. Otherwise skip PR language entirely.
 
 ## What this skill does _not_ do
 
 - Replace **code review** or **handoff** — see [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) and `.cursor/rules/handoff-checklist.mdc` when the user wants a handoff.
-- **Invent a PR step** — PRs are not the default completion signal; **CI + commit (+ push/merge per user)** is.
+- **Invent a PR step** — PRs are not the default completion signal; **local CI + GitHub CI green + push** is.
