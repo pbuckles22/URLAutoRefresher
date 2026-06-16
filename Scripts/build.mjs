@@ -5,8 +5,11 @@ import * as esbuild from 'esbuild';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { syncManifestVersion } from './sync-manifest-version.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+syncManifestVersion(root);
 const distDir = join(root, 'dist');
 
 mkdirSync(distDir, { recursive: true });

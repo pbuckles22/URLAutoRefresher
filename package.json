@@ -1,6 +1,6 @@
 {
   "name": "url-auto-refresher",
-  "version": "0.2.1",
+  "version": "0.14.4",
   "private": true,
   "description": "Edge MV3 extension: scheduled tab refreshes with global groups and individuals",
   "type": "module",
@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "test:e2e:headless": "node e2e/run-playwright-headless.mjs",
     "build": "node Scripts/build.mjs && node Scripts/gen-icons.mjs",
+    "version:sync": "node Scripts/sync-manifest-version.mjs",
     "build:icons": "node Scripts/gen-icons.mjs",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix --max-warnings 0",

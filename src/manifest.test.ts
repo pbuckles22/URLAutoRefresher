@@ -14,6 +14,13 @@ describe('manifest.json', () => {
     unknown
   >;
 
+  it('matches package.json version (doc/VERSIONING.md source of truth)', () => {
+    const pkg = JSON.parse(readFileSync(join(dir, '../package.json'), 'utf8')) as {
+      version: string;
+    };
+    expect(manifest.version).toBe(pkg.version);
+  });
+
   it('is Manifest V3 with service worker background', () => {
     expect(manifest.manifest_version).toBe(3);
     expect(manifest.background).toEqual(

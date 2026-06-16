@@ -41,6 +41,7 @@ description: >-
 
 Treat these as satisfied **before** `git commit` on anything beyond trivial doc typos (adjust if the user narrows scope):
 
+0. **Version** — When shipping an EDGE story or epic closure, bump **`package.json`** to **`MAJOR.EPIC.STORY`** per [doc/VERSIONING.md](../../doc/VERSIONING.md); run **`npm run build`** (syncs **`manifest.json`**). Skip for doc-only commits with no checkbox change.
 1. **TDD / tests** — [TEST_TDD.md](../TEST_TDD.md) + [tester](../tester/SKILL.md): failing test first when the changed surface is covered by Tier 1 or Tier 2; suite green for what you touched.
 2. **Lint + format** — covered by **`npm run ci`** (`eslint`, Prettier check).
 3. **Full CI** — **`npm run ci`** green (Vitest, build, Playwright E2E for this repo).
@@ -70,7 +71,7 @@ Escape hatches: **`URLAR_SKIP_CI=1`**, **`URLAR_SKIP_GH_WATCH=1`**, or **`git -c
 1. **Start from current `main` (or agreed base):** `git fetch origin` when remote exists; `git status` (clean or intentional WIP).
 2. **Create branch:** `git checkout -b <name>` — **before** writing production code for the slice.
 3. **Implement** with tests as required by [tester skill](../tester/SKILL.md) and [TEST_TDD.md](../TEST_TDD.md) (**red → green** when that tier applies).
-4. **Gate before commit:** meet **[Exit criteria before commit](#exit-criteria-before-commit-ship-bar)**; **`npm run ci`** is the all-in-one gate here. Locally, **Husky** runs **lint-staged** on commit to apply Prettier + ESLint `--fix` to staged files.
+4. **Gate before commit:** meet **[Exit criteria before commit](#exit-criteria-before-commit-ship-bar)** (version bump **first** when shipping a story); **`npm run ci`** is the all-in-one gate here. Locally, **Husky** runs **lint-staged** on commit to apply Prettier + ESLint `--fix` to staged files.
 5. **Commit:** clear, imperative subject line; body only if context helps (what/why, not noise). One logical commit per slice is fine; multiple small commits are fine if they tell a story.
 6. **Push:** `git push -u origin <branch>` (first time); later `git push` on that branch.
 7. **Integrate to `main`:** Prefer what the user asked for: **local merge** (`git checkout main && git pull && git merge <branch> && npm run ci`) when they want work on **`main`** without a PR, or **they** handle GitHub merge if they use the web UI. **Do not** nudge them toward opening a PR by default.

@@ -24,9 +24,10 @@ Manifest V3 Edge extension (**working name;** ships as **Media Control Suite** i
 | [x] **9**      | Blip / error-text triggered refresh                                                            | 3                               |
 | [x] **Post-9** | Incremental polish (see [Post–Epic 9](#postepic-9--incremental-enhancements-shipped))          | 6                               |
 | [x] **10**     | [URL-first membership](#epic-10--url-first-membership-phased) (phased migration)               | 6                               |
-| [ ] **11**     | [Precision volume (Web Audio)](#epic-11--precision-volume-web-audio)                           | 7                               |
-| [ ] **12**     | [TwitchFavs / URL-first QA & CI confidence](#epic-12--twitchfavs--url-first-qa--ci-confidence) | 4                               |
-| [ ] **13**     | [Scheduler + dashboard modularization](#epic-13--scheduler--dashboard-modularization)          | 13.A1–A3, B1–B5 (+ optional A4) |
+| [x] **11**     | [Precision volume (Web Audio)](#epic-11--precision-volume-web-audio)                           | 7                               |
+| [x] **12**     | [TwitchFavs / URL-first QA & CI confidence](#epic-12--twitchfavs--url-first-qa--ci-confidence) | 4                               |
+| [x] **13**     | [Scheduler + dashboard modularization](#epic-13--scheduler--dashboard-modularization)          | 13.A1–A3, B1–B5 (+ optional A4) |
+| [x] **14**     | [Proactive Twitch raid guard (Step B)](#epic-14--proactive-twitch-raid-guard-step-b)           | 4                               |
 
 _(Optional: set an epic row to `[x]` when **all** its stories are done.)_
 
@@ -394,9 +395,9 @@ flowchart LR
 
 **Product intent:** Favourite channel tabs should **stay on the saved channel** during raids — not briefly land on the raided channel and snap back.
 
-- [x] **14.1** — DOM heuristics: detect raid banner + decline control (`Leave`, `Leave Raid`, `Cancel`, `Exit`, aria-label); chat notice **"is raiding"** path + legacy banner; Tier 1 [`src/lib/twitch-raid-guard.test.ts`](../../src/lib/twitch-raid-guard.test.ts). _(Shipped **v0.2.1**.)_
-- [x] **14.2** — Armed state: sched hint + TwitchFavs group + tab URL matches home; background pushes `TWITCH_RAID_GUARD_PUSH` to [`twitch-live-bridge.ts`](../../src/content/twitch-live-bridge.ts); Tier 1 armed + background tests. _(Shipped **v0.2.1**.)_
-- [x] **14.3** — Content runner: MutationObserver + interval scan when armed; debounced click with rate limit; Tier 2 stub E2E [`e2e/epic-14-gate2-raid-guard.spec.ts`](../../e2e/epic-14-gate2-raid-guard.spec.ts). _(Shipped **v0.2.1**.)_
+- [x] **14.1** — DOM heuristics: detect raid banner + decline control (`Leave`, `Leave Raid`, `Cancel`, `Exit`, aria-label); chat notice **"is raiding"** path + legacy banner; Tier 1 [`src/lib/twitch-raid-guard.test.ts`](../../src/lib/twitch-raid-guard.test.ts). _(Shipped **0.14.1**.)_
+- [x] **14.2** — Armed state: sched hint + TwitchFavs group + tab URL matches home; background pushes `TWITCH_RAID_GUARD_PUSH` to [`twitch-live-bridge.ts`](../../src/content/twitch-live-bridge.ts); Tier 1 armed + background tests. _(Shipped **0.14.2**.)_
+- [x] **14.3** — Content runner: MutationObserver + interval scan when armed; debounced click with rate limit; Tier 2 stub E2E [`e2e/epic-14-gate2-raid-guard.spec.ts`](../../e2e/epic-14-gate2-raid-guard.spec.ts). _(Shipped **0.14.3**.)_
 - [x] **14.4** — Manual Gate 3 (real Twitch): one favourite, trigger or wait for raid banner, confirm tab stays on home without detour flash. See [snap-back-implementation-notes.md](../requirements/snap-back-implementation-notes.md). _(Pass 2026-06-16 — **Raid blocks: 1**, snap-back not needed.)_
 
 **Technical notes:** No new manifest permissions. Compose with existing `twitch-live-bridge.js` (second content script on Twitch). Twitch markup changes — heuristics may need adjustment; snap-back (Backlog **#10**) is safety net.
@@ -567,7 +568,7 @@ Tracked here until scheduled into an epic or story. **Normative shipped scope** 
    - **Likely touch:** [`src/dashboard/dashboard-precision-volume.ts`](../../src/dashboard/dashboard-precision-volume.ts), [`src/lib/prefs.ts`](../../src/lib/prefs.ts) (`precisionVolume.lastTabId` semantics), [`src/background/precision-volume-tab-route.ts`](../../src/background/precision-volume-tab-route.ts); align copy in [`dashboard/dashboard.html`](../../dashboard/dashboard.html). **Tier 1/2:** extend dashboard or E2E when behavior changes.
    - **Relation to Epic 11:** Post–11.7 polish; does not renumber shipped stories.
 
-10. **TwitchFavs snap-back after raid/detour (Step A)** — _(Shipped **v0.2.0** on `main`.)_ Favourite channel tabs that navigate away (raid, browse detour) **return home** on timer or immediately after raid URL detection; **sched-tab session hints** + URL-drift overlay matching; snap-back / last-refresh **debug strip** on overlay (minimize badge). **Live-aware v0.2.0:** DOM-first offline detection, stream **On/Off** toggle, **45m** safety refresh while live-paused, manual override cleared on refresh; partial **theater/chat** layout on overlay attach. **Tier 2:** [`e2e/epic-12-gate2-snap-back.spec.ts`](../../e2e/epic-12-gate2-snap-back.spec.ts) (Gate 2). **Manual:** [TEST_PLAN Gate 3](../../TEST_PLAN.md#gate-3--manual-ship-step-a-real-twitch). Learnings: [snap-back-implementation-notes.md](../requirements/snap-back-implementation-notes.md).
+10. **TwitchFavs snap-back after raid/detour (Step A)** — _(Shipped on `main`; see Gate 2 / Gate 3 in [TEST_PLAN.md](../../TEST_PLAN.md).)_ Favourite channel tabs that navigate away (raid, browse detour) **return home** on timer or immediately after raid URL detection; **sched-tab session hints** + URL-drift overlay matching; snap-back / last-refresh **debug strip** on overlay (minimize badge). **Live-aware:** DOM-first offline detection, stream **On/Off** toggle, **45m** safety refresh while live-paused, manual override cleared on refresh; partial **theater/chat** layout on overlay attach. **Tier 2:** [`e2e/epic-12-gate2-snap-back.spec.ts`](../../e2e/epic-12-gate2-snap-back.spec.ts) (Gate 2). **Manual:** [TEST_PLAN Gate 3](../../TEST_PLAN.md#gate-3--manual-ship-step-a-real-twitch). Learnings: [snap-back-implementation-notes.md](../requirements/snap-back-implementation-notes.md).
 
 ---
 
