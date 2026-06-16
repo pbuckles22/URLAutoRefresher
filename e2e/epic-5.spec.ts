@@ -81,11 +81,17 @@ test('Backlog 1: side panel Open in a tab is first in body and opens packaged da
 
   await openBtn.click();
 
-  const hasDashboardTab = await panel.evaluate(async () => {
-    const tabs = await chrome.tabs.query({});
-    return tabs.some((t) => (t.url ?? '').includes('dashboard/dashboard.html'));
-  });
-  expect(hasDashboardTab).toBe(true);
+  await expect
+    .poll(
+      async () => {
+        return panel.evaluate(async () => {
+          const tabs = await chrome.tabs.query({});
+          return tabs.some((t) => (t.url ?? '').includes('dashboard/dashboard.html'));
+        });
+      },
+      { timeout: 10_000 }
+    )
+    .toBe(true);
 
   await panel.close();
 });
