@@ -18,9 +18,13 @@ When a TwitchFavs tab is on its **home channel**, the scheduler remembers that t
 8. **Commit after each slice** — run `npm run ci` + manual 2–3 Twitch tab check before the next change.
 9. **Overlay must not re-bind sched hint on detour** — `page-overlay-handler` `rememberSchedTabId` only when tab has no hint or same `memberKey`; otherwise fav→fav raids flip-flop home (hint poison). Gate 2 regression: repeated raid to another favourite.
 
-## Out of scope on this branch
+## Step B (Epic 14) — proactive raid guard
 
-- **Epic 14** — proactive raid block (before navigation completes).
+When a TwitchFavs tab is on its **home channel**, watch for Twitch’s raid banner and auto-click **Leave Raid / Cancel** so the tab never navigates away. Step A snap-back remains fallback.
+
+## Out of scope on Step A branch (historical)
+
+- ~~**Epic 14** — proactive raid block~~ — now Step B / Epic 14.
 - **Backlog #9** precision-volume auto-apply WIP — stays in stash or a separate branch off `main`.
 - **Backlog #8** — overlay drag.
 

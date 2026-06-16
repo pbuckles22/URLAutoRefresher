@@ -20,15 +20,16 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 - **Epic 12:** **done (12.1–12.4)** — URL-first tester notes, TwitchFavs manual checklist, **TF.5/TF.6** requirements sync, **12.4** CI-safe Playwright + Vitest ([Epic 12](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#epic-12--twitchfavs--url-first-qa--ci-confidence), [twitch-favs-managed-membership.md](doc/requirements/twitch-favs-managed-membership.md)).
 - **Epic 13:** **13.A1–13.A3**, **13.B1–13.B5 shipped** — scheduler modular slices + **dashboard Phase B** complete (**shell → individuals → tab picker → globals → storage sync**); **G1–G5** in EDGE ([Parallel work](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#parallel-work--epics-11-13)); **`npm run ci`** after each slice was the Phase **13.B** gate (**G4**).
 - **Backlog #10 / Step A (v0.2.0):** **Shipped on `main`** — TwitchFavs snap-back after raid/detour; sched-tab session hints; overlay debug strip + minimize badge; DOM-first live detect; stream **On/Off** toggle; **45m** safety refresh when live-paused; theater/chat layout (partial, no pref toggle). **Gate 2** (7/7 Playwright) + **Gate 3** real-Twitch pass (2026-06-08; 45m safety + override reset verified). Handoff: `doc/handoff/HANDOFF-2026-06-08-153200.md` (local).
+- **Epic 14 / Step B (v0.2.1):** **Shipped on `main`** — proactive raid guard on TwitchFavs home tabs (auto-decline before detour); overlay debug **Raid blocks** / **Snap-backs** counters; Step A snap-back remains fallback. **Gate 2** (1/1 Playwright) + **Gate 3** real-Twitch pass (2026-06-16; `whistleface` raid, **Raid blocks: 1**). UAT soak continues in production.
 
 ## Next (see EDGE plan)
 
-**Execution order:** **B** Epic **14** proactive no-raid → **C** Epic **15** viewing layout (pref toggle) → **D** Backlog **#8** overlay drag.
+**Execution order:** **C** Epic **15** viewing layout (pref toggle) → **D** Backlog **#8** overlay drag.
 
-| Step    | Scope                                                                                 | Status                                                                                                                                          |
-| ------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **B**   | Epic **14** — block raid navigation on TwitchFavs home tabs (before detour completes) | **Next** — normative spec **not yet** in EDGE plan; see [snap-back-implementation-notes.md](doc/requirements/snap-back-implementation-notes.md) |
-| **C–D** | Theater/chat layout pref toggle; overlay drag                                         | **C** partial shipped (one-shot theater on attach); **D** backlog **#8**                                                                        |
+| Step  | Scope                                         | Status                                                                |
+| ----- | --------------------------------------------- | --------------------------------------------------------------------- |
+| **C** | Epic **15** — theater/chat layout pref toggle | **Partial** — one-shot theater on attach shipped; pref toggle not yet |
+| **D** | Backlog **#8** — overlay drag                 | **Open**                                                              |
 
 - **Parallel (multi-capacity):** **L12** ∥ **L13A** ∥ **L113** allowed (distinct paths); **13.A** slices **serial** on scheduler files (**G5**); **13.B** slices **serial** (**G4**); **one owner** for [`dashboard-app.ts`](src/dashboard/dashboard-app.ts) across epics (**G3**). Still **merge to `main` one PR at a time** through CI.
 - **Single agent:** Use the **linear order** in EDGE [Parallel work — Epics 11–13](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#parallel-work--epics-11-13) (single-stream bullet).

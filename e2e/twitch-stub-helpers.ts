@@ -13,18 +13,24 @@ export function twitchChannelUrl(login: string): string {
 /** Stub document responses for channel-root URLs (one or more logins). */
 export async function stubTwitchChannelRoutes(
   page: Page,
-  logins: readonly string[]
+  logins: readonly string[],
+  opts?: { raidBannerOnLogin?: string }
 ): Promise<void> {
   const escaped = logins.map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   const channelRe = new RegExp(`^https://(www\\.)?twitch\\.tv/(${escaped})/?(\\?.*)?$`, 'i');
+  const raidLogin = opts?.raidBannerOnLogin?.toLowerCase();
   await page.route(channelRe, async (route) => {
     if (route.request().resourceType() === 'document') {
       const url = route.request().url();
       const login = url.match(/twitch\.tv\/([^/?#]+)/i)?.[1] ?? 'stub';
+      const showRaidBanner = raidLogin !== undefined && login.toLowerCase() === raidLogin;
+      const raidBlock = showRaidBanner
+        ? `<div class="chat-room__notifications"><div class="chat-notification"><span>${login} is raiding e2e_raid_target with 3 raiders.</span><button type="button" id="urlar-raid-decline" onclick="this.dataset.urlarDeclined='1'">Leave</button></div></div>`
+        : '';
       await route.fulfill({
         status: 200,
         contentType: 'text/html; charset=utf-8',
-        body: STUB_HTML(login),
+        body: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${login}</title></head><body>${login}${raidBlock}</body></html>`,
       });
     } else {
       await route.abort();

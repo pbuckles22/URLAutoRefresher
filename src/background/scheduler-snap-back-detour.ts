@@ -13,6 +13,7 @@ import { schedLog } from '../lib/scheduler-debug';
 import { loadAppState, saveAppState } from '../lib/storage';
 import { isTwitchFavsGroupName, twitchChannelLoginFromUrl } from '../lib/twitch-favs';
 import { isTwitchChannelRootUrl } from '../lib/twitch-live-detect';
+import { requestPageOverlaySync } from './twitch-open-tabs-sync';
 
 function isTwitchRaidLandingUrl(tabUrl: string): boolean {
   return /[?&]referrer=raid\b/i.test(tabUrl);
@@ -91,6 +92,7 @@ export async function maybeSnapBackRaidDetour(
       toUrl: hint.targetUrl,
       reason: isRaid ? 'raid-detour' : 'channel-detour',
     });
+    void requestPageOverlaySync(tabId);
     const gIdx = state.globalGroups.findIndex((g) => g.id === hint.groupId);
     if (gIdx >= 0) {
       const nextGroups = [...state.globalGroups];

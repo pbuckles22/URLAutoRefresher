@@ -13,8 +13,10 @@ export type SnapBackEvent = {
 };
 
 const SNAP_BACK_EVENTS_SESSION_KEY = 'urlAutoRefresher_snapBackEvents_v1';
+const SNAP_BACK_COUNTS_SESSION_KEY = 'urlAutoRefresher_snapBackCounts_v1';
 
 let snapBackEventsByMemberKey: Record<string, SnapBackEvent> = {};
+let snapBackCountByMemberKey: Record<string, number> = {};
 let hydrated = false;
 let hydratePromise: Promise<void> | undefined;
 
@@ -57,6 +59,19 @@ function toSafeEventRecord(raw: unknown): Record<string, SnapBackEvent> {
   return out;
 }
 
+function toSafeCountRecord(raw: unknown): Record<string, number> {
+  if (!raw || typeof raw !== 'object') {
+    return {};
+  }
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === 'number' && Number.isFinite(v) && v >= 0) {
+      out[k] = Math.floor(v);
+    }
+  }
+  return out;
+}
+
 async function ensureHydrated(): Promise<void> {
   if (hydrated) {
     return;
@@ -71,10 +86,12 @@ async function ensureHydrated(): Promise<void> {
       return;
     }
     try {
-      const raw = (await session.get(SNAP_BACK_EVENTS_SESSION_KEY))[SNAP_BACK_EVENTS_SESSION_KEY];
-      snapBackEventsByMemberKey = toSafeEventRecord(raw);
+      const data = await session.get([SNAP_BACK_EVENTS_SESSION_KEY, SNAP_BACK_COUNTS_SESSION_KEY]);
+      snapBackEventsByMemberKey = toSafeEventRecord(data[SNAP_BACK_EVENTS_SESSION_KEY]);
+      snapBackCountByMemberKey = toSafeCountRecord(data[SNAP_BACK_COUNTS_SESSION_KEY]);
     } catch {
       snapBackEventsByMemberKey = {};
+      snapBackCountByMemberKey = {};
     } finally {
       hydrated = true;
       hydratePromise = undefined;
@@ -91,6 +108,7 @@ async function persist(): Promise<void> {
   try {
     await session.set({
       [SNAP_BACK_EVENTS_SESSION_KEY]: snapBackEventsByMemberKey,
+      [SNAP_BACK_COUNTS_SESSION_KEY]: snapBackCountByMemberKey,
     });
   } catch {
     /* session storage can fail transiently; debug evidence is best effort */
@@ -100,7 +118,13 @@ async function persist(): Promise<void> {
 export async function noteSnapBackEvent(memberKey: string, event: SnapBackEvent): Promise<void> {
   await ensureHydrated();
   snapBackEventsByMemberKey[memberKey] = event;
+  snapBackCountByMemberKey[memberKey] = (snapBackCountByMemberKey[memberKey] ?? 0) + 1;
   await persist();
+}
+
+export async function getSnapBackCountForMember(memberKey: string): Promise<number> {
+  await ensureHydrated();
+  return snapBackCountByMemberKey[memberKey] ?? 0;
 }
 
 export async function getLatestSnapBackEventForMember(
@@ -112,6 +136,7 @@ export async function getLatestSnapBackEventForMember(
 
 export function clearSnapBackEventsForTests(): void {
   snapBackEventsByMemberKey = {};
+  snapBackCountByMemberKey = {};
   hydrated = true;
   hydratePromise = undefined;
 }

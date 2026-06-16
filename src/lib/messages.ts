@@ -91,6 +91,21 @@ export type TwitchLiveReportMessage = {
   live: boolean | null;
 };
 
+/** Background → Twitch tabs: proactive raid guard armed on this tab (Epic 14). */
+export const TWITCH_RAID_GUARD_PUSH = 'urlAutoRefresher:twitchRaidGuardPush' as const;
+
+export type TwitchRaidGuardPushMessage = {
+  type: typeof TWITCH_RAID_GUARD_PUSH;
+  armed: boolean;
+};
+
+/** Twitch bridge → background: proactive Leave Raid click succeeded (Epic 14). */
+export const TWITCH_RAID_BLOCK_REPORT = 'urlAutoRefresher:twitchRaidBlockReport' as const;
+
+export type TwitchRaidBlockReportMessage = {
+  type: typeof TWITCH_RAID_BLOCK_REPORT;
+};
+
 /** Page overlay → background: stream On/Off toggle (interval refresh pause vs resume). */
 export const TWITCH_LIVE_MANUAL_OVERRIDE = 'urlAutoRefresher:twitchLiveManualOverride' as const;
 

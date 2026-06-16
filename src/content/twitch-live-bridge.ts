@@ -8,7 +8,13 @@ import {
   isTwitchPopoutChatUrl,
   twitchChannelSlugFromPopoutChatUrl,
 } from '../lib/twitch-live-detect';
-import { TWITCH_LIVE_REPORT, TWITCH_LIVE_STATE_PUSH } from '../lib/messages';
+import {
+  TWITCH_LIVE_REPORT,
+  TWITCH_LIVE_STATE_PUSH,
+  TWITCH_RAID_BLOCK_REPORT,
+  TWITCH_RAID_GUARD_PUSH,
+} from '../lib/messages';
+import { sendExtensionMessageFireAndForget } from '../lib/extension-runtime-send';
 import { inferTwitchLiveFromChannelPage } from '../lib/twitch-live-detect';
 import {
   createTwitchWatchLayoutState,
@@ -16,6 +22,7 @@ import {
   installTwitchWatchLayoutOverrideListeners,
   runTwitchChannelWatchLayout,
 } from './twitch-watch-layout';
+import { installTwitchRaidGuardRunner } from './twitch-raid-guard-runner';
 
 const POLL_MS = 22_000;
 const DEBOUNCE_MS = 1_600;
@@ -30,6 +37,7 @@ let mo: MutationObserver | undefined;
 let tornDown = false;
 let lastReportedLive: boolean | null | undefined;
 let disposeLayoutRunner: (() => void) | undefined;
+let raidGuardRunner: ReturnType<typeof installTwitchRaidGuardRunner> | undefined;
 const layoutState = createTwitchWatchLayoutState();
 
 function teardown(): void {
@@ -49,6 +57,8 @@ function teardown(): void {
   mo = undefined;
   disposeLayoutRunner?.();
   disposeLayoutRunner = undefined;
+  raidGuardRunner?.dispose();
+  raidGuardRunner = undefined;
   document.removeEventListener('visibilitychange', onVisibilityChange);
 }
 
@@ -194,6 +204,19 @@ function onVisibilityChange(): void {
   }
 }
 
+function ensureRaidGuardRunner(): ReturnType<typeof installTwitchRaidGuardRunner> {
+  if (!raidGuardRunner) {
+    raidGuardRunner = installTwitchRaidGuardRunner(document, () => {
+      sendExtensionMessageFireAndForget({ type: TWITCH_RAID_BLOCK_REPORT });
+    });
+  }
+  return raidGuardRunner;
+}
+
+function setRaidGuardArmed(armed: boolean): void {
+  ensureRaidGuardRunner().setArmed(armed);
+}
+
 function startBridge(): void {
   try {
     window.addEventListener('unhandledrejection', (ev) => {
@@ -204,10 +227,13 @@ function startBridge(): void {
     });
 
     chrome.runtime.onMessage.addListener((message) => {
-      if (message?.type !== TWITCH_LIVE_STATE_PUSH) {
+      if (message?.type === TWITCH_LIVE_STATE_PUSH) {
+        applyLiveSessionState(message.live ?? null, message.liveSessionActive === true);
         return;
       }
-      applyLiveSessionState(message.live ?? null, message.liveSessionActive === true);
+      if (message?.type === TWITCH_RAID_GUARD_PUSH) {
+        setRaidGuardArmed(message.armed === true);
+      }
     });
 
     send(sampleLive());

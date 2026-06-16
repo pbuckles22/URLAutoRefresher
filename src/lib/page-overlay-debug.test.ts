@@ -8,10 +8,12 @@ import {
   type OverlayDebugDeps,
 } from './page-overlay-debug';
 import { clearSnapBackEventsForTests } from './snap-back-events';
+import { clearRaidBlockStatsForTests } from './raid-block-events';
 
 describe('getPageOverlaySnapBackDebug', () => {
   beforeEach(() => {
     clearSnapBackEventsForTests();
+    clearRaidBlockStatsForTests();
   });
   const deps: OverlayDebugDeps = {
     resolveLiveTabId: vi.fn(async () => 99),
@@ -107,6 +109,22 @@ describe('formatOverlayDebugLines', () => {
     expect(lines[1]).toBe('Stream: LIVE (auto)');
   });
 
+  it('shows raid block and snap-back session counts', () => {
+    const lines = formatOverlayDebugLines({
+      thisTabId: 7,
+      pageUrl: 'https://www.twitch.tv/ninja',
+      refreshTargetUrl: 'https://www.twitch.tv/ninja',
+      schedulerTabId: 7,
+      schedulerUsesThisTab: true,
+      pageMatchesTarget: true,
+      memberKey: 'twitch.tv/ninja',
+      matchingOpenTabIds: [7],
+      raidBlockCount: 12,
+      snapBackCount: 1,
+    });
+    expect(lines.some((l) => l === 'Raid blocks: 12 · Snap-backs: 1')).toBe(true);
+  });
+
   it('shows last snap-back evidence when available', () => {
     const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(200_000);
     const lines = formatOverlayDebugLines({
@@ -160,7 +178,7 @@ describe('formatOverlayDebugLines', () => {
       now
     );
     expect(lines[2]).toBe('Last refresh: 12m ago');
-    expect(lines[3]).toMatch(/^Refresh:/);
+    expect(lines.some((l) => l.startsWith('Refresh:'))).toBe(true);
   });
 
   it('warns when last refresh is at or beyond 45 minutes', () => {

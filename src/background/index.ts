@@ -8,6 +8,10 @@ import { attachPageOverlayMessageHandler } from './page-overlay-handler';
 import { attachPrecisionVolumeTabRoute } from './precision-volume-tab-route';
 import { attachSchedulingListeners, bootstrapScheduling } from './scheduler';
 import { attachTwitchFavsTabListener } from './twitch-favs-sync';
+import {
+  attachTwitchRaidGuardListeners,
+  syncTwitchRaidGuardForAllOpenTabs,
+} from './twitch-raid-guard';
 import { syncAllOpenTwitchFavsTabs } from './twitch-open-tabs-sync';
 import { attachVolumeCommandListeners } from './volume-commands';
 
@@ -18,6 +22,7 @@ attachPrecisionVolumeTabRoute();
 attachBadgeListeners();
 attachPageOverlayMessageHandler();
 attachLiveAwareListeners();
+attachTwitchRaidGuardListeners();
 
 /** Serialize SW bootstrap so module load, onInstalled, and onStartup do not interleave. */
 let bootstrapChain: Promise<void> = Promise.resolve();
@@ -27,6 +32,7 @@ function enqueueBootstrap(reinjectOverlays: boolean): void {
     .then(async () => {
       await bootstrapScheduling();
       await syncAllOpenTwitchFavsTabs({ reinjectOverlays });
+      await syncTwitchRaidGuardForAllOpenTabs();
     })
     .catch(() => {
       /* storage or alarm APIs may fail transiently on SW wake */

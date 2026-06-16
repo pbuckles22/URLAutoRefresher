@@ -388,6 +388,21 @@ flowchart LR
 
 ---
 
+## Epic 14 — Proactive Twitch raid guard (Step B)
+
+**Goal:** On **TwitchFavs home** tabs (sched hint + URL matches home), **decline incoming raids before navigation** by auto-clicking Twitch’s **Leave Raid / Cancel** control when the raid banner appears. **Step A snap-back** remains the fallback if the detour still completes.
+
+**Product intent:** Favourite channel tabs should **stay on the saved channel** during raids — not briefly land on the raided channel and snap back.
+
+- [x] **14.1** — DOM heuristics: detect raid banner + decline control (`Leave`, `Leave Raid`, `Cancel`, `Exit`, aria-label); chat notice **"is raiding"** path + legacy banner; Tier 1 [`src/lib/twitch-raid-guard.test.ts`](../../src/lib/twitch-raid-guard.test.ts). _(Shipped **v0.2.1**.)_
+- [x] **14.2** — Armed state: sched hint + TwitchFavs group + tab URL matches home; background pushes `TWITCH_RAID_GUARD_PUSH` to [`twitch-live-bridge.ts`](../../src/content/twitch-live-bridge.ts); Tier 1 armed + background tests. _(Shipped **v0.2.1**.)_
+- [x] **14.3** — Content runner: MutationObserver + interval scan when armed; debounced click with rate limit; Tier 2 stub E2E [`e2e/epic-14-gate2-raid-guard.spec.ts`](../../e2e/epic-14-gate2-raid-guard.spec.ts). _(Shipped **v0.2.1**.)_
+- [x] **14.4** — Manual Gate 3 (real Twitch): one favourite, trigger or wait for raid banner, confirm tab stays on home without detour flash. See [snap-back-implementation-notes.md](../requirements/snap-back-implementation-notes.md). _(Pass 2026-06-16 — **Raid blocks: 1**, snap-back not needed.)_
+
+**Technical notes:** No new manifest permissions. Compose with existing `twitch-live-bridge.js` (second content script on Twitch). Twitch markup changes — heuristics may need adjustment; snap-back (Backlog **#10**) is safety net.
+
+---
+
 ## Reference — goals vs approach
 
 | Requirement                            | Approach                                                                                             |

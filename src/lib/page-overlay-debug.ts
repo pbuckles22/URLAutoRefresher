@@ -3,7 +3,12 @@
  */
 import { memberKeyFromTargetUrl, pageMatchesExplicitTarget } from './member-url';
 import { resolveLiveTabIdForTargetUrl } from './resolve-live-tab';
-import { getLatestSnapBackEventForMember, type SnapBackReason } from './snap-back-events';
+import {
+  getLatestSnapBackEventForMember,
+  getSnapBackCountForMember,
+  type SnapBackReason,
+} from './snap-back-events';
+import { getRaidBlockCountForMember } from './raid-block-events';
 import { findTwitchFavsMemberForPageUrl } from './twitch-favs-member-match';
 import {
   getEffectiveMemberStreamLive,
@@ -34,6 +39,10 @@ export type PageOverlaySnapBackDebug = {
   lastSnapBackAtMs?: number;
   /** Reason for the last confirmed snap-back event. */
   lastSnapBackReason?: SnapBackReason;
+  /** Session count of proactive raid blocks for this member. */
+  raidBlockCount?: number;
+  /** Session count of snap-back recoveries for this member. */
+  snapBackCount?: number;
   /** Last successful scheduled refresh for this member/job (ms). */
   lastRefreshAtMs?: number;
   /** Twitch channel live signal for scheduling (`true` = live; omit or false = offline). */
@@ -93,6 +102,8 @@ async function buildDebugForTarget(
   const schedulerTabId = await deps.resolveLiveTabId(refreshTargetUrl, tabId);
   const matchingOpenTabIds = await listMatchingTabIds(refreshTargetUrl, deps.queryTabs);
   const lastSnapBack = memberKey ? await getLatestSnapBackEventForMember(memberKey) : undefined;
+  const raidBlockCount = memberKey ? await getRaidBlockCountForMember(memberKey) : undefined;
+  const snapBackCount = memberKey ? await getSnapBackCountForMember(memberKey) : undefined;
   return {
     thisTabId: tabId,
     pageUrl: tabUrl,
@@ -105,6 +116,8 @@ async function buildDebugForTarget(
     ...(lastSnapBack
       ? { lastSnapBackAtMs: lastSnapBack.atMs, lastSnapBackReason: lastSnapBack.reason }
       : {}),
+    ...(raidBlockCount !== undefined ? { raidBlockCount } : {}),
+    ...(snapBackCount !== undefined ? { snapBackCount } : {}),
     ...(lastRefreshAtMs !== undefined ? { lastRefreshAtMs } : {}),
     ...(twitchStreamLive !== undefined ? { twitchStreamLive } : {}),
     ...(twitchMeta?.twitchStreamLiveAuto !== undefined
@@ -284,6 +297,11 @@ export function formatOverlayDebugLines(d: PageOverlaySnapBackDebug, now = Date.
     `Stream: ${formatTwitchStreamLiveLabel(d)}`,
     formatLastRefreshLine(d.lastRefreshAtMs, now),
   ];
+  if (d.raidBlockCount !== undefined || d.snapBackCount !== undefined) {
+    const blocks = d.raidBlockCount ?? 0;
+    const snaps = d.snapBackCount ?? 0;
+    lines.push(`Raid blocks: ${blocks} · Snap-backs: ${snaps}`);
+  }
   if (d.lastSnapBackAtMs !== undefined) {
     const reasonPart = d.lastSnapBackReason ? ` (${formatReason(d.lastSnapBackReason)})` : '';
     lines.push(`Last snap-back: ${formatAgeSince(d.lastSnapBackAtMs, now)}${reasonPart}`);

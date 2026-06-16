@@ -16,6 +16,7 @@ import { forgetSchedTabId, rehydrateSchedHintsFromSession } from '../lib/sched-m
 import { forgetLastTabUrl, getLastTabUrl, noteTabUrl } from '../lib/sched-tab-nav-context';
 import { isTwitchBrowseUrl } from '../lib/twitch-live-detect';
 import { maybeSnapBackRaidDetour } from './scheduler-snap-back-detour';
+import { syncTwitchRaidGuardForTab, disarmTwitchRaidGuardForTab } from './twitch-raid-guard';
 
 export { syncAlarmsWithState };
 
@@ -89,16 +90,19 @@ export async function observeMemberTabNavigation(tabId: number, tabUrl: string):
   if (isTwitchBrowseUrl(url)) {
     forgetSchedTabId(tabId);
     noteTabUrl(tabId, url);
+    void disarmTwitchRaidGuardForTab(tabId);
     return;
   }
 
   const snappedBack = await maybeSnapBackRaidDetour(tabId, url, previousTabUrl);
   if (snappedBack) {
     // Do not stamp the detour as last URL; wait for the redirected home navigation event.
+    void disarmTwitchRaidGuardForTab(tabId);
     return;
   }
   noteTabUrl(tabId, url);
   await maybeRememberSchedTabFromFavHome(tabId, url);
+  void syncTwitchRaidGuardForTab(tabId, url);
 }
 
 export function attachSchedulingListeners(): void {

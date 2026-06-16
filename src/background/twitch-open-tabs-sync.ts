@@ -39,6 +39,11 @@ async function nudgeOverlayTab(tabId: number, reinjectOverlays: boolean): Promis
   }
 }
 
+/** Ask an existing overlay content script to re-fetch state (no re-inject). */
+export async function requestPageOverlaySync(tabId: number): Promise<void> {
+  await nudgeOverlayTab(tabId, false);
+}
+
 export async function syncAllOpenTwitchFavsTabs(
   options: SyncOpenTwitchFavsTabsOptions = {}
 ): Promise<void> {
