@@ -62,10 +62,11 @@ function isOriginMainPush(argv) {
 }
 
 if (isOriginMainPush(args)) {
-  const r = spawnSync(process.execPath, [path.join(repoRoot, 'Scripts/push-main-watch-ci.mjs')], {
-    stdio: 'inherit',
-    cwd: repoRoot,
-  });
+  const r = spawnSync(
+    process.execPath,
+    [path.join(repoRoot, 'Scripts/push-main-watch-ci.mjs'), '--skip-local-ci'],
+    { stdio: 'inherit', cwd: repoRoot }
+  );
   die(r.status ?? 1);
 }
 

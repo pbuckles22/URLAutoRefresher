@@ -8,6 +8,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const cliArgs = process.argv.slice(2);
+const skipLocalCi = cliArgs.includes('--skip-local-ci');
 
 function gh(args) {
   return execSync(`gh ${args}`, { encoding: 'utf8', cwd: repoRoot }).trim();
@@ -31,7 +33,7 @@ if (branch !== 'main') {
   die(`Refusing to push: current branch is "${branch}", expected "main".`);
 }
 
-if (process.env.URLAR_SKIP_CI !== '1') {
+if (process.env.URLAR_SKIP_CI !== '1' && !skipLocalCi) {
   console.log('Running local CI before push…');
   const ci = spawnSync('npm', ['run', 'ci'], { stdio: 'inherit', shell: true, cwd: repoRoot });
   if (ci.status !== 0) {

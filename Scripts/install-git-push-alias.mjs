@@ -23,7 +23,7 @@ if (process.env.HUSKY === '0' || !inGitRepo()) {
   process.exit(0);
 }
 
-const aliasValue = `!node "${wrapper}"`;
+const aliasValue = `!f() { node "${wrapper}" "$@"; }; f`;
 const set = spawnSync('git', ['config', '--local', 'alias.push', aliasValue], {
   cwd: repoRoot,
   stdio: 'inherit',
