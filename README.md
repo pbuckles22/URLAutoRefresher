@@ -42,7 +42,7 @@ Chromium Manifest V3 extension for Edge: scheduled refreshes to a **configured t
 
 2. **`npm test`** — Vitest (Tier 1).
 3. **`npm run build`** — produces `dist/background.js`, `dist/page-overlay.js` (content script), `dashboard/dashboard.js`, and placeholder `icons/*.png`.
-4. **`npm run ci`** — runs tests then build; same check as GitHub Actions — run before pushing to **`main`**.
+4. **`npm run ci`** — full gate (lint, Vitest, build, Playwright E2E); same as GitHub Actions. On **`main`**, **`git push origin main`** runs local CI + push + GitHub CI watch automatically (see [TEST_PLAN.md](TEST_PLAN.md) and [AGENT_HANDOFF.md](AGENT_HANDOFF.md)).
 5. Edge → **Extensions** → **Developer mode** → **Load unpacked** → select this folder (the one containing `manifest.json`).
 
 ### GitHub (`URLAutoRefresher`)
