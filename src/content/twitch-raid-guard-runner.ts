@@ -1,7 +1,10 @@
 /**
  * Content-side proactive raid guard runner (Epic 14).
  */
-import { tryDeclineTwitchRaidInDocument } from '../lib/twitch-raid-guard';
+import {
+  findTwitchRaidDeclineControl,
+  tryDeclineTwitchRaidInDocument,
+} from '../lib/twitch-raid-guard';
 
 const SCAN_DEBOUNCE_MS = 400;
 const MIN_CLICK_INTERVAL_MS = 2_000;
@@ -18,9 +21,17 @@ export function installTwitchRaidGuardRunner(
   let armed = false;
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
   let lastClickAt = 0;
+  let declineReportedForVisibleBanner = false;
 
   function scanNow(): void {
     if (!armed) {
+      return;
+    }
+    if (!findTwitchRaidDeclineControl(root)) {
+      declineReportedForVisibleBanner = false;
+      return;
+    }
+    if (declineReportedForVisibleBanner) {
       return;
     }
     const now = Date.now();
@@ -29,6 +40,7 @@ export function installTwitchRaidGuardRunner(
     }
     if (tryDeclineTwitchRaidInDocument(root)) {
       lastClickAt = now;
+      declineReportedForVisibleBanner = true;
       onDeclined?.();
     }
   }

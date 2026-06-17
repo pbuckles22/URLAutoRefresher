@@ -98,6 +98,38 @@ describe('findTwitchRaidDeclineControl', () => {
     document.body.innerHTML = '<button>Leave Raid</button>';
     expect(findTwitchRaidDeclineControl(document)).toBeNull();
   });
+
+  it('returns null for Leave in a non-raid modal', () => {
+    document.body.innerHTML = `
+      <div role="dialog" aria-label="Confirm">
+        <p>Are you sure you want to leave this channel?</p>
+        <button type="button">Leave</button>
+      </div>
+    `;
+    expect(findTwitchRaidDeclineControl(document)).toBeNull();
+  });
+
+  it('returns null when chat mentions leave but not an active raid notice', () => {
+    document.body.innerHTML = `
+      <div class="chat-room__notifications">
+        <div class="chat-notification">
+          <span>Please leave a follow before you go!</span>
+          <button type="button">Leave</button>
+        </div>
+      </div>
+    `;
+    expect(findTwitchRaidDeclineControl(document)).toBeNull();
+  });
+
+  it('returns null for legacy raid banner without decline control', () => {
+    document.body.innerHTML = `
+      <div data-test-selector="raid-banner">
+        <p>Channel is raiding AnotherStreamer</p>
+        <button type="button">Follow</button>
+      </div>
+    `;
+    expect(findTwitchRaidDeclineControl(document)).toBeNull();
+  });
 });
 
 describe('tryDeclineTwitchRaidInDocument', () => {

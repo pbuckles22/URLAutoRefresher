@@ -16,7 +16,11 @@ import { forgetSchedTabId, rehydrateSchedHintsFromSession } from '../lib/sched-m
 import { forgetLastTabUrl, getLastTabUrl, noteTabUrl } from '../lib/sched-tab-nav-context';
 import { isTwitchBrowseUrl } from '../lib/twitch-live-detect';
 import { maybeSnapBackRaidDetour } from './scheduler-snap-back-detour';
-import { syncTwitchRaidGuardForTab, disarmTwitchRaidGuardForTab } from './twitch-raid-guard';
+import {
+  syncTwitchRaidGuardForTab,
+  disarmTwitchRaidGuardForTab,
+  syncTwitchRaidGuardForAllOpenTabs,
+} from './twitch-raid-guard';
 
 export { syncAlarmsWithState };
 
@@ -136,7 +140,7 @@ export function attachSchedulingListeners(): void {
     }
     clearTimeout(storageDebounce);
     storageDebounce = setTimeout(() => {
-      void bootstrapScheduling();
+      void bootstrapScheduling().then(() => syncTwitchRaidGuardForAllOpenTabs());
     }, STORAGE_DEBOUNCE_MS);
   });
 }

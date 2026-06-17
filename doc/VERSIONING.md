@@ -12,7 +12,7 @@ Extension version follows the **[EDGE plan](plan/EDGE_URL_AUTO_REFRESHER_PLAN.md
 | **EPIC**  | Epic number from the EDGE plan                      | Epic 14 → `14`              |
 | **STORY** | Story suffix within that epic                       | Story **14.4** → `4`        |
 
-**Current shipped version:** **`0.14.4`** — Epic **14** complete through story **14.4** (proactive raid guard + Gate 3 pass).
+**Current shipped version:** **`0.14.5`** — Epic **14** tech-debt patch (raid-guard late bridge sync, group-toggle re-arm, raid-block counter dedupe).
 
 ## When to bump
 

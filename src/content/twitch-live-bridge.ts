@@ -13,6 +13,7 @@ import {
   TWITCH_LIVE_STATE_PUSH,
   TWITCH_RAID_BLOCK_REPORT,
   TWITCH_RAID_GUARD_PUSH,
+  TWITCH_RAID_GUARD_SYNC_REQUEST,
 } from '../lib/messages';
 import { sendExtensionMessageFireAndForget } from '../lib/extension-runtime-send';
 import { inferTwitchLiveFromChannelPage } from '../lib/twitch-live-detect';
@@ -236,6 +237,7 @@ function startBridge(): void {
       }
     });
 
+    sendExtensionMessageFireAndForget({ type: TWITCH_RAID_GUARD_SYNC_REQUEST });
     send(sampleLive());
     pollTimer = window.setInterval(() => {
       try {

@@ -4,7 +4,9 @@
 import {
   TWITCH_RAID_BLOCK_REPORT,
   TWITCH_RAID_GUARD_PUSH,
+  TWITCH_RAID_GUARD_SYNC_REQUEST,
   type TwitchRaidBlockReportMessage,
+  type TwitchRaidGuardSyncRequestMessage,
 } from '../lib/messages';
 import { noteRaidBlockEvent } from '../lib/raid-block-events';
 import { getSchedHintForTab, rehydrateSchedHintsFromSession } from '../lib/sched-member-tab-hint';
@@ -114,6 +116,20 @@ export async function applyTwitchRaidBlockReport(tabId: number, pageUrl: string)
 
 export function attachTwitchRaidGuardListeners(): void {
   chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
+    const syncReq = message as Partial<TwitchRaidGuardSyncRequestMessage>;
+    if (syncReq?.type === TWITCH_RAID_GUARD_SYNC_REQUEST) {
+      const tabId = sender.tab?.id;
+      const pageUrl = sender.tab?.url;
+      if (tabId === undefined) {
+        sendResponse({ ok: false });
+        return;
+      }
+      void syncTwitchRaidGuardForTab(tabId, pageUrl)
+        .then(() => sendResponse({ ok: true }))
+        .catch(() => sendResponse({ ok: false }));
+      return true;
+    }
+
     const m = message as Partial<TwitchRaidBlockReportMessage>;
     if (m?.type !== TWITCH_RAID_BLOCK_REPORT) {
       return;

@@ -1,6 +1,6 @@
 {
   "name": "url-auto-refresher",
-  "version": "0.14.4",
+  "version": "0.14.5",
   "private": true,
   "description": "Edge MV3 extension: scheduled tab refreshes with global groups and individuals",
   "type": "module",

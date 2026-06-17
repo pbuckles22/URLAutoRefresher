@@ -99,6 +99,14 @@ export type TwitchRaidGuardPushMessage = {
   armed: boolean;
 };
 
+/** Twitch bridge → background: request armed-state push after late injection (Epic 14 tech debt). */
+export const TWITCH_RAID_GUARD_SYNC_REQUEST =
+  'urlAutoRefresher:twitchRaidGuardSyncRequest' as const;
+
+export type TwitchRaidGuardSyncRequestMessage = {
+  type: typeof TWITCH_RAID_GUARD_SYNC_REQUEST;
+};
+
 /** Twitch bridge → background: proactive Leave Raid click succeeded (Epic 14). */
 export const TWITCH_RAID_BLOCK_REPORT = 'urlAutoRefresher:twitchRaidBlockReport' as const;
 

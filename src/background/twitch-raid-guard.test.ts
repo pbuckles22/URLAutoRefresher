@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TWITCH_RAID_GUARD_PUSH } from '../lib/messages';
 import { clearSchedTabHints, rememberSchedTabId } from '../lib/sched-member-tab-hint';
-import { computeRaidGuardArmedForTest } from './twitch-raid-guard';
+import { computeRaidGuardArmedForTest, syncTwitchRaidGuardForTab } from './twitch-raid-guard';
 
 const HOME_URL = 'https://www.twitch.tv/e2e_guard_home';
 
@@ -43,5 +44,24 @@ describe('computeRaidGuardArmedForTest', () => {
   it('disarms without sched hint', async () => {
     clearSchedTabHints();
     await expect(computeRaidGuardArmedForTest(42, HOME_URL)).resolves.toBe(false);
+  });
+});
+
+describe('syncTwitchRaidGuardForTab', () => {
+  beforeEach(() => {
+    clearSchedTabHints();
+    rememberSchedTabId('g-tw', 'twitch.tv/e2e_guard_home', 42, HOME_URL);
+  });
+
+  it('pushes armed=true to the tab when sched home matches', async () => {
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('chrome', { tabs: { sendMessage } });
+
+    await syncTwitchRaidGuardForTab(42, HOME_URL);
+
+    expect(sendMessage).toHaveBeenCalledWith(42, {
+      type: TWITCH_RAID_GUARD_PUSH,
+      armed: true,
+    });
   });
 });

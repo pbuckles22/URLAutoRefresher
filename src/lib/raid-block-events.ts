@@ -13,6 +13,8 @@ export type RaidBlockMemberStats = {
 };
 
 const RAID_BLOCK_STATS_SESSION_KEY = 'urlAutoRefresher_raidBlockStats_v1';
+/** Ignore duplicate block reports within one raid notice (MO + interval rescans). */
+const RAID_BLOCK_DEDUPE_MS = 30_000;
 
 let statsByMemberKey: Record<string, RaidBlockMemberStats> = {};
 let hydrated = false;
@@ -91,9 +93,12 @@ async function persist(): Promise<void> {
 
 export async function noteRaidBlockEvent(memberKey: string, event: RaidBlockEvent): Promise<void> {
   await ensureHydrated();
-  const prev = statsByMemberKey[memberKey]?.count ?? 0;
+  const prev = statsByMemberKey[memberKey];
+  if (prev?.lastAtMs !== undefined && event.atMs - prev.lastAtMs < RAID_BLOCK_DEDUPE_MS) {
+    return;
+  }
   statsByMemberKey[memberKey] = {
-    count: prev + 1,
+    count: (prev?.count ?? 0) + 1,
     lastAtMs: event.atMs,
   };
   await persist();
