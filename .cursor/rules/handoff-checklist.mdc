@@ -12,7 +12,7 @@ When the user wants a handoff, or when you are writing or updating a handoff not
 
 - **Right time:** You are at a real stopping point: scope is done **or** you are intentionally handing off **mid-flight** with a clear label (e.g. **WIP**, **blocked**, **needs decision**).
 - **Wrong time:** Do **not** write a handoff that reads “ship complete” if delivery is not actually finished (e.g. commits on `main` that were never pushed, **GitHub CI not green**, local CI only, or known follow-ups omitted). If work is incomplete, **say so explicitly** in **Ship status** or a **Not done** section at the top — not only in **Next up**.
-- **Push + GitHub CI:** When `npm run ci` is green and you committed to **`main`**, run **`npm run push:main`** (or `git push origin main` then **`npm run ci:watch-gh`**) and **wait for GitHub Actions green** before ending or marking shipped — see **AGENT_HANDOFF.md** → *Git workflow* step **3**. Treat “pushed but GitHub CI not watched / failed” as **unfinished** unless the user asked to stop before the watch, or `gh`/push failed (record that explicitly).
+- **Push + GitHub CI:** Commits belong on a **feature/fix branch**, not **`main`** (see **AGENT_HANDOFF.md** → *Git workflow* step **1**). After merge to **`main`** and **`npm run ci`** green, run **`npm run push:main`** (or `git push origin main` then **`npm run ci:watch-gh`**) and **wait for GitHub Actions green** before ending or marking shipped — step **3**. Treat “pushed but GitHub CI not watched / failed” as **unfinished** unless the user asked to stop before the watch, or `gh`/push failed (record that explicitly).
 
 **You must run all four and record results in the handoff note. Do not skip any.**
 
@@ -23,7 +23,7 @@ When the user wants a handoff, or when you are writing or updating a handoff not
 
 5. **Tier 2 (integration / E2E) if needed** — If you added or changed behavior that requires integration or E2E validation, run the Tier 2 command from TEST_PLAN.md. Note in the handoff whether Tier 2 was run and the result. See `.cursor/rules/testing.mdc` and TEST_PLAN.md.
 
-6. **Git commit + push + GitHub CI** — If the first four checks passed: bump version per [doc/VERSIONING.md](../../doc/VERSIONING.md) when shipping EDGE scope, stage, commit, then **`npm run push:main`** (or push + **`npm run ci:watch-gh`**). Record **GitHub Actions run URL/conclusion** in the handoff under **Tests / CI**. Treat “committed but not pushed” or “pushed but GitHub CI not green” as **unfinished** unless the user asked to stop early.
+6. **Git commit + merge + push + GitHub CI** — If the first four checks passed: on a **feature/fix branch** (not **`main`**), bump version per [doc/VERSIONING.md](../../doc/VERSIONING.md) when shipping EDGE scope, stage, commit, merge to **`main`**, then **`npm run push:main`** (or push + **`npm run ci:watch-gh`**). Record **GitHub Actions run URL/conclusion** in the handoff under **Tests / CI**. Treat “committed but not merged/pushed” or “pushed but GitHub CI not green” as **unfinished** unless the user asked to stop early.
 
 Then complete the rest of the handoff (update **PM_PLAN** / **EDGE plan** if product scope changed; **Done this session**, **Next up**, etc. in your **`doc/handoff/`** or `.cursor/handoff/` note — see **AGENT_HANDOFF.md**). When you summarize **Done this session** for humans, use the same **two-audience** idea as **AGENT_HANDOFF.md** → *Git workflow* step **3**: a short maintainer-oriented recap plus a **non-technical** “what someone using only the extension would notice” (see **techwriter** skill → *Dual-audience blurbs*).
 
@@ -45,6 +45,6 @@ After the local note is written, **mirror a handoff starting point in chat**. Th
 
 **Starting point for the next agent:** **Next up** must be actionable without opening the gitignored file (story id, backlog #, branch name, version target).
 
-8. **`always.mdc` repo status** — Update the **Repo status** table in [`.cursor/rules/always.mdc`](../rules/always.mdc) (branch, shipped version, in-progress slice, last handoff path). Omit ephemeral **Uncommitted** rows once committed. Include this file in the same commit when handoff docs change on `main`, or in the next commit on the active feature branch.
+8. **`always.mdc` repo status** — Update the **Repo status** table in [`.cursor/rules/always.mdc`](../rules/always.mdc) (branch, shipped version, in-progress slice, last handoff path). Omit ephemeral **Uncommitted** rows once committed. Include this file in the same commit on the active feature branch (then merge to **`main`**); never commit **`always.mdc`** directly on **`main`**.
 
 See **AGENT_HANDOFF.md** → *Handoff protocol* and [`.cursor/handoff/_template.md`](../handoff/_template.md) → *Chat mirror*.

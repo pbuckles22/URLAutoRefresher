@@ -1,16 +1,16 @@
 ---
 name: github-feature-workflow
 description: >-
-  Short-lived feature branches; TDD + lint + npm run ci as exit criteria before
-  commit; push and merge to main (or user-directed flow). Do not default to
-  asking the user to open a PR. Use when implementing a feature or non-trivial
-  fix, when the user asks for branch/git workflow, or after substantial edits
-  that should not stay uncommitted.
+  Short-lived feature branches only — never commit on main; merge then push.
+  TDD + lint + npm run ci as exit criteria before commit on the branch.
+  Do not default to asking the user to open a PR. Use when implementing a
+  feature or non-trivial fix, when the user asks for branch/git workflow, or
+  after substantial edits that should not stay uncommitted.
 ---
 
 # GitHub / feature branch workflow (this repo)
 
-**Product policy** (source of truth): [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) — `main` is the integration branch; **`npm run ci`** is the quality bar. This skill defines **how work is finished**: tests (TDD where the tier applies), lint, format, CI green, then **commit** (and **push** per AGENT_HANDOFF). **Pull requests are not part of the default exit** for this repo unless the user explicitly asks for a PR or GitHub-based review.
+**Product policy** (source of truth): [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) — `main` is the integration branch (**no direct commits**; merge only); **`npm run ci`** is the quality bar. This skill defines **how work is finished**: branch → tests (TDD where the tier applies) → lint → format → CI green → **commit on the branch** → merge → **push** per AGENT_HANDOFF. **Pull requests are not part of the default exit** for this repo unless the user explicitly asks for a PR or GitHub-based review.
 
 ## Do not prompt for PRs (agents)
 
@@ -18,28 +18,29 @@ description: >-
 - **Do** treat **green local `npm run ci`** as **commit-ready**, and **green GitHub Actions CI on `main`** as **ship-complete** (see [Post-push gate](#post-push-gate-github-actions-mandatory)).
 - **If** the user says they want a PR, GitHub review, or external reviewers: then describe or open the PR as they asked.
 
-**Completion mental model:** one branch ≈ one purpose → **local** `npm run ci` green → **commit** → merge to **`main`** → **`npm run push:main`** (or push then **`npm run ci:watch-gh`**) → **GitHub CI green** → delete feature branch → update PM_PLAN/EDGE. **Ship complete** only after **both** local and GitHub CI pass. No roundabout “please open a PR” unless they chose that path.
+**Completion mental model:** one branch ≈ one purpose → **local** `npm run ci` green → **commit on the branch** (never on **`main`**) → merge to **`main`** → **`npm run push:main`** (or push then **`npm run ci:watch-gh`**) → **GitHub CI green** → delete feature branch → update PM_PLAN/EDGE. **Ship complete** only after **both** local and GitHub CI pass. No roundabout “please open a PR” unless they chose that path.
 
 ## When to apply
 
 - User asks for a **feature branch**, **commit**, **push**, or **merge** (or explicitly **PR**).
 - A **coherent slice** of work is done (e.g. one epic story, one bugfix) and should be **recorded in git** before the session ends.
-- **Do not** create branches for one-line typo fixes unless the user wants it.
+- **Every** slice that gets a **`git commit`** uses a branch — including doc-only and typo fixes. **`main` never receives direct commits.**
 
 ## Branch naming
 
 - Prefer: `feature/<short-kebab-topic>` (e.g. `feature/epic-10-3-pause-keys`) or `fix/<issue-or-topic>`.
 - Avoid ultra-long names; include epic/story id if it helps **PM_PLAN** / EDGE traceability.
 
-## Branch-first rule (agents)
+## Branch-first rule (agents) — mandatory
 
-- **Do not** stack substantial implementation on **`main`** and only then create a feature branch to “check in.” That bypasses a proper branch history and the CI-before-commit discipline.
-- **Do** start each non-trivial slice on a **new branch**: `git fetch origin`, `git checkout main`, `git pull`, `git checkout -b feature/<topic>`, then implement, **`npm run ci`**, commit, push, merge to `main` per [Standard sequence](#standard-sequence) (no default PR step).
-- If work already landed on **`main`** without a branch, recover discipline going forward; optionally **`git checkout -b feature/<topic>`** from **`main`** before the _next_ slice so new commits are branch-first.
+- **Never `git commit` on `main`.** **`main` advances only via merge** from a feature or fix branch (local merge or GitHub merge/PR when the user opts in).
+- **Do not** implement on **`main`** then branch only to “check in.” Start the branch **before** the first commit of the slice.
+- **Do** start **every** slice on a **new branch**: `git fetch origin`, `git checkout main`, `git pull`, `git checkout -b feature/<topic>` (or `fix/<topic>`), then implement, **`npm run ci`**, commit on that branch, merge to `main` per [Standard sequence](#standard-sequence) (no default PR step).
+- If commits already landed on **`main`** without a branch, recover discipline on the **next** slice; do not treat that as permission to commit on **`main`** again.
 
 ## Exit criteria before commit (ship bar)
 
-Treat these as satisfied **before** `git commit` on anything beyond trivial doc typos (adjust if the user narrows scope):
+Treat these as satisfied **before** `git commit` on the **feature branch** (adjust if the user narrows scope):
 
 0. **Version** — When shipping an EDGE story or epic closure, bump **`package.json`** to **`MAJOR.EPIC.STORY`** per [doc/VERSIONING.md](../../doc/VERSIONING.md); run **`npm run build`** (syncs **`manifest.json`**). Skip for doc-only commits with no checkbox change.
 1. **TDD / tests** — [TEST_TDD.md](../TEST_TDD.md) + [tester](../tester/SKILL.md): failing test first when the changed surface is covered by Tier 1 or Tier 2; suite green for what you touched.
@@ -51,7 +52,7 @@ When 1–4 are green: **commit**. **Push / merge** per AGENT_HANDOFF. **Ship-com
 
 ## Pre-checkin and pre-next-feature checks
 
-- **Before commits** that change behavior or tests (not one-line doc typos): run **`npm run ci`** — Vitest, production build, Playwright E2E — same gate as [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) for **`main`**.
+- **Before commits** on the feature branch: run **`npm run ci`** — Vitest, production build, Playwright E2E — same gate as [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md) before merge to **`main`**.
 - **Before merging** to **`main`**: **`npm run ci`** green on the feature branch.
 - **Before starting the next feature** after a merged story: run **`npm run ci`** on updated **`main`** (`git checkout main && git pull`) so Tier 1 + Tier 2 still pass against **origin/main** before new work begins (catches drift if the final gate was skipped).
 
@@ -72,7 +73,7 @@ Escape hatches: **`URLAR_SKIP_CI=1`**, **`URLAR_SKIP_GH_WATCH=1`**, or **`git -c
 2. **Create branch:** `git checkout -b <name>` — **before** writing production code for the slice.
 3. **Implement** with tests as required by [tester skill](../tester/SKILL.md) and [TEST_TDD.md](../TEST_TDD.md) (**red → green** when that tier applies).
 4. **Gate before commit:** meet **[Exit criteria before commit](#exit-criteria-before-commit-ship-bar)** (version bump **first** when shipping a story); **`npm run ci`** is the all-in-one gate here. Locally, **Husky** runs **lint-staged** on commit to apply Prettier + ESLint `--fix` to staged files.
-5. **Commit:** clear, imperative subject line; body only if context helps (what/why, not noise). One logical commit per slice is fine; multiple small commits are fine if they tell a story.
+5. **Commit on the branch** (never on **`main`**): clear, imperative subject line; body only if context helps (what/why, not noise). One logical commit per slice is fine; multiple small commits are fine if they tell a story.
 6. **Push:** `git push -u origin <branch>` (first time); later `git push` on that branch.
 7. **Integrate to `main`:** Prefer what the user asked for: **local merge** (`git checkout main && git pull && git merge <branch> && npm run ci`) when they want work on **`main`** without a PR, or **they** handle GitHub merge if they use the web UI. **Do not** nudge them toward opening a PR by default.
 8. **Push + GitHub CI (automated on `main`):** merge to **`main`**, then **`git push origin main`** (alias runs local CI + push + GH watch). Or **`npm run push:main`**. See [Post-push gate](#post-push-gate-github-actions-mandatory).
