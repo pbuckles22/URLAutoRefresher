@@ -33,6 +33,10 @@ Use this skill when creating or revising project docs so they stay consistent an
 
 **Session handoff files:** Naming and timestamps are defined in **AGENT_HANDOFF.md** (recommended filename `HANDOFF-YYYY-MM-DD-HHmmss.md`, plus a **`Recorded:`** line in the markdown). The mandatory steps live in **`.cursor/rules/handoff-checklist.mdc`**. When you change **how** handoffs are named or structured, update **AGENT_HANDOFF.md** (and the checklist if steps change); use **techwriter** for tone/structure.
 
+### Session handoff chat response (mirror to user)
+
+The gitignored note is for depth; the **chat reply** is the **starting point** for the next session. Follow **handoff-checklist.mdc** → _Chat response_: ship headline, **Recorded** path, **Ship status** table, **Done this session** (dual-audience blurbs), **Next up (from handoff)**. Never end handoff with only a file path.
+
 **Style:** Dense but structured. Headings and bullets so agents can jump to the right section.
 
 ### Dual-audience blurbs (pre-commit chat, optional PR description)
