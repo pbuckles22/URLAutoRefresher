@@ -1,4 +1,4 @@
-# Handoff — YYYY-MM-DD HHmm
+# Handoff — YYYY-MM-DD HHmmss
 
 (Filename: `HANDOFF-YYYY-MM-DD-HHmmss.md` under `doc/handoff/` — date and 24h time required.)
 
@@ -28,6 +28,9 @@ Extension users: …
 Next up (from handoff)
 1. …
 2. …
+
+Open items (optional)
+- …
 ```
 
 ## Code review

@@ -8,4 +8,4 @@
 
 **Product state on `main`:** [PM_PLAN.md](../../PM_PLAN.md), [EDGE plan](../../doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md). **Process:** [AGENT_HANDOFF.md](../../AGENT_HANDOFF.md).
 
-Run the handoff checklist (`.cursor/rules/handoff-checklist.mdc`) before writing a handoff note.
+Run the handoff checklist (`.cursor/rules/handoff-checklist.mdc`) before writing a handoff note — **local file + chat mirror + `always.mdc` repo-status update**.

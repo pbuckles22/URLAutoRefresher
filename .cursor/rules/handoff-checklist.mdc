@@ -45,4 +45,6 @@ After the local note is written, **mirror a handoff starting point in chat**. Th
 
 **Starting point for the next agent:** **Next up** must be actionable without opening the gitignored file (story id, backlog #, branch name, version target).
 
+8. **`always.mdc` repo status** — Update the **Repo status** table in [`.cursor/rules/always.mdc`](../rules/always.mdc) (branch, shipped version, in-progress slice, last handoff path). Omit ephemeral **Uncommitted** rows once committed. Include this file in the same commit when handoff docs change on `main`, or in the next commit on the active feature branch.
+
 See **AGENT_HANDOFF.md** → *Handoff protocol* and [`.cursor/handoff/_template.md`](../handoff/_template.md) → *Chat mirror*.

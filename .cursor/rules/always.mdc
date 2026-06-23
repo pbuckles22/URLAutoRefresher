@@ -7,14 +7,15 @@ alwaysApply: true
 
 **Product:** Chromium Manifest V3 **Edge extension** — scheduled tab refreshes, optional sync groups, jitter, focus-aware badge. **Plan / epics:** [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md).
 
-**Repo status (update after handoff / ship):**
+**Repo status (agents: refresh on every handoff — [handoff-checklist.mdc](handoff-checklist.mdc) step 8; no ephemeral Uncommitted row after commit):**
 
 | Item | Value |
 | ---- | ----- |
-| **Branch** | **`main`** — synced with **`origin/main`** after handoff-doc commit |
-| **Shipped on `main`** | **`0.16.1`** — Backlog **#8** overlay snap + drag |
-| **Feature branch** | **`feature/backlog-9-active-tab-precision-volume`** — fresh from **`main`**, Backlog **#9** not started (~**0.16.2**) |
-| **Last handoff** | `doc/handoff/HANDOFF-2026-06-23-120500.md` (gitignored) |
+| **Branch** | **`main`** — synced with **`origin/main`** |
+| **Shipped on `main`** | **`0.16.1`** — Backlog **#8** overlay snap + drag (`8fc5cc7`) |
+| **Latest on `main`** | handoff doc WARN follow-ups (no version bump) |
+| **In progress** | Backlog **#9** on **`feature/backlog-9-active-tab-precision-volume`** (~**0.16.2**); no product code yet |
+| **Last handoff** | `doc/handoff/HANDOFF-2026-06-23-122307.md` (gitignored) |
 
 Cursor rules, skills, handoff protocol, and test discipline from [AgenticTemplate](https://github.com/pbuckles22/AgenticTemplate). Document your toolchain in AGENT_HANDOFF.md and TEST_PLAN.md.
 
