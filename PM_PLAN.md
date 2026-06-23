@@ -25,10 +25,11 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 - **Backlog #8 / Step D (`0.16.1`):** **Shipped on `main`** — overlay **snap** (⇄ top-left ↔ top-right) + **drag** (⋮⋮ handle); global **`overlayPosition`** pref persists across refresh.
 - **Backlog #9 (`0.16.2`):** **Shipped on `main`** — precision volume fader defaults to **active tab** in the focused window (optional tab override picker).
 - **Backlog #8 polish:** **Shipped on `main`** — drag E2E, MV3 storage guard on overlay prefs, drag-handle keyboard nudge + focus ring (still **`0.16.2`**).
+- **CI Node 24:** **Shipped on `main`** — GitHub Actions **`node-version: '24'`** in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (silences Node 20 deprecation annotation).
 
 ## Next (see EDGE plan)
 
-**Execution order:** **`feature/ci-node-24`** — bump GitHub Actions **`node-version`** to **24** in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (silences Actions “Node.js 20 is deprecated” annotation); **`npm run ci`** green locally on Node 24 before merge. Then Backlog **#11** when scoped.
+**Execution order:** Backlog **#11** when scoped.
 
 | Step   | Scope                                        | Status                 |
 | ------ | -------------------------------------------- | ---------------------- |
