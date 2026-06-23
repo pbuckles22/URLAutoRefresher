@@ -12,10 +12,10 @@ alwaysApply: true
 | Item | Value |
 | ---- | ----- |
 | **Branch** | **`main`** — synced with **`origin/main`** after push |
-| **Shipped on `main`** | **`0.16.2`** — Backlog **#9** + **#8** polish; CI Node **24** (GitHub Actions) |
+| **Shipped on `main`** | **`0.16.2`** — Backlog **#9** + **#8** polish; CI Node **24** (Playwright Docker image) |
 | **In progress** | None |
-| **Next up** | Backlog **#11** when scoped (see [PM_PLAN.md](../../PM_PLAN.md)) |
-| **Last handoff** | `doc/handoff/HANDOFF-2026-06-23-135618.md` (gitignored) |
+| **Next up** | Backlog **#11** or **#12** when scoped (see [PM_PLAN.md](../../PM_PLAN.md)) |
+| **Last handoff** | `doc/handoff/HANDOFF-2026-06-23-155500.md` (gitignored) |
 
 Cursor rules, skills, handoff protocol, and test discipline from [AgenticTemplate](https://github.com/pbuckles22/AgenticTemplate). Document your toolchain in AGENT_HANDOFF.md and TEST_PLAN.md.
 

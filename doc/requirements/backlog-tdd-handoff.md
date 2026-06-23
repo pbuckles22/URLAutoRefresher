@@ -9,7 +9,7 @@ This note is for an agent (or developer) picking up work from **[Backlog (UX / p
 - **Tier 1:** Vitest — `npm test` — for pure logic, parsers, and helpers.
 - **Tier 2:** Playwright — `npm run build && npm run test:e2e` — for extension pages, content scripts, shadow DOM, and `chrome.*` flows. See [TEST_PLAN.md](../../TEST_PLAN.md).
 
-Suggested order: **7** (global rebind); **8** (overlay position) as UX allows. **4** (idle **Play**) is **on hold** until reproducible — see §4. Items **1–3**, **#5**, and **#6** are shipped (see below). Treat the EDGE plan as the acceptance checklist.
+Suggested order: **7** (global rebind); **8** (overlay position) as UX allows. **4** (idle **Play**) is **on hold** until reproducible — see §4. Items **1–3**, **#5**, and **#6** are shipped (see below). **11** and **12** need epic scoping before implementation. Treat the EDGE plan as the acceptance checklist.
 
 ---
 
@@ -130,6 +130,37 @@ Sometimes the auto-refresh **overlay hides** site content or controls. **Example
 ### Acceptance
 
 - Document chosen UX in EDGE backlog / PR (snap vs drag vs both; persistence behavior); no regression on overlay pause/resume.
+
+---
+
+## 11) Per-chatter live chat history — **open (epic TBD)**
+
+Normative spec: [EDGE plan backlog **#11**](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). Do not implement from this stub alone — wait for epic design (IndexedDB schema, capture path, dashboard UI).
+
+---
+
+## 12) Twitch — auto-click channel points bonus — **open (epic TBD)**
+
+### Goal
+
+When a **channel points bonus** claim control appears on a Twitch watch page, **click it automatically** so users on TwitchFavs tabs do not miss collectable bonuses.
+
+### Scope (design at epic)
+
+- **Likely:** TwitchFavs tabs in enabled groups; **opt-in** pref (default off).
+- **Not in scope:** Bonus prediction, redeeming perks, non-Twitch pages.
+
+### TDD / tests
+
+- **Tier 1:** Pure helpers in `src/lib/twitch-channel-points-bonus.ts` — detect bonus UI from fixture DOM snippets (mirror [`twitch-raid-guard.test.ts`](../../src/lib/twitch-raid-guard.test.ts)).
+- **Tier 2:** CI-safe Twitch stub page with a fake bonus button; assert click fires once per instance (debounce/dedupe).
+
+### Acceptance
+
+- Opt-in pref gates all automation; default off.
+- One click per visible bonus instance; no runaway click loops on DOM churn.
+- Document interaction with raid guard / watch-layout if both enabled on the same tab.
+- `npm run ci` green; manual spot-check on real Twitch when stub coverage is insufficient.
 
 ---
 
