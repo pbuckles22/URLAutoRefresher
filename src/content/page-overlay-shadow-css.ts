@@ -5,14 +5,9 @@ export const PAGE_OVERLAY_SHADOW_CSS = `
       box-sizing: border-box;
       display: block !important;
       position: fixed !important;
-      top: 12px !important;
-      right: 12px !important;
       z-index: 2147483647 !important;
       pointer-events: none;
       font-family: system-ui, "Segoe UI", Roboto, sans-serif;
-    }
-    :host(.urlar-overlay--minimized) {
-      right: 56px !important;
     }
     .card {
       position: relative;
@@ -65,10 +60,8 @@ export const PAGE_OVERLAY_SHADOW_CSS = `
       text-align: center;
     }
     .minimize-hit {
-      position: absolute;
-      top: 4px;
-      right: 6px;
-      z-index: 2;
+      position: static;
+      flex-shrink: 0;
       border: none;
       background: transparent;
       color: #5f6368;
@@ -82,12 +75,70 @@ export const PAGE_OVERLAY_SHADOW_CSS = `
     .minimize-hit:hover {
       color: #111;
     }
+    .position-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 2px;
+      padding: 2px 4px 0;
+      min-height: 18px;
+    }
+    .position-bar--with-body {
+      position: relative;
+      padding: 0 0 4px;
+      min-height: 0;
+    }
+    .drag-handle {
+      margin-right: auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 16px;
+      border: none;
+      background: transparent;
+      color: #9aa0a6;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: -2px;
+      line-height: 1;
+      cursor: grab;
+      padding: 0;
+      font-family: inherit;
+      user-select: none;
+      touch-action: none;
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+    .drag-handle:hover {
+      color: #5f6368;
+    }
+    .snap-hit {
+      border: none;
+      background: transparent;
+      color: #5f6368;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 4px;
+      font-family: inherit;
+    }
+    .snap-hit:hover {
+      color: #111;
+    }
     .card-body {
       position: relative;
     }
     .card-body--has-minimize {
-      padding-top: 2px;
-      padding-right: 18px;
+      padding-top: 0;
+      padding-right: 0;
     }
     .debug-strip {
       margin: 0 0 6px;

@@ -34,6 +34,7 @@ describe('prefs', () => {
       showOverlaySnapBackDebug: true,
       twitchWatchLayoutEnabled: true,
       precisionVolume: { lastTabId: 42, lastLinearGain: -0.25 },
+      overlayPosition: { anchor: 'right' },
     });
   });
 
@@ -104,6 +105,7 @@ describe('extension prefs in chrome.storage.local (Epic 3.0)', () => {
       showOverlaySnapBackDebug: true,
       twitchWatchLayoutEnabled: true,
       precisionVolume: DEFAULT_PRECISION_VOLUME,
+      overlayPosition: { anchor: 'right' },
     });
   });
 });

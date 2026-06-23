@@ -21,8 +21,20 @@ import {
   sendExtensionMessageFireAndForget,
 } from '../lib/extension-runtime-send';
 import './precision-volume-bridge';
-import { PREFS_STORAGE_KEY } from '../lib/prefs';
+import {
+  PREFS_STORAGE_KEY,
+  loadExtensionPrefs,
+  parsePrefs,
+  saveExtensionPrefs,
+} from '../lib/prefs';
 import { STORAGE_KEY } from '../lib/storage';
+import {
+  clampOverlayDragPosition,
+  computeOverlayHostStyle,
+  DEFAULT_OVERLAY_POSITION,
+  toggleOverlaySnapAnchor,
+  type OverlayPosition,
+} from '../lib/overlay-position';
 import { PAGE_OVERLAY_SHADOW_CSS } from './page-overlay-shadow-css';
 
 const ROOT_ID = 'url-auto-refresher-overlay-root';
@@ -38,6 +50,7 @@ let overlayMinimized = false;
 let overlayUserExpanded = false;
 let overlayStreamLive: boolean | undefined;
 let overlayLivePaused = false;
+let overlayPosition: OverlayPosition = { ...DEFAULT_OVERLAY_POSITION };
 let shadowRoot: ShadowRoot | null = null;
 let tickHandle: ReturnType<typeof setInterval> | undefined;
 
@@ -137,6 +150,15 @@ function ensureShadowClickDelegation(root: ShadowRoot): void {
       }
     };
     if (t.closest('[data-overlay-stream-toggle]')) {
+      e.stopPropagation();
+      return;
+    }
+    if (t.closest('[data-overlay-snap]')) {
+      e.preventDefault();
+      void persistOverlayPosition(toggleOverlaySnapAnchor(overlayPosition));
+      return;
+    }
+    if (t.closest('[data-overlay-drag-handle]')) {
       e.stopPropagation();
       return;
     }
@@ -279,6 +301,125 @@ async function sendStreamRefreshToggle(on: boolean): Promise<void> {
   }
 }
 
+function buildPositionBarHtml(): string {
+  const onRight =
+    overlayPosition.dragTop === undefined &&
+    overlayPosition.dragLeft === undefined &&
+    overlayPosition.anchor === 'right';
+  const snapTitle = onRight ? 'Snap overlay to top-left' : 'Snap overlay to top-right';
+  return `<div class="position-bar position-bar--with-body">
+    <span class="drag-handle" data-overlay-drag-handle title="Drag to move overlay" aria-label="Drag to move overlay" role="button" tabindex="0">⋮⋮</span>
+    <button type="button" class="snap-hit" data-overlay-snap title="${escapeHtmlText(snapTitle)}" aria-label="${escapeHtmlText(snapTitle)}">⇄</button>
+    <button type="button" class="minimize-hit" data-overlay-minimize title="Minimize overlay" aria-label="Minimize overlay">−</button>
+  </div>`;
+}
+
+function applyOverlayHostPosition(): void {
+  const host = document.getElementById(ROOT_ID);
+  if (!host) {
+    return;
+  }
+  const style = computeOverlayHostStyle(overlayPosition, overlayMinimized);
+  host.style.top = style.top;
+  host.style.left = style.left;
+  host.style.right = style.right;
+  host.classList.toggle('urlar-overlay--snap-left', style.snapLeft);
+}
+
+async function loadOverlayPositionFromPrefs(): Promise<void> {
+  const prefs = await loadExtensionPrefs();
+  overlayPosition = prefs.overlayPosition;
+  applyOverlayHostPosition();
+}
+
+async function persistOverlayPosition(next: OverlayPosition): Promise<void> {
+  overlayPosition = next;
+  applyOverlayHostPosition();
+  await saveExtensionPrefs({ overlayPosition: next });
+}
+
+let dragSession:
+  | {
+      startX: number;
+      startY: number;
+      originTop: number;
+      originLeft: number;
+      hostW: number;
+      hostH: number;
+    }
+  | undefined;
+
+function bindDragHandleListener(root: ShadowRoot): void {
+  const handle = root.querySelector('[data-overlay-drag-handle]') as HTMLElement | null;
+  if (!handle || handle.dataset.bound === '1') {
+    return;
+  }
+  handle.dataset.bound = '1';
+  handle.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    const host = document.getElementById(ROOT_ID);
+    if (!host) {
+      return;
+    }
+    const rect = host.getBoundingClientRect();
+    dragSession = {
+      startX: e.clientX,
+      startY: e.clientY,
+      originTop: rect.top,
+      originLeft: rect.left,
+      hostW: rect.width,
+      hostH: rect.height,
+    };
+    handle.setPointerCapture(e.pointerId);
+
+    const onMove = (ev: PointerEvent) => {
+      if (!dragSession) {
+        return;
+      }
+      const deltaX = ev.clientX - dragSession.startX;
+      const deltaY = ev.clientY - dragSession.startY;
+      const clamped = clampOverlayDragPosition(
+        dragSession.originTop + deltaY,
+        dragSession.originLeft + deltaX,
+        dragSession.hostW,
+        dragSession.hostH,
+        window.innerWidth,
+        window.innerHeight
+      );
+      overlayPosition = {
+        anchor: overlayPosition.anchor,
+        dragTop: clamped.top,
+        dragLeft: clamped.left,
+      };
+      applyOverlayHostPosition();
+    };
+
+    const onEnd = (ev: PointerEvent) => {
+      if (!dragSession) {
+        return;
+      }
+      dragSession = undefined;
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', onEnd);
+      handle.removeEventListener('pointercancel', onEnd);
+      try {
+        handle.releasePointerCapture(ev.pointerId);
+      } catch {
+        /* pointer may already be released */
+      }
+      void saveExtensionPrefs({ overlayPosition });
+    };
+
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onEnd);
+    handle.addEventListener('pointercancel', onEnd);
+  });
+}
+
 function buildMinimizedHtml(): string {
   const live = overlayStreamLive === true;
   const statusClass = live ? 'm-badge--live' : 'm-badge--offline';
@@ -304,7 +445,7 @@ function buildTimerHtml(showPause: boolean): string {
     ? 'timer-compact-row timer-compact-row--with-pause'
     : 'timer-compact-row';
   return `
-    <button type="button" class="minimize-hit" data-overlay-minimize title="Minimize overlay" aria-label="Minimize overlay">−</button>
+    ${buildPositionBarHtml()}
     ${buildDebugHtml(overlayDebug)}
     <div class="timer-compact-row-wrap">
       <div class="${rowClass}">
@@ -322,7 +463,7 @@ function buildTimerHtml(showPause: boolean): string {
 function buildPausedHtml(livePaused?: boolean): string {
   const label = livePaused ? 'Auto refresh paused (stream live)' : 'Auto refresh paused';
   return `
-    <button type="button" class="minimize-hit" data-overlay-minimize title="Minimize overlay" aria-label="Minimize overlay">−</button>
+    ${buildPositionBarHtml()}
     ${buildDebugHtml(overlayDebug)}
     <div class="paused-compact-row">
       <p class="paused-text">${escapeHtmlText(label)}</p>
@@ -392,6 +533,7 @@ function syncHostMinimizedClass(): void {
     return;
   }
   host.classList.toggle('urlar-overlay--minimized', overlayMinimized);
+  applyOverlayHostPosition();
 }
 
 function remountOverlayCard(): void {
@@ -421,6 +563,7 @@ function remountOverlayCard(): void {
     card.innerHTML = '';
   }
   bindStreamToggleListener(shadowRoot);
+  bindDragHandleListener(shadowRoot);
 }
 
 function mountTimerOverlay(opts: { globalGroupId?: string; individualJobId?: string }): void {
@@ -656,7 +799,14 @@ if (overlayBootstrapStale()) {
     if (area !== 'local') {
       return;
     }
-    if (PREFS_STORAGE_KEY in changes || STORAGE_KEY in changes) {
+    if (PREFS_STORAGE_KEY in changes) {
+      const raw = changes[PREFS_STORAGE_KEY]?.newValue;
+      overlayPosition = parsePrefs(raw).overlayPosition;
+      applyOverlayHostPosition();
+      void syncFromBackground();
+      return;
+    }
+    if (STORAGE_KEY in changes) {
       void syncFromBackground();
     }
   });
@@ -674,4 +824,4 @@ if (overlayBootstrapStale()) {
   }
 }
 
-void syncFromBackground();
+void loadOverlayPositionFromPrefs().then(() => syncFromBackground());

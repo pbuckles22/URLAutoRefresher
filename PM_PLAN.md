@@ -21,15 +21,16 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 - **Epic 13:** **13.A1–13.A3**, **13.B1–13.B5 shipped** — scheduler modular slices + **dashboard Phase B** complete (**shell → individuals → tab picker → globals → storage sync**); **G1–G5** in EDGE ([Parallel work](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#parallel-work--epics-11-13)); **`npm run ci`** after each slice was the Phase **13.B** gate (**G4**).
 - **Backlog #10 / Step A (0.12.x snap-back gate):** **Shipped on `main`** — TwitchFavs snap-back after raid/detour; sched-tab session hints; overlay debug strip + minimize badge; DOM-first live detect; stream **On/Off** toggle; **45m** safety refresh when live-paused; theater/chat layout (partial, no pref toggle). **Gate 2** (7/7 Playwright) + **Gate 3** real-Twitch pass (2026-06-08; 45m safety + override reset verified). Handoff: `doc/handoff/HANDOFF-2026-06-08-153200.md` (local).
 - **Epic 14 / Step B (`0.14.4`–`0.14.5`):** **Shipped on `main`** — proactive raid guard on TwitchFavs home tabs (auto-decline before detour); overlay debug **Raid blocks** / **Snap-backs** counters; Step A snap-back remains fallback. **Gate 2** (1/1 Playwright) + **Gate 3** real-Twitch pass (2026-06-16; `whistleface` raid, **Raid blocks: 1**). **`0.14.5`** — tech-debt patch: late bridge armed re-sync, group-toggle re-arm, raid-block counter dedupe. UAT soak continues in production. Version scheme: [doc/VERSIONING.md](doc/VERSIONING.md).
-- **Epic 15 / Step C (`0.15.1`):** **Shipped on `main`** — dashboard **Twitch** pref for automatic watch layout: **live** = theater + chat open; **offline** = theater + chat collapsed (default on).
+- **Epic 15 / Step C (`0.15.1`–`0.15.2`):** **Shipped on `main`** — dashboard **Twitch** pref for automatic watch layout: **live** = theater + chat open; **offline** = theater + chat collapsed (default on). **`0.15.2`** — tech-debt patch: pref hydration gate (no layout flash when off), automation reset on re-enable without reload.
+- **Backlog #8 / Step D (`0.16.1`):** **Shipped on `main`** — overlay **snap** (⇄ top-left ↔ top-right) + **drag** (⋮⋮ handle); global **`overlayPosition`** pref persists across refresh.
 
 ## Next (see EDGE plan)
 
-**Execution order:** **D** Backlog **#8** overlay drag (Epic **15** Step C shipped **0.15.1**).
+**Execution order:** Backlog **#9** precision volume defaults to active tab (Step D shipped **`0.16.1`**).
 
-| Step  | Scope                         | Status   |
-| ----- | ----------------------------- | -------- |
-| **D** | Backlog **#8** — overlay drag | **Open** |
+| Step  | Scope                         | Status                 |
+| ----- | ----------------------------- | ---------------------- |
+| **D** | Backlog **#8** — overlay drag | **Shipped** (`0.16.1`) |
 
 - **Parallel (multi-capacity):** **L12** ∥ **L13A** ∥ **L113** allowed (distinct paths); **13.A** slices **serial** on scheduler files (**G5**); **13.B** slices **serial** (**G4**); **one owner** for [`dashboard-app.ts`](src/dashboard/dashboard-app.ts) across epics (**G3**). Still **merge to `main` one PR at a time** through CI.
 - **Single agent:** Use the **linear order** in EDGE [Parallel work — Epics 11–13](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#parallel-work--epics-11-13) (single-stream bullet).
@@ -39,7 +40,7 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 
 ## Later (see EDGE plan)
 
-- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5**, **6**, **10** (see EDGE plan). **Open:** **4** (Play after long idle — **on hold**); **7** _(superseded by Epic 10 — traceability only)_; **8** (overlay snap/drag); **9** (precision volume defaults to **active tab**, not manual target picker — user-requested); **11** (per-chatter live chat history — opt-in capture on all open TwitchFavs tabs while live, 3-hour rolling window, IndexedDB, filter by username — deep design deferred to epic). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
+- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5**, **6**, **8**, **10** (see EDGE plan). **Open:** **4** (Play after long idle — **on hold**); **7** _(superseded by Epic 10 — traceability only)_; **9** (precision volume defaults to **active tab**, not manual target picker — user-requested); **11** (per-chatter live chat history — opt-in capture on all open TwitchFavs tabs while live, 3-hour rolling window, IndexedDB, filter by username — deep design deferred to epic). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
 - New epics/stories should still be added to the EDGE plan and [doc/requirements/](doc/requirements/) when you formalize scope.
 
 Keep this file in sync with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) checkboxes when scope changes. Session handoff notes use `doc/handoff/HANDOFF-*.md` (gitignored — not on `main`); prefer **timestamped** names (`HANDOFF-YYYY-MM-DD-HHmmss.md`) and a **Recorded** line — [AGENT_HANDOFF.md](AGENT_HANDOFF.md). Add `doc/requirements/` when you use it.

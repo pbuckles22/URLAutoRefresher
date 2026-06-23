@@ -261,3 +261,110 @@ test('turning off overlay pref removes overlay from fixture page', async () => {
   await dash.close();
   await fixturePage.close();
 });
+
+test('Backlog #8: snap overlay left persists after reload', async () => {
+  await ensureServiceWorkerReady(context, extensionId);
+
+  const fixturePage = await context.newPage();
+  await fixturePage.goto(`${FIXTURE_ORIGIN}/`);
+
+  const dash = await context.newPage();
+  await dash.goto(dashboardUrl(extensionId));
+  await dash.evaluate(
+    async ({
+      storageKey,
+      prefsKey,
+      targetUrl,
+    }: {
+      storageKey: string;
+      prefsKey: string;
+      targetUrl: string;
+    }) => {
+      await chrome.storage.local.set({
+        [storageKey]: {
+          schemaVersion: 3,
+          globalGroups: [],
+          individualJobs: [
+            {
+              id: 'e2e-individual',
+              target: { targetUrl },
+              baseIntervalSec: 60,
+              jitterSec: 0,
+              enabled: true,
+              nextFireAt: Date.now() + 120_000,
+            },
+          ],
+        },
+        [prefsKey]: { showPageOverlayTimer: true },
+      });
+    },
+    { storageKey: STORAGE_KEY, prefsKey: PREFS_STORAGE_KEY, targetUrl: FIXTURE_PAGE_TARGET_URL }
+  );
+
+  await waitForExtensionDebounce();
+  await fixturePage.reload({ waitUntil: 'domcontentloaded' });
+  await expectOverlayCardVisible(fixturePage);
+  await expandOverlayIfMinimized(fixturePage);
+
+  const beforeSnap = await fixturePage.evaluate(() => {
+    const host = document.getElementById('url-auto-refresher-overlay-root');
+    if (!host) {
+      return { ok: false as const };
+    }
+    return { ok: true as const, right: host.style.right, left: host.style.left };
+  });
+  expect(beforeSnap.ok).toBe(true);
+  if (beforeSnap.ok) {
+    expect(beforeSnap.right).toBe('12px');
+    expect(beforeSnap.left).toBe('auto');
+  }
+
+  await fixturePage.evaluate(() => {
+    const host = document.getElementById('url-auto-refresher-overlay-root');
+    const snap = host?.shadowRoot?.querySelector('[data-overlay-snap]') as HTMLElement | null;
+    snap?.click();
+  });
+
+  const afterSnap = await fixturePage.evaluate(() => {
+    const host = document.getElementById('url-auto-refresher-overlay-root');
+    if (!host) {
+      return { ok: false as const };
+    }
+    return {
+      ok: true as const,
+      right: host.style.right,
+      left: host.style.left,
+      snapLeft: host.classList.contains('urlar-overlay--snap-left'),
+    };
+  });
+  expect(afterSnap.ok).toBe(true);
+  if (afterSnap.ok) {
+    expect(afterSnap.left).toBe('12px');
+    expect(afterSnap.right).toBe('auto');
+    expect(afterSnap.snapLeft).toBe(true);
+  }
+
+  await fixturePage.reload({ waitUntil: 'domcontentloaded' });
+  await expectOverlayCardVisible(fixturePage);
+  await expandOverlayIfMinimized(fixturePage);
+
+  const afterReload = await fixturePage.evaluate(() => {
+    const host = document.getElementById('url-auto-refresher-overlay-root');
+    if (!host) {
+      return { ok: false as const };
+    }
+    return {
+      ok: true as const,
+      left: host.style.left,
+      snapLeft: host.classList.contains('urlar-overlay--snap-left'),
+    };
+  });
+  expect(afterReload.ok).toBe(true);
+  if (afterReload.ok) {
+    expect(afterReload.left).toBe('12px');
+    expect(afterReload.snapLeft).toBe(true);
+  }
+
+  await dash.close();
+  await fixturePage.close();
+});

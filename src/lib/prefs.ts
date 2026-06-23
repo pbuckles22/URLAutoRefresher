@@ -1,3 +1,9 @@
+import {
+  DEFAULT_OVERLAY_POSITION,
+  parseOverlayPosition,
+  type OverlayPosition,
+} from './overlay-position';
+
 export const PREFS_STORAGE_KEY = 'urlAutoRefresher_prefs_v1' as const;
 
 export type PrecisionVolumePrefs = {
@@ -16,6 +22,8 @@ export type ExtensionPrefs = {
   twitchWatchLayoutEnabled: boolean;
   /** Epic 11.5 — precision volume dashboard state. */
   precisionVolume: PrecisionVolumePrefs;
+  /** Backlog #8 — overlay snap/drag position (global, persisted across refresh). */
+  overlayPosition: OverlayPosition;
 };
 
 export const DEFAULT_PRECISION_VOLUME: PrecisionVolumePrefs = {
@@ -29,6 +37,7 @@ export const DEFAULT_PREFS: ExtensionPrefs = {
   showOverlaySnapBackDebug: true,
   twitchWatchLayoutEnabled: true,
   precisionVolume: { ...DEFAULT_PRECISION_VOLUME },
+  overlayPosition: { ...DEFAULT_OVERLAY_POSITION },
 };
 
 function parsePrecisionVolumePrefs(raw: unknown): PrecisionVolumePrefs {
@@ -72,6 +81,7 @@ export function parsePrefs(raw: unknown): ExtensionPrefs {
     showOverlaySnapBackDebug: showDebug,
     twitchWatchLayoutEnabled: watchLayout,
     precisionVolume: parsePrecisionVolumePrefs(o.precisionVolume),
+    overlayPosition: parseOverlayPosition(o.overlayPosition),
   };
 }
 
@@ -86,6 +96,7 @@ export type SaveExtensionPrefsInput = {
   showOverlaySnapBackDebug?: boolean;
   twitchWatchLayoutEnabled?: boolean;
   precisionVolume?: Partial<PrecisionVolumePrefs>;
+  overlayPosition?: OverlayPosition;
 };
 
 export async function saveExtensionPrefs(partial: SaveExtensionPrefsInput): Promise<void> {
@@ -98,6 +109,7 @@ export async function saveExtensionPrefs(partial: SaveExtensionPrefsInput): Prom
       ...existing.precisionVolume,
       ...(partial.precisionVolume ?? {}),
     },
+    overlayPosition: partial.overlayPosition ?? existing.overlayPosition,
   };
   await chrome.storage.local.set({ [PREFS_STORAGE_KEY]: next });
 }

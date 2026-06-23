@@ -2402,6 +2402,28 @@
     return String(rounded);
   }
 
+  // src/lib/overlay-position.ts
+  var DEFAULT_OVERLAY_POSITION = { anchor: "right" };
+  function parseOverlayPosition(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return { ...DEFAULT_OVERLAY_POSITION };
+    }
+    const o = raw;
+    const anchor = o.anchor === "left" ? "left" : "right";
+    let dragTop;
+    let dragLeft;
+    if (typeof o.dragTop === "number" && Number.isFinite(o.dragTop)) {
+      dragTop = o.dragTop;
+    }
+    if (typeof o.dragLeft === "number" && Number.isFinite(o.dragLeft)) {
+      dragLeft = o.dragLeft;
+    }
+    if (dragTop !== void 0 && dragLeft !== void 0) {
+      return { anchor, dragTop, dragLeft };
+    }
+    return { anchor };
+  }
+
   // src/lib/prefs.ts
   var PREFS_STORAGE_KEY = "urlAutoRefresher_prefs_v1";
   var DEFAULT_PRECISION_VOLUME = {
@@ -2413,7 +2435,8 @@
     showPageOverlayTimer: true,
     showOverlaySnapBackDebug: true,
     twitchWatchLayoutEnabled: true,
-    precisionVolume: { ...DEFAULT_PRECISION_VOLUME }
+    precisionVolume: { ...DEFAULT_PRECISION_VOLUME },
+    overlayPosition: { ...DEFAULT_OVERLAY_POSITION }
   };
   function parsePrecisionVolumePrefs(raw) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -2445,7 +2468,8 @@
       showPageOverlayTimer: show,
       showOverlaySnapBackDebug: showDebug,
       twitchWatchLayoutEnabled: watchLayout,
-      precisionVolume: parsePrecisionVolumePrefs(o.precisionVolume)
+      precisionVolume: parsePrecisionVolumePrefs(o.precisionVolume),
+      overlayPosition: parseOverlayPosition(o.overlayPosition)
     };
   }
   async function loadExtensionPrefs() {
@@ -2462,7 +2486,8 @@
       precisionVolume: {
         ...existing.precisionVolume,
         ...partial.precisionVolume ?? {}
-      }
+      },
+      overlayPosition: partial.overlayPosition ?? existing.overlayPosition
     };
     await chrome.storage.local.set({ [PREFS_STORAGE_KEY]: next });
   }
