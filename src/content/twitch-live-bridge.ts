@@ -22,9 +22,18 @@ import {
   createTwitchWatchLayoutState,
   installDebouncedTwitchWatchLayoutRunner,
   installTwitchWatchLayoutOverrideListeners,
+  resetTwitchWatchLayoutAutomationState,
   runTwitchChannelWatchLayout,
 } from './twitch-watch-layout';
 import { installTwitchRaidGuardRunner } from './twitch-raid-guard-runner';
+import {
+  applyWatchLayoutPrefChange,
+  canRunWatchLayout,
+  completeWatchLayoutPrefHydration,
+  createWatchLayoutPrefState,
+  watchLayoutEnabledFromStorageChange,
+  type WatchLayoutPrefState,
+} from './twitch-watch-layout-pref';
 
 const POLL_MS = 22_000;
 const DEBOUNCE_MS = 1_600;
@@ -41,25 +50,30 @@ let lastReportedLive: boolean | null | undefined;
 let disposeLayoutRunner: (() => void) | undefined;
 let raidGuardRunner: ReturnType<typeof installTwitchRaidGuardRunner> | undefined;
 const layoutState = createTwitchWatchLayoutState();
-let watchLayoutEnabled = true;
+const watchLayoutPrefState: WatchLayoutPrefState = createWatchLayoutPrefState();
 
 function disposeWatchLayoutRunner(): void {
   disposeLayoutRunner?.();
   disposeLayoutRunner = undefined;
 }
 
-function applyWatchLayoutPrefEnabled(enabled: boolean): void {
-  watchLayoutEnabled = enabled;
-  if (!enabled) {
+function applyWatchLayoutPrefAction(action: ReturnType<typeof applyWatchLayoutPrefChange>): void {
+  if (action.shouldStopLayout) {
     disposeWatchLayoutRunner();
-    return;
   }
-  runWatchLayoutIfChannelPage();
+  if (action.shouldResetLayoutState) {
+    resetTwitchWatchLayoutAutomationState(layoutState);
+  }
+  if (action.shouldRunLayout) {
+    runWatchLayoutIfChannelPage();
+  }
 }
 
 function hydrateWatchLayoutPref(): void {
   void loadExtensionPrefs().then((p) => {
-    applyWatchLayoutPrefEnabled(p.twitchWatchLayoutEnabled);
+    applyWatchLayoutPrefAction(
+      completeWatchLayoutPrefHydration(watchLayoutPrefState, p.twitchWatchLayoutEnabled)
+    );
   });
 }
 
@@ -128,7 +142,7 @@ function runWatchLayoutIfChannelPage(): void {
   if (recoverPopoutChatToChannelHome()) {
     return;
   }
-  if (!watchLayoutEnabled || !isTwitchChannelRootUrl(location.href)) {
+  if (!canRunWatchLayout(watchLayoutPrefState) || !isTwitchChannelRootUrl(location.href)) {
     return;
   }
   if (location.href !== lastLayoutHref) {
@@ -142,18 +156,28 @@ function runWatchLayoutIfChannelPage(): void {
     layoutState.watchLayoutEngaged = false;
   }
   ensureLayoutRunner();
-  runTwitchChannelWatchLayout(document, layoutState, streamIsLive(), watchLayoutEnabled);
+  runTwitchChannelWatchLayout(
+    document,
+    layoutState,
+    streamIsLive(),
+    watchLayoutPrefState.watchLayoutEnabled
+  );
 }
 
 let lastLayoutHref = location.href;
 
 function ensureLayoutRunner(): void {
-  if (!watchLayoutEnabled || disposeLayoutRunner) {
+  if (!canRunWatchLayout(watchLayoutPrefState) || disposeLayoutRunner) {
     return;
   }
   installTwitchWatchLayoutOverrideListeners(window, document, layoutState);
   disposeLayoutRunner = installDebouncedTwitchWatchLayoutRunner(window, () => {
-    runTwitchChannelWatchLayout(document, layoutState, streamIsLive(), watchLayoutEnabled);
+    runTwitchChannelWatchLayout(
+      document,
+      layoutState,
+      streamIsLive(),
+      watchLayoutPrefState.watchLayoutEnabled
+    );
   });
 }
 
@@ -262,8 +286,11 @@ function startBridge(): void {
       if (area !== 'local' || !(PREFS_STORAGE_KEY in changes)) {
         return;
       }
-      applyWatchLayoutPrefEnabled(
-        parsePrefs(changes[PREFS_STORAGE_KEY]?.newValue).twitchWatchLayoutEnabled
+      applyWatchLayoutPrefAction(
+        applyWatchLayoutPrefChange(
+          watchLayoutPrefState,
+          watchLayoutEnabledFromStorageChange(changes[PREFS_STORAGE_KEY]?.newValue, parsePrefs)
+        )
       );
     });
 

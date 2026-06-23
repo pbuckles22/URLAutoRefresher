@@ -2751,7 +2751,7 @@
       }
     };
   }
-  function bindOverlayPreference(ctx) {
+  function bindExtensionPreferences(ctx) {
     const overlayPref = ctx.dom.overlayPreference;
     const debugPref = ctx.dom.overlaySnapBackDebugPreference;
     const watchLayoutPref = ctx.dom.twitchWatchLayoutPreference;
@@ -2877,7 +2877,7 @@
     if (title) {
       title.textContent = chrome.runtime.getManifest().name;
     }
-    bindOverlayPreference(dashboardContext);
+    bindExtensionPreferences(dashboardContext);
     wireDashboardStorageSync(dashboardContext);
     bindGlobalTwitchFavsHint(dashboardContext);
     bindJobsListEvents(dashboardContext);

@@ -499,6 +499,19 @@ export function resetTwitchWatchLayoutSession(state: TwitchWatchLayoutState): vo
   state.offlineNavDone = false;
 }
 
+/** Full automation reset when watch-layout pref is re-enabled without navigation. */
+export function resetTwitchWatchLayoutAutomationState(state: TwitchWatchLayoutState): void {
+  state.theaterClickDone = false;
+  state.chatCollapseDone = false;
+  state.userOverrodeTheater = false;
+  state.userOverrodeChat = false;
+  state.sessionActive = false;
+  state.offlineNavDone = false;
+  state.offlineChatNavClicked = false;
+  state.ensureChatOpenForLive = false;
+  state.watchLayoutEngaged = false;
+}
+
 export function beginTwitchLiveWatchSession(state: TwitchWatchLayoutState): void {
   if (state.sessionActive) {
     return;

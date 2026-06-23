@@ -123,7 +123,7 @@ export function createDashboardContext(): DashboardContext {
   };
 }
 
-export function bindOverlayPreference(ctx: DashboardContext): void {
+export function bindExtensionPreferences(ctx: DashboardContext): void {
   const overlayPref = ctx.dom.overlayPreference;
   const debugPref = ctx.dom.overlaySnapBackDebugPreference;
   const watchLayoutPref = ctx.dom.twitchWatchLayoutPreference;

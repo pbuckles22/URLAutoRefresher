@@ -12,7 +12,7 @@ Extension version follows the **[EDGE plan](plan/EDGE_URL_AUTO_REFRESHER_PLAN.md
 | **EPIC**  | Epic number from the EDGE plan                      | Epic 14 → `14`              |
 | **STORY** | Story suffix within that epic                       | Story **14.4** → `4`        |
 
-**Current shipped version:** **`0.15.1`** — Epic **15** story **15.1** (Twitch live/offline watch layout pref).
+**Current shipped version:** **`0.15.2`** — Epic **15** story **15.1** tech-debt patch (watch-layout pref hydration + E2E).
 
 ## When to bump
 

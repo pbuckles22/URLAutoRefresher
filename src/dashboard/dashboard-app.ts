@@ -26,7 +26,7 @@ import {
   populatePrecisionVolumeTabSelect,
 } from './dashboard-precision-volume';
 import {
-  bindOverlayPreference,
+  bindExtensionPreferences,
   createDashboardContext,
   wireCrossSurfaceLinks,
 } from './dashboard-shell';
@@ -41,7 +41,7 @@ export function initDashboardApp(): void {
     title.textContent = chrome.runtime.getManifest().name;
   }
 
-  bindOverlayPreference(dashboardContext);
+  bindExtensionPreferences(dashboardContext);
 
   wireDashboardStorageSync(dashboardContext);
 

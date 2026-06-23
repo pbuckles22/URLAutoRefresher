@@ -201,3 +201,54 @@ export async function expectOverlayAbsent(page: Page): Promise<void> {
     )
     .toBe(true);
 }
+
+const WATCH_LAYOUT_STUB_BODY = (login: string, live: boolean) => {
+  const liveScript = live
+    ? '<script type="text/javascript">{"isLiveBroadcast":true,"twilight":true}</script>'
+    : '<script type="text/javascript">{"isLiveBroadcast":false,"twilight":true}</script>';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${login}</title>${liveScript}</head><body>
+<div data-a-target="player-live-indicator"></div>
+<button type="button" data-a-target="player-theater-mode-button" data-urlar-layout-probe="theater" onclick="this.setAttribute('data-urlar-clicked','1')"></button>
+<button type="button" aria-label="Collapse Chat" data-urlar-layout-probe="chat-collapse" onclick="this.setAttribute('data-urlar-clicked','1')"></button>
+</body></html>`;
+};
+
+/** Stub channel page with watch-layout controls and boot-script live marker. */
+export async function stubTwitchWatchLayoutChannelRoute(
+  page: Page,
+  login: string,
+  opts?: { live?: boolean }
+): Promise<void> {
+  const live = opts?.live !== false;
+  const escaped = login.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const channelRe = new RegExp(`^https://(www\\.)?twitch\\.tv/${escaped}/?(\\?.*)?$`, 'i');
+  await page.route(channelRe, async (route) => {
+    if (route.request().resourceType() === 'document') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/html; charset=utf-8',
+        body: WATCH_LAYOUT_STUB_BODY(login, live),
+      });
+    } else {
+      await route.abort();
+    }
+  });
+}
+
+/** Poll until a layout probe button records a click (content script theater/chat automation). */
+export async function expectWatchLayoutProbeClicked(
+  page: Page,
+  probe: 'theater' | 'chat-collapse',
+  clicked: boolean
+): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate((name) => {
+          const el = document.querySelector(`[data-urlar-layout-probe="${name}"]`);
+          return el?.getAttribute('data-urlar-clicked') === '1';
+        }, probe),
+      { timeout: 15_000 }
+    )
+    .toBe(clicked);
+}

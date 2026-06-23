@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as prefs from '../lib/prefs';
 import type { DashboardDom } from './dashboard-shell';
 import {
-  bindOverlayPreference,
+  bindExtensionPreferences,
   createDashboardContext,
   wireCrossSurfaceLinks,
 } from './dashboard-shell';
@@ -109,7 +109,7 @@ describe('createDashboardContext', () => {
   });
 });
 
-describe('bindOverlayPreference', () => {
+describe('bindExtensionPreferences', () => {
   let loadSpy: ReturnType<typeof vi.spyOn>;
   let saveSpy: ReturnType<typeof vi.spyOn>;
 
@@ -129,7 +129,7 @@ describe('bindOverlayPreference', () => {
   });
 
   it('no-ops when overlay input is absent', () => {
-    bindOverlayPreference({
+    bindExtensionPreferences({
       dom: emptyShellDom(),
     });
     expect(loadSpy).not.toHaveBeenCalled();
@@ -138,7 +138,7 @@ describe('bindOverlayPreference', () => {
   it('hydrates checkbox and saves on change', async () => {
     document.body.innerHTML = '<input type="checkbox" data-pref-overlay />';
     const ctx = createDashboardContext();
-    bindOverlayPreference(ctx);
+    bindExtensionPreferences(ctx);
     const input = ctx.dom.overlayPreference!;
     await vi.waitFor(() => {
       expect(input.checked).toBe(true);
@@ -151,7 +151,7 @@ describe('bindOverlayPreference', () => {
   it('hydrates Twitch watch layout checkbox and saves on change', async () => {
     document.body.innerHTML = '<input type="checkbox" data-pref-twitch-watch-layout />';
     const ctx = createDashboardContext();
-    bindOverlayPreference(ctx);
+    bindExtensionPreferences(ctx);
     const input = ctx.dom.twitchWatchLayoutPreference!;
     await vi.waitFor(() => {
       expect(input.checked).toBe(true);

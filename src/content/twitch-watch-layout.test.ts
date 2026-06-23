@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createTwitchWatchLayoutState,
+  resetTwitchWatchLayoutAutomationState,
   resetTwitchWatchLayoutSession,
   runTwitchChannelWatchLayout,
   tryEnterOfflineWatchSurface,
@@ -116,6 +117,65 @@ describe('runTwitchChannelWatchLayout pref gate', () => {
 
     expect(expandClicked).toBe(true);
     expect(state.ensureChatOpenForLive).toBe(false);
+  });
+
+  it('offline→live→offline on same URL resets session and reapplies offline layout', () => {
+    const doc = watchSurfaceDoc();
+    const theater = doc.querySelector('button')!;
+    const chatCollapse = doc.querySelectorAll('button')[1]!;
+    let theaterClicks = 0;
+    let chatClicks = 0;
+    theater.addEventListener('click', () => {
+      theaterClicks += 1;
+    });
+    chatCollapse.addEventListener('click', () => {
+      chatClicks += 1;
+    });
+
+    const state = createTwitchWatchLayoutState();
+    state.offlineNavDone = true;
+
+    runTwitchChannelWatchLayout(doc, state, false, true);
+    expect(state.watchLayoutEngaged).toBe(true);
+    expect(state.sessionActive).toBe(false);
+    expect(theaterClicks).toBe(1);
+    expect(chatClicks).toBe(1);
+
+    runTwitchChannelWatchLayout(doc, state, true, true);
+    expect(state.sessionActive).toBe(true);
+    expect(chatClicks).toBe(1);
+
+    runTwitchChannelWatchLayout(doc, state, false, true);
+    expect(state.sessionActive).toBe(false);
+    expect(chatClicks).toBe(2);
+    expect(theaterClicks).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('resetTwitchWatchLayoutAutomationState', () => {
+  it('clears automation flags for pref re-enable', () => {
+    const state = createTwitchWatchLayoutState();
+    state.theaterClickDone = true;
+    state.chatCollapseDone = true;
+    state.offlineNavDone = true;
+    state.offlineChatNavClicked = true;
+    state.ensureChatOpenForLive = true;
+    state.watchLayoutEngaged = true;
+    state.sessionActive = true;
+    state.userOverrodeTheater = true;
+    state.userOverrodeChat = true;
+
+    resetTwitchWatchLayoutAutomationState(state);
+
+    expect(state.theaterClickDone).toBe(false);
+    expect(state.chatCollapseDone).toBe(false);
+    expect(state.offlineNavDone).toBe(false);
+    expect(state.offlineChatNavClicked).toBe(false);
+    expect(state.ensureChatOpenForLive).toBe(false);
+    expect(state.watchLayoutEngaged).toBe(false);
+    expect(state.sessionActive).toBe(false);
+    expect(state.userOverrodeTheater).toBe(false);
+    expect(state.userOverrodeChat).toBe(false);
   });
 });
 
