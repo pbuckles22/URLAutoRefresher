@@ -12,6 +12,8 @@ export type ExtensionPrefs = {
   showPageOverlayTimer: boolean;
   /** Show tab id / refresh URL debug strip on the overlay (snap-back UAT). Default true. */
   showOverlaySnapBackDebug: boolean;
+  /** Epic 15 — live/offline Twitch watch layout (theater + chat policy). Default true. */
+  twitchWatchLayoutEnabled: boolean;
   /** Epic 11.5 — precision volume dashboard state. */
   precisionVolume: PrecisionVolumePrefs;
 };
@@ -25,6 +27,7 @@ export const DEFAULT_PRECISION_VOLUME: PrecisionVolumePrefs = {
 export const DEFAULT_PREFS: ExtensionPrefs = {
   showPageOverlayTimer: true,
   showOverlaySnapBackDebug: true,
+  twitchWatchLayoutEnabled: true,
   precisionVolume: { ...DEFAULT_PRECISION_VOLUME },
 };
 
@@ -60,9 +63,14 @@ export function parsePrefs(raw: unknown): ExtensionPrefs {
     typeof o.showOverlaySnapBackDebug === 'boolean'
       ? o.showOverlaySnapBackDebug
       : DEFAULT_PREFS.showOverlaySnapBackDebug;
+  const watchLayout =
+    typeof o.twitchWatchLayoutEnabled === 'boolean'
+      ? o.twitchWatchLayoutEnabled
+      : DEFAULT_PREFS.twitchWatchLayoutEnabled;
   return {
     showPageOverlayTimer: show,
     showOverlaySnapBackDebug: showDebug,
+    twitchWatchLayoutEnabled: watchLayout,
     precisionVolume: parsePrecisionVolumePrefs(o.precisionVolume),
   };
 }
@@ -76,6 +84,7 @@ export async function loadExtensionPrefs(): Promise<ExtensionPrefs> {
 export type SaveExtensionPrefsInput = {
   showPageOverlayTimer?: boolean;
   showOverlaySnapBackDebug?: boolean;
+  twitchWatchLayoutEnabled?: boolean;
   precisionVolume?: Partial<PrecisionVolumePrefs>;
 };
 
@@ -84,6 +93,7 @@ export async function saveExtensionPrefs(partial: SaveExtensionPrefsInput): Prom
   const next: ExtensionPrefs = {
     showPageOverlayTimer: partial.showPageOverlayTimer ?? existing.showPageOverlayTimer,
     showOverlaySnapBackDebug: partial.showOverlaySnapBackDebug ?? existing.showOverlaySnapBackDebug,
+    twitchWatchLayoutEnabled: partial.twitchWatchLayoutEnabled ?? existing.twitchWatchLayoutEnabled,
     precisionVolume: {
       ...existing.precisionVolume,
       ...(partial.precisionVolume ?? {}),

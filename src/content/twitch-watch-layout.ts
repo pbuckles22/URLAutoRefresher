@@ -1,8 +1,9 @@
 /**
- * Best-effort Twitch watch-surface layout: theater mode + collapsed chat on every channel visit.
- * Offline banner pages: click the channel sub-nav "Chat" tab (Home / About / … / Chat) to reach
- * the watch player — same as a user click, not a /chat URL assign (that opens popout).
- * User overrides to theater/chat stick until the page is refreshed.
+ * Best-effort Twitch watch-surface layout keyed to live/offline:
+ * - **Live:** theater mode only — chat stays open for hanging out in chat.
+ * - **Offline:** theater mode + collapsed chat — player pushed aside while waiting to go live.
+ * Offline banner pages: click the channel sub-nav "Chat" tab to reach the watch player.
+ * User overrides to theater/chat stick until live/offline transition or page refresh.
  */
 
 const THEATER_ENTER_SELECTORS = [
@@ -47,6 +48,11 @@ function isChatExpandClick(node: HTMLElement): boolean {
   }
   const label = getClickableAccessibilityLabel(node);
   return label !== '' && CHAT_EXPAND_ARIA_LABEL_PATTERNS.some((p) => p.test(label));
+}
+
+function isChatCollapseClick(node: HTMLElement): boolean {
+  const label = getClickableAccessibilityLabel(node);
+  return label !== '' && CHAT_COLLAPSE_ARIA_LABEL_PATTERNS.some((p) => p.test(label));
 }
 
 /** Offline channel home — sub-nav "Chat" tab (often shown as "↗ Chat"). */
@@ -411,6 +417,25 @@ function tryCollapseChatViaNativeControl(root: Document | HTMLElement): boolean 
   return true;
 }
 
+function findChatExpandControl(root: Document | HTMLElement): HTMLElement | null {
+  for (const selector of CHAT_EXPAND_SELECTORS) {
+    const hit = querySelectorDeep(root, selector);
+    if (hit) {
+      return hit;
+    }
+  }
+  return findClickableByAriaLabelPatternsDeep(root, CHAT_EXPAND_ARIA_LABEL_PATTERNS);
+}
+
+function tryExpandChatViaNativeControl(root: Document | HTMLElement): boolean {
+  const btn = findChatExpandControl(root);
+  if (!btn) {
+    return false;
+  }
+  btn.click();
+  return true;
+}
+
 export function tryNavigateOfflineViaChatControl(root: Document | HTMLElement): boolean {
   if (isOnTwitchChannelWatchSurface(root)) {
     return false;
@@ -447,6 +472,8 @@ export type TwitchWatchLayoutState = {
   offlineNavDone: boolean;
   /** Offline sub-nav Chat tab clicked once (opens watch player on banner-style home). */
   offlineChatNavClicked: boolean;
+  /** Live session — expand collapsed chat once after offline→live transition. */
+  ensureChatOpenForLive: boolean;
   /** Theater/chat layout has been applied (live or offline watch surface). */
   watchLayoutEngaged: boolean;
 };
@@ -460,6 +487,7 @@ export function createTwitchWatchLayoutState(): TwitchWatchLayoutState {
     sessionActive: false,
     offlineNavDone: false,
     offlineChatNavClicked: false,
+    ensureChatOpenForLive: false,
     watchLayoutEngaged: false,
   };
 }
@@ -481,17 +509,44 @@ export function beginTwitchLiveWatchSession(state: TwitchWatchLayoutState): void
   state.userOverrodeTheater = false;
   state.userOverrodeChat = false;
   state.offlineNavDone = false;
+  state.ensureChatOpenForLive = true;
 }
 
-function applyTheaterAndChat(root: Document | HTMLElement, state: TwitchWatchLayoutState): void {
-  state.watchLayoutEngaged = true;
-  if (!state.userOverrodeTheater) {
-    if (isTheaterModeLikelyActive(root)) {
-      state.theaterClickDone = true;
-    } else if (tryActivateTheaterMode(root)) {
-      state.theaterClickDone = true;
-    }
+function applyTheaterMode(root: Document | HTMLElement, state: TwitchWatchLayoutState): void {
+  if (state.userOverrodeTheater) {
+    return;
   }
+  if (isTheaterModeLikelyActive(root)) {
+    state.theaterClickDone = true;
+  } else if (tryActivateTheaterMode(root)) {
+    state.theaterClickDone = true;
+  }
+}
+
+/** Live: theater only; keep chat open (expand if still collapsed from offline). */
+function applyLiveWatchLayout(root: Document | HTMLElement, state: TwitchWatchLayoutState): void {
+  state.watchLayoutEngaged = true;
+  applyTheaterMode(root, state);
+
+  if (state.userOverrodeChat || !state.ensureChatOpenForLive) {
+    return;
+  }
+  if (tryExpandChatViaNativeControl(root)) {
+    state.ensureChatOpenForLive = false;
+    return;
+  }
+  if (findChatExpandControl(root) === null) {
+    state.ensureChatOpenForLive = false;
+  }
+}
+
+/** Offline: theater + collapsed chat — player to the side while waiting to go live. */
+function applyOfflineWatchLayout(
+  root: Document | HTMLElement,
+  state: TwitchWatchLayoutState
+): void {
+  state.watchLayoutEngaged = true;
+  applyTheaterMode(root, state);
 
   if (!state.userOverrodeChat && tryCollapseChatViaNativeControl(root)) {
     state.chatCollapseDone = true;
@@ -499,24 +554,29 @@ function applyTheaterAndChat(root: Document | HTMLElement, state: TwitchWatchLay
 }
 
 /**
- * Apply watch layout for a channel page. `streamLive` true skips the offline Chat step.
+ * Apply watch layout for a channel page. Live = theater + open chat; offline = theater + collapsed chat.
  */
 export function runTwitchChannelWatchLayout(
   root: Document | HTMLElement,
   state: TwitchWatchLayoutState,
-  streamLive: boolean
+  streamLive: boolean,
+  layoutEnabled = true
 ): void {
+  if (!layoutEnabled) {
+    return;
+  }
   if (streamLive) {
     if (!state.sessionActive) {
       beginTwitchLiveWatchSession(state);
     }
-    applyTheaterAndChat(root, state);
+    applyLiveWatchLayout(root, state);
     return;
   }
 
   if (state.sessionActive) {
     resetTwitchWatchLayoutSession(state);
   }
+  state.ensureChatOpenForLive = false;
 
   if (!state.offlineNavDone) {
     if (!isOnTwitchChannelWatchSurface(root)) {
@@ -530,7 +590,7 @@ export function runTwitchChannelWatchLayout(
     state.offlineNavDone = true;
   }
 
-  applyTheaterAndChat(root, state);
+  applyOfflineWatchLayout(root, state);
 }
 
 /** @deprecated Use runTwitchChannelWatchLayout */
@@ -585,6 +645,13 @@ export function installTwitchWatchLayoutOverrideListeners(
       if (isChatExpandClick(labelSource)) {
         state.userOverrodeChat = true;
         state.chatCollapseDone = false;
+        state.ensureChatOpenForLive = false;
+        return;
+      }
+      if (isChatCollapseClick(labelSource)) {
+        state.userOverrodeChat = true;
+        state.chatCollapseDone = false;
+        state.ensureChatOpenForLive = false;
       }
     },
     true

@@ -2412,6 +2412,7 @@
   var DEFAULT_PREFS = {
     showPageOverlayTimer: true,
     showOverlaySnapBackDebug: true,
+    twitchWatchLayoutEnabled: true,
     precisionVolume: { ...DEFAULT_PRECISION_VOLUME }
   };
   function parsePrecisionVolumePrefs(raw) {
@@ -2439,9 +2440,11 @@
     const o = raw;
     const show = typeof o.showPageOverlayTimer === "boolean" ? o.showPageOverlayTimer : DEFAULT_PREFS.showPageOverlayTimer;
     const showDebug = typeof o.showOverlaySnapBackDebug === "boolean" ? o.showOverlaySnapBackDebug : DEFAULT_PREFS.showOverlaySnapBackDebug;
+    const watchLayout = typeof o.twitchWatchLayoutEnabled === "boolean" ? o.twitchWatchLayoutEnabled : DEFAULT_PREFS.twitchWatchLayoutEnabled;
     return {
       showPageOverlayTimer: show,
       showOverlaySnapBackDebug: showDebug,
+      twitchWatchLayoutEnabled: watchLayout,
       precisionVolume: parsePrecisionVolumePrefs(o.precisionVolume)
     };
   }
@@ -2455,6 +2458,7 @@
     const next = {
       showPageOverlayTimer: partial.showPageOverlayTimer ?? existing.showPageOverlayTimer,
       showOverlaySnapBackDebug: partial.showOverlaySnapBackDebug ?? existing.showOverlaySnapBackDebug,
+      twitchWatchLayoutEnabled: partial.twitchWatchLayoutEnabled ?? existing.twitchWatchLayoutEnabled,
       precisionVolume: {
         ...existing.precisionVolume,
         ...partial.precisionVolume ?? {}
@@ -2690,6 +2694,9 @@
         overlaySnapBackDebugPreference: document.querySelector(
           "[data-pref-overlay-debug]"
         ),
+        twitchWatchLayoutPreference: document.querySelector(
+          "[data-pref-twitch-watch-layout]"
+        ),
         individualSectionHeading: document.querySelector(
           "[data-individual-section-heading]"
         ),
@@ -2747,7 +2754,8 @@
   function bindOverlayPreference(ctx) {
     const overlayPref = ctx.dom.overlayPreference;
     const debugPref = ctx.dom.overlaySnapBackDebugPreference;
-    if (!overlayPref && !debugPref) {
+    const watchLayoutPref = ctx.dom.twitchWatchLayoutPreference;
+    if (!overlayPref && !debugPref && !watchLayoutPref) {
       return;
     }
     void loadExtensionPrefs().then((p) => {
@@ -2757,12 +2765,18 @@
       if (debugPref) {
         debugPref.checked = p.showOverlaySnapBackDebug;
       }
+      if (watchLayoutPref) {
+        watchLayoutPref.checked = p.twitchWatchLayoutEnabled;
+      }
     });
     overlayPref?.addEventListener("change", () => {
       void saveExtensionPrefs({ showPageOverlayTimer: overlayPref.checked });
     });
     debugPref?.addEventListener("change", () => {
       void saveExtensionPrefs({ showOverlaySnapBackDebug: debugPref.checked });
+    });
+    watchLayoutPref?.addEventListener("change", () => {
+      void saveExtensionPrefs({ twitchWatchLayoutEnabled: watchLayoutPref.checked });
     });
   }
   function wireCrossSurfaceLinks(ctx) {

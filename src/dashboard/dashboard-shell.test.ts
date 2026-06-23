@@ -15,6 +15,7 @@ function emptyShellDom(over: Partial<DashboardDom> = {}): DashboardDom {
     openDashboardInTab: null,
     overlayPreference: null,
     overlaySnapBackDebugPreference: null,
+    twitchWatchLayoutPreference: null,
     jobsList: null,
     addJobForm: null,
     addJobError: null,
@@ -116,6 +117,7 @@ describe('bindOverlayPreference', () => {
     loadSpy = vi.spyOn(prefs, 'loadExtensionPrefs').mockResolvedValue({
       showPageOverlayTimer: true,
       showOverlaySnapBackDebug: true,
+      twitchWatchLayoutEnabled: true,
       precisionVolume: { lastTabId: null, lastLinearGain: 1 },
     });
     saveSpy = vi.spyOn(prefs, 'saveExtensionPrefs').mockResolvedValue(undefined);
@@ -144,6 +146,19 @@ describe('bindOverlayPreference', () => {
     input.checked = false;
     input.dispatchEvent(new Event('change'));
     expect(saveSpy).toHaveBeenCalledWith({ showPageOverlayTimer: false });
+  });
+
+  it('hydrates Twitch watch layout checkbox and saves on change', async () => {
+    document.body.innerHTML = '<input type="checkbox" data-pref-twitch-watch-layout />';
+    const ctx = createDashboardContext();
+    bindOverlayPreference(ctx);
+    const input = ctx.dom.twitchWatchLayoutPreference!;
+    await vi.waitFor(() => {
+      expect(input.checked).toBe(true);
+    });
+    input.checked = false;
+    input.dispatchEvent(new Event('change'));
+    expect(saveSpy).toHaveBeenCalledWith({ twitchWatchLayoutEnabled: false });
   });
 });
 

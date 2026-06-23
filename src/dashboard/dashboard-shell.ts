@@ -11,6 +11,7 @@ export type DashboardDom = {
   openDashboardInTab: HTMLElement | null;
   overlayPreference: HTMLInputElement | null;
   overlaySnapBackDebugPreference: HTMLInputElement | null;
+  twitchWatchLayoutPreference: HTMLInputElement | null;
   /** Epic 13.B2 — individual jobs list + add-job form */
   individualSectionHeading: HTMLElement | null;
   jobsList: HTMLUListElement | null;
@@ -63,6 +64,9 @@ export function createDashboardContext(): DashboardContext {
       overlayPreference: document.querySelector<HTMLInputElement>('[data-pref-overlay]'),
       overlaySnapBackDebugPreference: document.querySelector<HTMLInputElement>(
         '[data-pref-overlay-debug]'
+      ),
+      twitchWatchLayoutPreference: document.querySelector<HTMLInputElement>(
+        '[data-pref-twitch-watch-layout]'
       ),
       individualSectionHeading: document.querySelector<HTMLElement>(
         '[data-individual-section-heading]'
@@ -122,7 +126,8 @@ export function createDashboardContext(): DashboardContext {
 export function bindOverlayPreference(ctx: DashboardContext): void {
   const overlayPref = ctx.dom.overlayPreference;
   const debugPref = ctx.dom.overlaySnapBackDebugPreference;
-  if (!overlayPref && !debugPref) {
+  const watchLayoutPref = ctx.dom.twitchWatchLayoutPreference;
+  if (!overlayPref && !debugPref && !watchLayoutPref) {
     return;
   }
   void loadExtensionPrefs().then((p) => {
@@ -132,12 +137,18 @@ export function bindOverlayPreference(ctx: DashboardContext): void {
     if (debugPref) {
       debugPref.checked = p.showOverlaySnapBackDebug;
     }
+    if (watchLayoutPref) {
+      watchLayoutPref.checked = p.twitchWatchLayoutEnabled;
+    }
   });
   overlayPref?.addEventListener('change', () => {
     void saveExtensionPrefs({ showPageOverlayTimer: overlayPref.checked });
   });
   debugPref?.addEventListener('change', () => {
     void saveExtensionPrefs({ showOverlaySnapBackDebug: debugPref.checked });
+  });
+  watchLayoutPref?.addEventListener('change', () => {
+    void saveExtensionPrefs({ twitchWatchLayoutEnabled: watchLayoutPref.checked });
   });
 }
 

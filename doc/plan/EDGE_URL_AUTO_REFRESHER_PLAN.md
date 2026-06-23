@@ -404,6 +404,16 @@ flowchart LR
 
 ---
 
+## Epic 15 — Twitch theater/chat layout pref toggle (Step C)
+
+**Goal:** Let users **turn off** automatic Twitch watch layout on channel pages. When **on** (default): **live** → theater + chat open; **offline** → theater + collapsed chat. Step A shipped one-shot layout with no preference; **15.1** adds the dashboard toggle and live/offline policy.
+
+- [x] **15.1** — Pref `twitchWatchLayoutEnabled`; dashboard **Twitch** checkbox; [`twitch-live-bridge.ts`](../../src/content/twitch-live-bridge.ts) gates [`runTwitchChannelWatchLayout`](../../src/content/twitch-watch-layout.ts) (live = theater only, offline = theater + collapse) + `chrome.storage.onChanged` re-arm; Tier 1 prefs + watch-layout + dashboard-shell tests. _(Shipped **0.15.1**.)_
+
+**Technical notes:** No new manifest permissions. Popout-chat recovery and live/raid-guard bridge behavior unchanged when layout pref is off.
+
+---
+
 ## Reference — goals vs approach
 
 | Requirement                            | Approach                                                                                             |
@@ -569,6 +579,8 @@ Tracked here until scheduled into an epic or story. **Normative shipped scope** 
    - **Relation to Epic 11:** Post–11.7 polish; does not renumber shipped stories.
 
 10. **TwitchFavs snap-back after raid/detour (Step A)** — _(Shipped on `main`; see Gate 2 / Gate 3 in [TEST_PLAN.md](../../TEST_PLAN.md).)_ Favourite channel tabs that navigate away (raid, browse detour) **return home** on timer or immediately after raid URL detection; **sched-tab session hints** + URL-drift overlay matching; snap-back / last-refresh **debug strip** on overlay (minimize badge). **Live-aware:** DOM-first offline detection, stream **On/Off** toggle, **45m** safety refresh while live-paused, manual override cleared on refresh; partial **theater/chat** layout on overlay attach. **Tier 2:** [`e2e/epic-12-gate2-snap-back.spec.ts`](../../e2e/epic-12-gate2-snap-back.spec.ts) (Gate 2). **Manual:** [TEST_PLAN Gate 3](../../TEST_PLAN.md#gate-3--manual-ship-step-a-real-twitch). Learnings: [snap-back-implementation-notes.md](../requirements/snap-back-implementation-notes.md).
+
+11. **Per-chatter live chat history (TwitchFavs capture)** — Non-mods cannot retrieve past chat via any Twitch API; history must be captured going forward. **Scope:** All open TwitchFavs tabs across enabled groups — capture begins when the channel goes live (bridge fires `streamLive = true`) and stops when it goes offline. Messages older than **3 hours** are auto-pruned (sliding window). **Storage:** IndexedDB (per-channel key); `chrome.storage.local` is too small for busy chats. No server-side component. **UI:** Filter by chatter username → list of timestamped messages captured this session. No backfill (no history from before capture started). **Design decisions deferred to epic:** IndexedDB schema, DOM vs IRC/EventSub read path, retention watermark strategy, capture wiring into [`twitch-live-bridge.ts`](../../src/content/twitch-live-bridge.ts), and dashboard surface. **Compliance note:** Local only, opt-in capture, personal use — no public database. Review Twitch Developer Agreement and GDPR userdata obligations at epic design time. **Likely touch:** new `src/content/twitch-chat-capture.ts`, `src/lib/chat-history-store.ts` (IndexedDB wrapper), opt-in pref in [`src/lib/prefs.ts`](../../src/lib/prefs.ts), new dashboard/side-panel section.
 
 ---
 

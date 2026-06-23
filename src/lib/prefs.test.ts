@@ -32,12 +32,25 @@ describe('prefs', () => {
     ).toEqual({
       showPageOverlayTimer: true,
       showOverlaySnapBackDebug: true,
+      twitchWatchLayoutEnabled: true,
       precisionVolume: { lastTabId: 42, lastLinearGain: -0.25 },
     });
   });
 
   it('showOverlaySnapBackDebug false when set', () => {
     expect(parsePrefs({ showOverlaySnapBackDebug: false }).showOverlaySnapBackDebug).toBe(false);
+  });
+
+  it('twitchWatchLayoutEnabled false when set', () => {
+    expect(parsePrefs({ twitchWatchLayoutEnabled: false }).twitchWatchLayoutEnabled).toBe(false);
+  });
+
+  it('twitchWatchLayoutEnabled defaults true when missing', () => {
+    expect(parsePrefs({}).twitchWatchLayoutEnabled).toBe(true);
+  });
+
+  it('ignores invalid twitchWatchLayoutEnabled', () => {
+    expect(parsePrefs({ twitchWatchLayoutEnabled: 'no' }).twitchWatchLayoutEnabled).toBe(true);
   });
 
   it('ignores invalid precisionVolume fields', () => {
@@ -89,6 +102,7 @@ describe('extension prefs in chrome.storage.local (Epic 3.0)', () => {
     expect(mem[PREFS_STORAGE_KEY]).toEqual({
       showPageOverlayTimer: false,
       showOverlaySnapBackDebug: true,
+      twitchWatchLayoutEnabled: true,
       precisionVolume: DEFAULT_PRECISION_VOLUME,
     });
   });

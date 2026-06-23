@@ -1,6 +1,6 @@
 /**
  * Epic 8.1: report Twitch channel live/offline to the service worker (Twitch-first).
- * All channel visits: theater + collapsed chat; offline/unknown clicks Chat first.
+ * Live/offline channel visits: live = theater + open chat; offline = theater + collapsed chat.
  */
 import {
   coalesceTwitchLiveSignal,
@@ -16,6 +16,7 @@ import {
   TWITCH_RAID_GUARD_SYNC_REQUEST,
 } from '../lib/messages';
 import { sendExtensionMessageFireAndForget } from '../lib/extension-runtime-send';
+import { loadExtensionPrefs, parsePrefs, PREFS_STORAGE_KEY } from '../lib/prefs';
 import { inferTwitchLiveFromChannelPage } from '../lib/twitch-live-detect';
 import {
   createTwitchWatchLayoutState,
@@ -40,6 +41,27 @@ let lastReportedLive: boolean | null | undefined;
 let disposeLayoutRunner: (() => void) | undefined;
 let raidGuardRunner: ReturnType<typeof installTwitchRaidGuardRunner> | undefined;
 const layoutState = createTwitchWatchLayoutState();
+let watchLayoutEnabled = true;
+
+function disposeWatchLayoutRunner(): void {
+  disposeLayoutRunner?.();
+  disposeLayoutRunner = undefined;
+}
+
+function applyWatchLayoutPrefEnabled(enabled: boolean): void {
+  watchLayoutEnabled = enabled;
+  if (!enabled) {
+    disposeWatchLayoutRunner();
+    return;
+  }
+  runWatchLayoutIfChannelPage();
+}
+
+function hydrateWatchLayoutPref(): void {
+  void loadExtensionPrefs().then((p) => {
+    applyWatchLayoutPrefEnabled(p.twitchWatchLayoutEnabled);
+  });
+}
 
 function teardown(): void {
   if (tornDown) {
@@ -56,8 +78,7 @@ function teardown(): void {
   }
   mo?.disconnect();
   mo = undefined;
-  disposeLayoutRunner?.();
-  disposeLayoutRunner = undefined;
+  disposeWatchLayoutRunner();
   raidGuardRunner?.dispose();
   raidGuardRunner = undefined;
   document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -107,7 +128,7 @@ function runWatchLayoutIfChannelPage(): void {
   if (recoverPopoutChatToChannelHome()) {
     return;
   }
-  if (!isTwitchChannelRootUrl(location.href)) {
+  if (!watchLayoutEnabled || !isTwitchChannelRootUrl(location.href)) {
     return;
   }
   if (location.href !== lastLayoutHref) {
@@ -121,18 +142,18 @@ function runWatchLayoutIfChannelPage(): void {
     layoutState.watchLayoutEngaged = false;
   }
   ensureLayoutRunner();
-  runTwitchChannelWatchLayout(document, layoutState, streamIsLive());
+  runTwitchChannelWatchLayout(document, layoutState, streamIsLive(), watchLayoutEnabled);
 }
 
 let lastLayoutHref = location.href;
 
 function ensureLayoutRunner(): void {
-  if (disposeLayoutRunner) {
+  if (!watchLayoutEnabled || disposeLayoutRunner) {
     return;
   }
   installTwitchWatchLayoutOverrideListeners(window, document, layoutState);
   disposeLayoutRunner = installDebouncedTwitchWatchLayoutRunner(window, () => {
-    runTwitchChannelWatchLayout(document, layoutState, streamIsLive());
+    runTwitchChannelWatchLayout(document, layoutState, streamIsLive(), watchLayoutEnabled);
   });
 }
 
@@ -237,6 +258,16 @@ function startBridge(): void {
       }
     });
 
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local' || !(PREFS_STORAGE_KEY in changes)) {
+        return;
+      }
+      applyWatchLayoutPrefEnabled(
+        parsePrefs(changes[PREFS_STORAGE_KEY]?.newValue).twitchWatchLayoutEnabled
+      );
+    });
+
+    hydrateWatchLayoutPref();
     sendExtensionMessageFireAndForget({ type: TWITCH_RAID_GUARD_SYNC_REQUEST });
     send(sampleLive());
     pollTimer = window.setInterval(() => {

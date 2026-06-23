@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "URL Auto Refresher",
-  "version": "0.14.5",
+  "version": "0.15.1",
   "description": "Scheduled refreshes to a target URL per tab with optional global synchronized groups, individuals, and jitter.",
   "permissions": ["storage", "alarms", "tabs", "windows", "sidePanel", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*"],
