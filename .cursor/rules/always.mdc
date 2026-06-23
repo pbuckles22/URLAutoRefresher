@@ -1,5 +1,5 @@
 ---
-description: Project context — apply in every session
+description: URL Auto Refresher — product context, plan links, and handoff protocol
 alwaysApply: true
 ---
 
@@ -11,16 +11,15 @@ alwaysApply: true
 
 | Item | Value |
 | ---- | ----- |
-| **Branch** | **`main`** — synced with **`origin/main`** |
-| **Shipped on `main`** | **`0.16.1`** — Backlog **#8** overlay snap + drag (`8fc5cc7`) |
-| **Latest on branch** | **`0.16.2`** — Backlog **#9** active-tab precision volume (uncommitted on feature branch) |
-| **In progress** | Backlog **#9** on **`feature/backlog-9-active-tab-precision-volume`** (~**0.16.2**); **`npm run ci`** green locally — merge pending |
-| **Last handoff** | `doc/handoff/HANDOFF-2026-06-23-122307.md` (gitignored) |
+| **Branch** | **`main`** — synced with **`origin/main`** after push |
+| **Shipped on `main`** | **`0.16.2`** — Backlog **#9** active-tab precision volume (`58c87bb`) |
+| **In progress** | None — optional **#8** review polish (drag E2E, MV3 storage guard, drag-handle a11y) |
+| **Last handoff** | `doc/handoff/HANDOFF-2026-06-23-124800.md` (gitignored) |
 
 Cursor rules, skills, handoff protocol, and test discipline from [AgenticTemplate](https://github.com/pbuckles22/AgenticTemplate). Document your toolchain in AGENT_HANDOFF.md and TEST_PLAN.md.
 
 Source of truth: PM_PLAN.md, AGENT_HANDOFF.md; .cursor/skills/ (DEV_GUIDE, TEST_TDD, DESIGN_SYSTEM, techwriter, tester, code-reviewer, code-quality-gate, tech-debt-evaluator, pm-governance, ui-ux, visual-match, chromium-mv3-extension, extension-architect, tech-lead, web-audio-dsp, github-feature-workflow). **MV3 / messaging:** Before changing `manifest.json`, `src/background/`, content scripts (e.g. `src/content/page-overlay.ts`), or `src/lib/messages.ts`, read [.cursor/skills/chromium-mv3-extension/SKILL.md](.cursor/skills/chromium-mv3-extension/SKILL.md). **Skills by file context (not every edit):** When this session includes [.cursor/rules/skill-context-extension-architect.mdc](.cursor/rules/skill-context-extension-architect.mdc) or [.cursor/rules/skill-context-tech-lead.mdc](.cursor/rules/skill-context-tech-lead.mdc), follow those rules so architect / tech-lead / web-audio-dsp apply only where impact is high. Use techwriter for docs; use tester + .cursor/rules/testing.mdc for black-box tests. **TDD:** Read TEST_TDD.md and tester skill first; **Tier 1 (Vitest) and Tier 2 (Playwright)** use test-first before production code when that tier applies. **CI gate:** Before **`main`** lands on origin, **`npm run ci`** runs (via **`git push`** automation or **`.husky/pre-push`**). **`git push`** to **`main`** also waits for **GitHub Actions** green (`prepare` installs the alias). **Feature branches / push ritual:** [.cursor/skills/github-feature-workflow/SKILL.md](.cursor/skills/github-feature-workflow/SKILL.md).
 
-**Handoff:** When the user wants a handoff, run code review (code-reviewer), tech debt (tech-debt-evaluator), and your project’s test/coverage commands as documented in AGENT_HANDOFF.md; write the local note **and mirror the full starting point in chat** (ship status table, dual-audience Done, Next up). See AGENT_HANDOFF.md and [.cursor/rules/handoff-checklist.mdc](.cursor/rules/handoff-checklist.mdc) — do not skip the chat mirror.
+**Handoff:** When the user wants a handoff, run code review (code-reviewer), tech debt (tech-debt-evaluator), and your project's test/coverage commands as documented in AGENT_HANDOFF.md; write the local note **and mirror the full starting point in chat** (ship status table, dual-audience Done, Next up). See AGENT_HANDOFF.md and [.cursor/rules/handoff-checklist.mdc](.cursor/rules/handoff-checklist.mdc) — do not skip the chat mirror.
 
 **Pre-commit chat summaries:** Before `git commit`, **AGENT_HANDOFF.md** → *Git workflow* step **3** expects **two** blurbs (maintainer/plan language, then extension-user language). Follow [.cursor/skills/techwriter/SKILL.md](.cursor/skills/techwriter/SKILL.md) (*Dual-audience blurbs*); the **user** blurb must not read like an implementation note (no DOM/CSS/API/file/test jargon unless the user asked for technical detail).

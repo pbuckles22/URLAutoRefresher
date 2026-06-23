@@ -23,16 +23,16 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 - **Epic 14 / Step B (`0.14.4`–`0.14.5`):** **Shipped on `main`** — proactive raid guard on TwitchFavs home tabs (auto-decline before detour); overlay debug **Raid blocks** / **Snap-backs** counters; Step A snap-back remains fallback. **Gate 2** (1/1 Playwright) + **Gate 3** real-Twitch pass (2026-06-16; `whistleface` raid, **Raid blocks: 1**). **`0.14.5`** — tech-debt patch: late bridge armed re-sync, group-toggle re-arm, raid-block counter dedupe. UAT soak continues in production. Version scheme: [doc/VERSIONING.md](doc/VERSIONING.md).
 - **Epic 15 / Step C (`0.15.1`–`0.15.2`):** **Shipped on `main`** — dashboard **Twitch** pref for automatic watch layout: **live** = theater + chat open; **offline** = theater + chat collapsed (default on). **`0.15.2`** — tech-debt patch: pref hydration gate (no layout flash when off), automation reset on re-enable without reload.
 - **Backlog #8 / Step D (`0.16.1`):** **Shipped on `main`** — overlay **snap** (⇄ top-left ↔ top-right) + **drag** (⋮⋮ handle); global **`overlayPosition`** pref persists across refresh.
-- **Backlog #9 (`0.16.2`):** **In progress on `feature/backlog-9-active-tab-precision-volume`** — precision volume fader defaults to **active tab** in the focused window (optional tab override picker); **`npm run ci`** green locally.
+- **Backlog #9 (`0.16.2`):** **Shipped on `main`** — precision volume fader defaults to **active tab** in the focused window (optional tab override picker).
 
 ## Next (see EDGE plan)
 
-**Execution order:** Backlog **#9** ships **`0.16.2`**; optional **#8** review polish (drag E2E, MV3 storage guard, drag-handle a11y).
+**Execution order:** Optional **#8** review polish (drag E2E, MV3 storage guard, drag-handle a11y); Backlog **#11** when scoped.
 
-| Step   | Scope                                        | Status                          |
-| ------ | -------------------------------------------- | ------------------------------- |
-| **D**  | Backlog **#8** — overlay drag                | **Shipped** (`0.16.1`)          |
-| **#9** | Backlog **#9** — active-tab precision volume | **Branch** (`0.16.2`, CI green) |
+| Step   | Scope                                        | Status                 |
+| ------ | -------------------------------------------- | ---------------------- |
+| **D**  | Backlog **#8** — overlay drag                | **Shipped** (`0.16.1`) |
+| **#9** | Backlog **#9** — active-tab precision volume | **Shipped** (`0.16.2`) |
 
 - **Parallel (multi-capacity):** **L12** ∥ **L13A** ∥ **L113** allowed (distinct paths); **13.A** slices **serial** on scheduler files (**G5**); **13.B** slices **serial** (**G4**); **one owner** for [`dashboard-app.ts`](src/dashboard/dashboard-app.ts) across epics (**G3**). Still **merge to `main` one PR at a time** through CI.
 - **Single agent:** Use the **linear order** in EDGE [Parallel work — Epics 11–13](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#parallel-work--epics-11-13) (single-stream bullet).
@@ -42,7 +42,7 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 
 ## Later (see EDGE plan)
 
-- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5**, **6**, **8**, **10** (see EDGE plan). **Open:** **4** (Play after long idle — **on hold**); **7** _(superseded by Epic 10 — traceability only)_; **9** _(branch **`0.16.2`** — active-tab precision volume)_; **11** (per-chatter live chat history — opt-in capture on all open TwitchFavs tabs while live, 3-hour rolling window, IndexedDB, filter by username — deep design deferred to epic). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
+- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5**, **6**, **8**, **9**, **10** (see EDGE plan). **Open:** **4** (Play after long idle — **on hold**); **7** _(superseded by Epic 10 — traceability only)_; **11** (per-chatter live chat history — opt-in capture on all open TwitchFavs tabs while live, 3-hour rolling window, IndexedDB, filter by username — deep design deferred to epic). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
 - New epics/stories should still be added to the EDGE plan and [doc/requirements/](doc/requirements/) when you formalize scope.
 
 Keep this file in sync with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) checkboxes when scope changes. Session handoff notes use `doc/handoff/HANDOFF-*.md` (gitignored — not on `main`); prefer **timestamped** names (`HANDOFF-YYYY-MM-DD-HHmmss.md`) and a **Recorded** line — [AGENT_HANDOFF.md](AGENT_HANDOFF.md). Add `doc/requirements/` when you use it.
