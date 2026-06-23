@@ -10,7 +10,9 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -21,9 +23,6 @@ jobs:
 
       - name: Install
         run: npm ci
-
-      - name: Install Playwright Chromium
-        run: npx playwright install chromium --with-deps
 
       - name: Lint, Prettier, test, build, and E2E
         env:
