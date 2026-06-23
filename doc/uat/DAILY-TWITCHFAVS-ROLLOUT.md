@@ -6,12 +6,12 @@ Use this when you want **scheduled tabs to return to your Twitch channel URL** a
 
 ## What you are deploying
 
-| Piece                           | What it does for you                                                                                                                                                                                                     |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Scheduled refresh**           | On a timer, the extension opens the **saved channel URL** in the matching tab—not “whatever URL is showing now.”                                                                                                         |
-| **TwitchFavs group**            | A global group named **TwitchFavs** plus a list of streamer logins. Opening `https://www.twitch.tv/<login>` adds that channel to the group automatically.                                                                |
-| **Live tab lookup**             | The extension does **not** remember a tab ID from when you opened a favorite. When the timer fires, it finds an **open tab** that matches the channel URL and navigates **that** tab home.                               |
-| **Precision volume** (optional) | Shortcuts use the **active** tab. Dashboard fader still needs **Target tab** today — [Backlog #9](../plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#9-precision-volume--default-to-active-focused-tab) will align with active tab. |
+| Piece                           | What it does for you                                                                                                                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scheduled refresh**           | On a timer, the extension opens the **saved channel URL** in the matching tab—not “whatever URL is showing now.”                                                                           |
+| **TwitchFavs group**            | A global group named **TwitchFavs** plus a list of streamer logins. Opening `https://www.twitch.tv/<login>` adds that channel to the group automatically.                                  |
+| **Live tab lookup**             | The extension does **not** remember a tab ID from when you opened a favorite. When the timer fires, it finds an **open tab** that matches the channel URL and navigates **that** tab home. |
+| **Precision volume** (optional) | Shortcuts and the dashboard fader both target the **active** tab in your focused window by default; override picker optional for another tab.                                              |
 
 ---
 

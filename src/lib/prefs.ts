@@ -7,7 +7,7 @@ import {
 export const PREFS_STORAGE_KEY = 'urlAutoRefresher_prefs_v1' as const;
 
 export type PrecisionVolumePrefs = {
-  /** Last tab the dashboard/side panel volume UI targeted; null when unset. */
+  /** Explicit tab override from the picker; null = active tab in last-focused window. */
   lastTabId: number | null;
   /** Linear gain sent from the UI (100% numeric = 1.0); may be negative for phase invert. */
   lastLinearGain: number;

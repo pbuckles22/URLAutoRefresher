@@ -15,6 +15,7 @@ import {
 } from '../lib/precision-volume-fader';
 import { loadExtensionPrefs, saveExtensionPrefs } from '../lib/prefs';
 import { sendPrecisionVolumeTabRequest } from '../lib/precision-volume-tab-client';
+import { resolvePrecisionVolumeTargetTabId } from '../lib/precision-volume-target-tab';
 import {
   applyIndividualTabSelectFilter,
   refreshIndividualTabPickerCache,
@@ -23,23 +24,36 @@ import {
 import type { DashboardContext } from './dashboard-shell';
 
 type PrecisionVolumeController = {
-  readTabId: () => number | null;
+  readExplicitTabId: () => number | null;
   syncControlsFromLinearGain: (linearGain: number) => void;
-  applyToSelectedTab: (linearGain: number) => void;
+  applyToTargetTab: (linearGain: number) => void;
+  refreshApplyHint: () => void;
 };
 
 let precisionVolumeController: PrecisionVolumeController | null = null;
 
-function updatePrecisionVolumeApplyHint(ctx: DashboardContext): void {
-  const hint = ctx.dom.precisionVolumeApplyHint;
-  const tabId = precisionVolumeController?.readTabId() ?? null;
-  if (!hint) {
-    return;
+const ACTIVE_TAB_OPTION = '<option value="">Active tab (focused window)</option>';
+
+function readExplicitTabIdFromSelect(select: HTMLSelectElement): number | null {
+  const raw = select.value;
+  if (raw === '') {
+    return null;
   }
-  hint.style.display = tabId === null ? 'block' : 'none';
+  const id = Number(raw);
+  return Number.isInteger(id) && id >= 0 ? id : null;
 }
 
-/** After tab list is populated, restore saved tab + push gain to that tab (fixes silent 0% UI). */
+async function updatePrecisionVolumeApplyHint(ctx: DashboardContext): Promise<void> {
+  const hint = ctx.dom.precisionVolumeApplyHint;
+  if (!hint || !precisionVolumeController) {
+    return;
+  }
+  const explicit = precisionVolumeController.readExplicitTabId();
+  const target = await resolvePrecisionVolumeTargetTabId(explicit);
+  hint.style.display = target === undefined ? 'block' : 'none';
+}
+
+/** After tab list is populated, restore saved tab + push gain to target tab. */
 export async function restorePrecisionVolumeAfterTabListReady(
   ctx: DashboardContext
 ): Promise<void> {
@@ -57,11 +71,8 @@ export async function restorePrecisionVolumeAfterTabListReady(
       precisionVolumeTabSelect.value = idStr;
     }
   }
-  updatePrecisionVolumeApplyHint(ctx);
-  const tabId = ctrl.readTabId();
-  if (tabId !== null) {
-    ctrl.applyToSelectedTab(pv.lastLinearGain);
-  }
+  await ctrl.refreshApplyHint();
+  ctrl.applyToTargetTab(pv.lastLinearGain);
 }
 
 export function applyPrecisionVolumeTabSelectFilter(
@@ -74,7 +85,7 @@ export function applyPrecisionVolumeTabSelectFilter(
   }
   const q = (precisionVolumeTabSearch?.value ?? '').trim().toLowerCase();
   const prev = precisionVolumeTabSelect.value;
-  precisionVolumeTabSelect.innerHTML = '<option value="">Select a tab…</option>';
+  precisionVolumeTabSelect.innerHTML = ACTIVE_TAB_OPTION;
   for (const t of cache.tabs) {
     const label = t.title?.trim() || t.url || `Tab ${t.id}`;
     const url = t.url ?? '';
@@ -133,34 +144,29 @@ export function bindPrecisionVolumeUi(
   let applyTimer: ReturnType<typeof setTimeout> | undefined;
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
 
-  const readTabId = (): number | null => {
-    const raw = precisionVolumeTabSelect.value;
-    if (raw === '') {
-      return null;
-    }
-    const id = Number(raw);
-    return Number.isInteger(id) && id >= 0 ? id : null;
-  };
+  const readExplicitTabId = (): number | null =>
+    readExplicitTabIdFromSelect(precisionVolumeTabSelect);
 
   const scheduleApply = (linearGain: number): void => {
-    const tabId = readTabId();
-    if (tabId === null) {
-      return;
-    }
     const g = clampSignedLinearGain(linearGain);
     window.clearTimeout(applyTimer);
     applyTimer = window.setTimeout(() => {
-      void sendPrecisionVolumeTabRequest(tabId, { kind: 'set-linear-gain', linearGain: g });
+      void (async () => {
+        const tabId = await resolvePrecisionVolumeTargetTabId(readExplicitTabId());
+        if (tabId === undefined) {
+          return;
+        }
+        await sendPrecisionVolumeTabRequest(tabId, { kind: 'set-linear-gain', linearGain: g });
+      })();
     }, 70);
   };
 
   const scheduleSave = (linearGain: number): void => {
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
-      const tabId = readTabId();
       void saveExtensionPrefs({
         precisionVolume: {
-          lastTabId: tabId,
+          lastTabId: readExplicitTabId(),
           lastLinearGain: clampSignedLinearGain(linearGain),
         },
       });
@@ -182,14 +188,17 @@ export function bindPrecisionVolumeUi(
     updatePhaseLabel(ctx, g);
   };
 
+  const refreshApplyHint = (): Promise<void> => updatePrecisionVolumeApplyHint(ctx);
+
   precisionVolumeController = {
-    readTabId,
+    readExplicitTabId,
     syncControlsFromLinearGain,
-    applyToSelectedTab: (linearGain: number) => {
+    applyToTargetTab: (linearGain: number) => {
       scheduleApply(linearGain);
     },
+    refreshApplyHint,
   };
-  updatePrecisionVolumeApplyHint(ctx);
+  void refreshApplyHint();
 
   if (precisionVolumeTabSearch && precisionVolumeTabSearch.dataset.pvFilterBound !== '1') {
     precisionVolumeTabSearch.dataset.pvFilterBound = '1';
@@ -242,8 +251,10 @@ export function bindPrecisionVolumeUi(
   });
 
   precisionVolumeTabSelect.addEventListener('change', () => {
-    updatePrecisionVolumeApplyHint(ctx);
-    scheduleApply(currentLinearGain);
-    scheduleSave(currentLinearGain);
+    void (async () => {
+      await refreshApplyHint();
+      scheduleApply(currentLinearGain);
+      scheduleSave(currentLinearGain);
+    })();
   });
 }

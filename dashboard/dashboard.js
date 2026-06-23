@@ -2520,15 +2520,33 @@
     return sendExtensionMessageAsync(msg);
   }
 
+  // src/lib/precision-volume-target-tab.ts
+  async function resolvePrecisionVolumeTargetTabId(explicitTabId) {
+    if (explicitTabId !== null) {
+      return explicitTabId;
+    }
+    return resolvePreferredPinTabId();
+  }
+
   // src/dashboard/dashboard-precision-volume.ts
   var precisionVolumeController = null;
-  function updatePrecisionVolumeApplyHint(ctx) {
+  var ACTIVE_TAB_OPTION = '<option value="">Active tab (focused window)</option>';
+  function readExplicitTabIdFromSelect(select) {
+    const raw = select.value;
+    if (raw === "") {
+      return null;
+    }
+    const id = Number(raw);
+    return Number.isInteger(id) && id >= 0 ? id : null;
+  }
+  async function updatePrecisionVolumeApplyHint(ctx) {
     const hint = ctx.dom.precisionVolumeApplyHint;
-    const tabId = precisionVolumeController?.readTabId() ?? null;
-    if (!hint) {
+    if (!hint || !precisionVolumeController) {
       return;
     }
-    hint.style.display = tabId === null ? "block" : "none";
+    const explicit = precisionVolumeController.readExplicitTabId();
+    const target = await resolvePrecisionVolumeTargetTabId(explicit);
+    hint.style.display = target === void 0 ? "block" : "none";
   }
   async function restorePrecisionVolumeAfterTabListReady(ctx) {
     const ctrl = precisionVolumeController;
@@ -2545,11 +2563,8 @@
         precisionVolumeTabSelect.value = idStr;
       }
     }
-    updatePrecisionVolumeApplyHint(ctx);
-    const tabId = ctrl.readTabId();
-    if (tabId !== null) {
-      ctrl.applyToSelectedTab(pv.lastLinearGain);
-    }
+    await ctrl.refreshApplyHint();
+    ctrl.applyToTargetTab(pv.lastLinearGain);
   }
   function applyPrecisionVolumeTabSelectFilter(ctx, cache) {
     const { precisionVolumeTabSelect, precisionVolumeTabSearch } = ctx.dom;
@@ -2558,7 +2573,7 @@
     }
     const q = (precisionVolumeTabSearch?.value ?? "").trim().toLowerCase();
     const prev = precisionVolumeTabSelect.value;
-    precisionVolumeTabSelect.innerHTML = '<option value="">Select a tab\u2026</option>';
+    precisionVolumeTabSelect.innerHTML = ACTIVE_TAB_OPTION;
     for (const t of cache.tabs) {
       const label = t.title?.trim() || t.url || `Tab ${t.id}`;
       const url = t.url ?? "";
@@ -2604,32 +2619,26 @@
     );
     let applyTimer;
     let saveTimer;
-    const readTabId = () => {
-      const raw = precisionVolumeTabSelect.value;
-      if (raw === "") {
-        return null;
-      }
-      const id = Number(raw);
-      return Number.isInteger(id) && id >= 0 ? id : null;
-    };
+    const readExplicitTabId = () => readExplicitTabIdFromSelect(precisionVolumeTabSelect);
     const scheduleApply = (linearGain) => {
-      const tabId = readTabId();
-      if (tabId === null) {
-        return;
-      }
       const g = clampSignedLinearGain(linearGain);
       window.clearTimeout(applyTimer);
       applyTimer = window.setTimeout(() => {
-        void sendPrecisionVolumeTabRequest(tabId, { kind: "set-linear-gain", linearGain: g });
+        void (async () => {
+          const tabId = await resolvePrecisionVolumeTargetTabId(readExplicitTabId());
+          if (tabId === void 0) {
+            return;
+          }
+          await sendPrecisionVolumeTabRequest(tabId, { kind: "set-linear-gain", linearGain: g });
+        })();
       }, 70);
     };
     const scheduleSave = (linearGain) => {
       window.clearTimeout(saveTimer);
       saveTimer = window.setTimeout(() => {
-        const tabId = readTabId();
         void saveExtensionPrefs({
           precisionVolume: {
-            lastTabId: tabId,
+            lastTabId: readExplicitTabId(),
             lastLinearGain: clampSignedLinearGain(linearGain)
           }
         });
@@ -2649,14 +2658,16 @@
       }
       updatePhaseLabel(ctx, g);
     };
+    const refreshApplyHint = () => updatePrecisionVolumeApplyHint(ctx);
     precisionVolumeController = {
-      readTabId,
+      readExplicitTabId,
       syncControlsFromLinearGain,
-      applyToSelectedTab: (linearGain) => {
+      applyToTargetTab: (linearGain) => {
         scheduleApply(linearGain);
-      }
+      },
+      refreshApplyHint
     };
-    updatePrecisionVolumeApplyHint(ctx);
+    void refreshApplyHint();
     if (precisionVolumeTabSearch && precisionVolumeTabSearch.dataset.pvFilterBound !== "1") {
       precisionVolumeTabSearch.dataset.pvFilterBound = "1";
       precisionVolumeTabSearch.addEventListener(
@@ -2703,9 +2714,11 @@
       }
     });
     precisionVolumeTabSelect.addEventListener("change", () => {
-      updatePrecisionVolumeApplyHint(ctx);
-      scheduleApply(currentLinearGain);
-      scheduleSave(currentLinearGain);
+      void (async () => {
+        await refreshApplyHint();
+        scheduleApply(currentLinearGain);
+        scheduleSave(currentLinearGain);
+      })();
     });
   }
 
