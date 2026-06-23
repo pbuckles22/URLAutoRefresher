@@ -12,9 +12,10 @@ alwaysApply: true
 | Item | Value |
 | ---- | ----- |
 | **Branch** | **`main`** — synced with **`origin/main`** after push |
-| **Shipped on `main`** | **`0.16.2`** — Backlog **#9** active-tab precision volume (`58c87bb`) |
+| **Shipped on `main`** | **`0.16.2`** — Backlog **#9** + **#8** polish (`05911c0`); merge-only workflow docs (`00b9c11`) |
 | **In progress** | None |
-| **Last handoff** | `doc/handoff/HANDOFF-2026-06-23-124732.md` (gitignored) |
+| **Next up** | **`feature/ci-node-24`** — GitHub Actions Node **24** (see [PM_PLAN.md](../../PM_PLAN.md)); then Backlog **#11** |
+| **Last handoff** | `doc/handoff/HANDOFF-2026-06-23-135618.md` (gitignored) |
 
 Cursor rules, skills, handoff protocol, and test discipline from [AgenticTemplate](https://github.com/pbuckles22/AgenticTemplate). Document your toolchain in AGENT_HANDOFF.md and TEST_PLAN.md.
 
