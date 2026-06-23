@@ -1,3 +1,4 @@
+import { extensionRuntimeContextLikelyAlive } from './extension-runtime-send';
 import {
   DEFAULT_OVERLAY_POSITION,
   parseOverlayPosition,
@@ -112,4 +113,19 @@ export async function saveExtensionPrefs(partial: SaveExtensionPrefsInput): Prom
     overlayPosition: partial.overlayPosition ?? existing.overlayPosition,
   };
   await chrome.storage.local.set({ [PREFS_STORAGE_KEY]: next });
+}
+
+/** MV3: skip chrome.storage when the content-script runtime is invalidated. */
+export async function saveExtensionPrefsIfRuntimeAlive(
+  partial: SaveExtensionPrefsInput
+): Promise<boolean> {
+  if (!extensionRuntimeContextLikelyAlive()) {
+    return false;
+  }
+  try {
+    await saveExtensionPrefs(partial);
+    return true;
+  } catch {
+    return false;
+  }
 }

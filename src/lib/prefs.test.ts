@@ -6,6 +6,7 @@ import {
   parsePrefs,
   PREFS_STORAGE_KEY,
   saveExtensionPrefs,
+  saveExtensionPrefsIfRuntimeAlive,
 } from './prefs';
 
 describe('prefs', () => {
@@ -100,6 +101,54 @@ describe('extension prefs in chrome.storage.local (Epic 3.0)', () => {
       ...DEFAULT_PREFS,
       showPageOverlayTimer: false,
     });
+    expect(mem[PREFS_STORAGE_KEY]).toEqual({
+      showPageOverlayTimer: false,
+      showOverlaySnapBackDebug: true,
+      twitchWatchLayoutEnabled: true,
+      precisionVolume: DEFAULT_PRECISION_VOLUME,
+      overlayPosition: { anchor: 'right' },
+    });
+  });
+
+  it('saveExtensionPrefsIfRuntimeAlive skips storage when runtime id missing', async () => {
+    vi.stubGlobal('chrome', {
+      runtime: { id: '' },
+      storage: {
+        local: {
+          get: async () => ({}),
+          set: async (items: Record<string, unknown>) => {
+            Object.assign(mem, items);
+          },
+        },
+      },
+    });
+    await expect(saveExtensionPrefsIfRuntimeAlive({ showPageOverlayTimer: false })).resolves.toBe(
+      false
+    );
+    expect(mem[PREFS_STORAGE_KEY]).toBeUndefined();
+  });
+
+  it('saveExtensionPrefsIfRuntimeAlive persists when runtime is alive', async () => {
+    vi.stubGlobal('chrome', {
+      runtime: { id: 'ext-test' },
+      storage: {
+        local: {
+          get: async (keys: string | string[] | null) => {
+            if (keys == null) {
+              return { ...mem };
+            }
+            const k = typeof keys === 'string' ? keys : keys[0];
+            return { [k]: mem[k] };
+          },
+          set: async (items: Record<string, unknown>) => {
+            Object.assign(mem, items);
+          },
+        },
+      },
+    });
+    await expect(saveExtensionPrefsIfRuntimeAlive({ showPageOverlayTimer: false })).resolves.toBe(
+      true
+    );
     expect(mem[PREFS_STORAGE_KEY]).toEqual({
       showPageOverlayTimer: false,
       showOverlaySnapBackDebug: true,

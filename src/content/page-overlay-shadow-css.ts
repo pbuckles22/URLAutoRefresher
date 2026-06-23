@@ -119,6 +119,11 @@ export const PAGE_OVERLAY_SHADOW_CSS = `
     .drag-handle:hover {
       color: #5f6368;
     }
+    .drag-handle:focus-visible {
+      outline: 2px solid #1a73e8;
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
     .snap-hit {
       border: none;
       background: transparent;

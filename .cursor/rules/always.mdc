@@ -13,7 +13,7 @@ alwaysApply: true
 | ---- | ----- |
 | **Branch** | **`main`** — synced with **`origin/main`** after push |
 | **Shipped on `main`** | **`0.16.2`** — Backlog **#9** active-tab precision volume (`58c87bb`) |
-| **In progress** | None — optional **#8** review polish (drag E2E, MV3 storage guard, drag-handle a11y) |
+| **In progress** | None |
 | **Last handoff** | `doc/handoff/HANDOFF-2026-06-23-124732.md` (gitignored) |
 
 Cursor rules, skills, handoff protocol, and test discipline from [AgenticTemplate](https://github.com/pbuckles22/AgenticTemplate). Document your toolchain in AGENT_HANDOFF.md and TEST_PLAN.md.

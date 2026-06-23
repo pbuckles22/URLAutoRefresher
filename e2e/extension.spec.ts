@@ -368,3 +368,128 @@ test('Backlog #8: snap overlay left persists after reload', async () => {
   await dash.close();
   await fixturePage.close();
 });
+
+test('Backlog #8: drag overlay position persists after reload', async () => {
+  await ensureServiceWorkerReady(context, extensionId);
+
+  const fixturePage = await context.newPage();
+  await fixturePage.goto(`${FIXTURE_ORIGIN}/`);
+
+  const dash = await context.newPage();
+  await dash.goto(dashboardUrl(extensionId));
+  await dash.evaluate(
+    async ({
+      storageKey,
+      prefsKey,
+      targetUrl,
+    }: {
+      storageKey: string;
+      prefsKey: string;
+      targetUrl: string;
+    }) => {
+      await chrome.storage.local.set({
+        [storageKey]: {
+          schemaVersion: 3,
+          globalGroups: [],
+          individualJobs: [
+            {
+              id: 'e2e-individual',
+              target: { targetUrl },
+              baseIntervalSec: 60,
+              jitterSec: 0,
+              enabled: true,
+              nextFireAt: Date.now() + 120_000,
+            },
+          ],
+        },
+        [prefsKey]: { showPageOverlayTimer: true },
+      });
+    },
+    { storageKey: STORAGE_KEY, prefsKey: PREFS_STORAGE_KEY, targetUrl: FIXTURE_PAGE_TARGET_URL }
+  );
+
+  await waitForExtensionDebounce();
+  await fixturePage.reload({ waitUntil: 'domcontentloaded' });
+  await expectOverlayCardVisible(fixturePage);
+  await expandOverlayIfMinimized(fixturePage);
+
+  const afterDrag = await fixturePage.evaluate(async () => {
+    const host = document.getElementById('url-auto-refresher-overlay-root');
+    const handle = host?.shadowRoot?.querySelector(
+      '[data-overlay-drag-handle]'
+    ) as HTMLElement | null;
+    if (!host || !handle) {
+      return { ok: false as const };
+    }
+    const rect = handle.getBoundingClientRect();
+    const startX = rect.left + rect.width / 2;
+    const startY = rect.top + rect.height / 2;
+    const deltaX = -80;
+    const deltaY = 48;
+    const pointer = (type: string, x: number, y: number) =>
+      new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        clientY: y,
+        button: 0,
+        buttons: type === 'pointerup' ? 0 : 1,
+        pointerId: 1,
+        pointerType: 'mouse',
+      });
+    handle.dispatchEvent(pointer('pointerdown', startX, startY));
+    handle.dispatchEvent(pointer('pointermove', startX + deltaX, startY + deltaY));
+    handle.dispatchEvent(pointer('pointerup', startX + deltaX, startY + deltaY));
+    await new Promise((r) => setTimeout(r, 80));
+    const topNum = Number.parseFloat(host.style.top);
+    const leftNum = Number.parseFloat(host.style.left);
+    return {
+      ok: true as const,
+      top: host.style.top,
+      left: host.style.left,
+      right: host.style.right,
+      topNum,
+      leftNum,
+    };
+  });
+  expect(afterDrag.ok).toBe(true);
+  if (afterDrag.ok) {
+    expect(afterDrag.right).toBe('auto');
+    expect(afterDrag.topNum).toBeGreaterThan(12);
+    expect(afterDrag.leftNum).toBeGreaterThan(4);
+  }
+
+  const storedAfterDrag = await dash.evaluate(async (prefsKey: string) => {
+    const data = await chrome.storage.local.get(prefsKey);
+    const prefs = data[prefsKey] as { overlayPosition?: { dragTop?: number; dragLeft?: number } };
+    return prefs?.overlayPosition;
+  }, PREFS_STORAGE_KEY);
+  expect(storedAfterDrag?.dragTop).toBeCloseTo(afterDrag.ok ? afterDrag.topNum : 0, 1);
+  expect(storedAfterDrag?.dragLeft).toBeCloseTo(afterDrag.ok ? afterDrag.leftNum : 0, 1);
+
+  await fixturePage.reload({ waitUntil: 'domcontentloaded' });
+  await expectOverlayCardVisible(fixturePage);
+  await expandOverlayIfMinimized(fixturePage);
+
+  const afterReload = await fixturePage.evaluate(() => {
+    const host = document.getElementById('url-auto-refresher-overlay-root');
+    if (!host) {
+      return { ok: false as const };
+    }
+    return {
+      ok: true as const,
+      topNum: Number.parseFloat(host.style.top),
+      leftNum: Number.parseFloat(host.style.left),
+      right: host.style.right,
+    };
+  });
+  expect(afterReload.ok).toBe(true);
+  if (afterReload.ok && afterDrag.ok) {
+    expect(afterReload.right).toBe('auto');
+    expect(afterReload.topNum).toBeCloseTo(afterDrag.topNum, 1);
+    expect(afterReload.leftNum).toBeCloseTo(afterDrag.leftNum, 1);
+  }
+
+  await dash.close();
+  await fixturePage.close();
+});

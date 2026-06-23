@@ -25,7 +25,7 @@ import {
   PREFS_STORAGE_KEY,
   loadExtensionPrefs,
   parsePrefs,
-  saveExtensionPrefs,
+  saveExtensionPrefsIfRuntimeAlive,
 } from '../lib/prefs';
 import { STORAGE_KEY } from '../lib/storage';
 import {
@@ -38,6 +38,8 @@ import {
 import { PAGE_OVERLAY_SHADOW_CSS } from './page-overlay-shadow-css';
 
 const ROOT_ID = 'url-auto-refresher-overlay-root';
+const OVERLAY_KEYBOARD_NUDGE_PX = 8;
+const DRAG_HANDLE_LABEL = 'Drag to move overlay. Use arrow keys to nudge.';
 
 type UiKind = 'hidden' | 'timer' | 'paused';
 
@@ -308,7 +310,7 @@ function buildPositionBarHtml(): string {
     overlayPosition.anchor === 'right';
   const snapTitle = onRight ? 'Snap overlay to top-left' : 'Snap overlay to top-right';
   return `<div class="position-bar position-bar--with-body">
-    <span class="drag-handle" data-overlay-drag-handle title="Drag to move overlay" aria-label="Drag to move overlay" role="button" tabindex="0">⋮⋮</span>
+    <span class="drag-handle" data-overlay-drag-handle title="${escapeHtmlText(DRAG_HANDLE_LABEL)}" aria-label="${escapeHtmlText(DRAG_HANDLE_LABEL)}" role="button" tabindex="0">⋮⋮</span>
     <button type="button" class="snap-hit" data-overlay-snap title="${escapeHtmlText(snapTitle)}" aria-label="${escapeHtmlText(snapTitle)}">⇄</button>
     <button type="button" class="minimize-hit" data-overlay-minimize title="Minimize overlay" aria-label="Minimize overlay">−</button>
   </div>`;
@@ -335,7 +337,30 @@ async function loadOverlayPositionFromPrefs(): Promise<void> {
 async function persistOverlayPosition(next: OverlayPosition): Promise<void> {
   overlayPosition = next;
   applyOverlayHostPosition();
-  await saveExtensionPrefs({ overlayPosition: next });
+  await saveExtensionPrefsIfRuntimeAlive({ overlayPosition: next });
+}
+
+function nudgeOverlayPosition(deltaTop: number, deltaLeft: number): void {
+  const host = document.getElementById(ROOT_ID);
+  if (!host) {
+    return;
+  }
+  const rect = host.getBoundingClientRect();
+  const baseTop = overlayPosition.dragTop ?? rect.top;
+  const baseLeft = overlayPosition.dragLeft ?? rect.left;
+  const clamped = clampOverlayDragPosition(
+    baseTop + deltaTop,
+    baseLeft + deltaLeft,
+    rect.width,
+    rect.height,
+    window.innerWidth,
+    window.innerHeight
+  );
+  void persistOverlayPosition({
+    anchor: overlayPosition.anchor,
+    dragTop: clamped.top,
+    dragLeft: clamped.left,
+  });
 }
 
 let dragSession:
@@ -411,12 +436,31 @@ function bindDragHandleListener(root: ShadowRoot): void {
       } catch {
         /* pointer may already be released */
       }
-      void saveExtensionPrefs({ overlayPosition });
+      void saveExtensionPrefsIfRuntimeAlive({ overlayPosition });
     };
 
     handle.addEventListener('pointermove', onMove);
     handle.addEventListener('pointerup', onEnd);
     handle.addEventListener('pointercancel', onEnd);
+  });
+
+  handle.addEventListener('keydown', (e) => {
+    let deltaTop = 0;
+    let deltaLeft = 0;
+    if (e.key === 'ArrowUp') {
+      deltaTop = -OVERLAY_KEYBOARD_NUDGE_PX;
+    } else if (e.key === 'ArrowDown') {
+      deltaTop = OVERLAY_KEYBOARD_NUDGE_PX;
+    } else if (e.key === 'ArrowLeft') {
+      deltaLeft = -OVERLAY_KEYBOARD_NUDGE_PX;
+    } else if (e.key === 'ArrowRight') {
+      deltaLeft = OVERLAY_KEYBOARD_NUDGE_PX;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    nudgeOverlayPosition(deltaTop, deltaLeft);
   });
 }
 

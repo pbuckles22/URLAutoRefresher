@@ -27,7 +27,7 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 
 ## Next (see EDGE plan)
 
-**Execution order:** Optional **#8** review polish (drag E2E, MV3 storage guard, drag-handle a11y); Backlog **#11** when scoped.
+**Execution order:** Backlog **#11** when scoped.
 
 | Step   | Scope                                        | Status                 |
 | ------ | -------------------------------------------- | ---------------------- |
