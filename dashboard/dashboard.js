@@ -2402,6 +2402,21 @@
     return String(rounded);
   }
 
+  // src/lib/extension-runtime-send.ts
+  function extensionRuntimeContextLikelyAlive() {
+    return typeof chrome !== "undefined" && typeof chrome.runtime !== "undefined" && !!chrome.runtime.id;
+  }
+  async function sendExtensionMessageAsync(message) {
+    if (!extensionRuntimeContextLikelyAlive()) {
+      return void 0;
+    }
+    try {
+      return await chrome.runtime.sendMessage(message);
+    } catch {
+      return void 0;
+    }
+  }
+
   // src/lib/overlay-position.ts
   var DEFAULT_OVERLAY_POSITION = { anchor: "right" };
   function parseOverlayPosition(raw) {
@@ -2490,21 +2505,6 @@
       overlayPosition: partial.overlayPosition ?? existing.overlayPosition
     };
     await chrome.storage.local.set({ [PREFS_STORAGE_KEY]: next });
-  }
-
-  // src/lib/extension-runtime-send.ts
-  function extensionRuntimeContextLikelyAlive() {
-    return typeof chrome !== "undefined" && typeof chrome.runtime !== "undefined" && !!chrome.runtime.id;
-  }
-  async function sendExtensionMessageAsync(message) {
-    if (!extensionRuntimeContextLikelyAlive()) {
-      return void 0;
-    }
-    try {
-      return await chrome.runtime.sendMessage(message);
-    } catch {
-      return void 0;
-    }
   }
 
   // src/lib/messages.ts
