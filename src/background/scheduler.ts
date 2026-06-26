@@ -49,6 +49,12 @@ export function isAlarmHandlerActive(): boolean {
 
 /** Align memberNextFireAt when a schedulable member tab is open (seeds missing countdown keys). */
 export async function rescheduleIfMemberTabOpen(tabUrl: string): Promise<void> {
+  // Skip if alarm handlers are in-flight: they haven't all saved their nextFireAt yet,
+  // so bootstrapScheduling would read partial state and reschedule unprocessed members
+  // to SOON_MS (250 ms), restarting the refresh storm.
+  if (isAlarmHandlerActive()) {
+    return;
+  }
   const state = await loadAppState();
   if (!shouldBootstrapSchedulingForTabUrl(state, tabUrl)) {
     return;

@@ -37,4 +37,24 @@ describe('dispatchSchedulerAlarm', () => {
     expect(syncSpy).not.toHaveBeenCalled();
     expect(saveSpy).not.toHaveBeenCalled();
   });
+
+  it('does NOT call syncAlarmsWithState for globalMember alarms (regression: infinite refresh storm)', async () => {
+    // syncAlarmsWithState inside a globalMember alarm handler recreates ALL members'
+    // alarms; for unprocessed members whose alarms just fired, computeAlarmWhen returns
+    // now+SOON_MS (250 ms), which fires immediately and re-enters the handler chain —
+    // creating an infinite loop.  Handlers now use direct chrome.alarms.create for only
+    // their own member and rely on bootstrapScheduling (post-handler) for global cleanup.
+    global.chrome = {
+      ...((global.chrome ?? {}) as typeof chrome),
+      tabs: {
+        query: vi.fn().mockResolvedValue([]),
+      } as unknown as typeof chrome.tabs,
+      alarms: {
+        create: vi.fn().mockResolvedValue(undefined),
+      } as unknown as typeof chrome.alarms,
+    };
+    // Group exists but member tab can't be resolved → early return path.
+    await dispatchSchedulerAlarm({ kind: 'globalMember', groupId: 'g1', memberKey: 'mk1' });
+    expect(syncSpy).not.toHaveBeenCalled();
+  });
 });

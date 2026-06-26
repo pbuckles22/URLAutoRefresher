@@ -5,6 +5,7 @@
 import { baseAndJitterMs } from './scheduler-align-state';
 import { syncAlarmsWithState } from './scheduler-sync-alarms';
 import type { ParsedAlarm } from '../lib/alarm-names';
+import { alarmNameGlobalMember, alarmNameIndividual } from '../lib/alarm-names';
 import { memberKeyFromTargetUrl } from '../lib/member-url';
 import { computeNextDelayMs } from '../lib/schedule';
 import { LIVE_AWARE_MAX_IDLE_MS, LIVE_AWARE_POLL_MS } from '../lib/live-aware-constants';
@@ -65,13 +66,14 @@ async function handleIndividualJobAlarm(jobId: string, initialState: AppState): 
       job = state.individualJobs[idx];
       const stillLive = job.streamLiveOverride === true || job.streamLive === true;
       if (!job.enabled || !job.liveAwareRefresh || !stillLive) {
-        await syncAlarmsWithState(state);
+        // State changed; let bootstrapScheduling (from storage.onChanged) reconcile.
         return;
       }
       const nextJobs = replaceAt(state.individualJobs, idx, { ...job, nextFireAt });
       state = { ...state, individualJobs: nextJobs };
       await saveAppState(state);
-      await syncAlarmsWithState(state);
+      // Only reschedule this job's alarm; leave all other alarms untouched.
+      await chrome.alarms.create(alarmNameIndividual(jobId), { when: nextFireAt });
       return;
     }
   }
@@ -86,7 +88,7 @@ async function handleIndividualJobAlarm(jobId: string, initialState: AppState): 
     });
     state = { ...state, individualJobs: nextJobs };
     await saveAppState(state);
-    await syncAlarmsWithState(state);
+    // Disabled; bootstrapScheduling will clear the alarm.
     return;
   }
   const refreshTabId = resolvedTabId;
@@ -111,7 +113,7 @@ async function handleIndividualJobAlarm(jobId: string, initialState: AppState): 
     });
     state = { ...state, individualJobs: nextJobs };
     await saveAppState(state);
-    await syncAlarmsWithState(state);
+    // Disabled; bootstrapScheduling will clear the alarm.
     return;
   }
 
@@ -127,7 +129,8 @@ async function handleIndividualJobAlarm(jobId: string, initialState: AppState): 
   const nextJobs = replaceAt(state.individualJobs, idx, nextJob);
   state = { ...state, individualJobs: nextJobs };
   await saveAppState(state);
-  await syncAlarmsWithState(state);
+  // Only reschedule this job's alarm; leave all other alarms untouched.
+  await chrome.alarms.create(alarmNameIndividual(jobId), { when: nextFireAt });
 }
 
 async function skipGlobalMemberAlarmForLiveStream(
@@ -167,7 +170,10 @@ async function skipGlobalMemberAlarmForLiveStream(
   });
   state = { ...state, globalGroups: nextGroups };
   await saveAppState(state);
-  await syncAlarmsWithState(state);
+  // Only reschedule this member's alarm; leave all other alarms untouched.
+  await chrome.alarms.create(alarmNameGlobalMember(groupId, memberKey), {
+    when: now + LIVE_AWARE_POLL_MS,
+  });
   return true;
 }
 
@@ -195,7 +201,7 @@ async function handleGlobalMemberAlarm(
   )?.targetUrl;
   const memberUrl = resolvedHit?.targetUrl ?? storedUrl;
   if (!memberUrl) {
-    await syncAlarmsWithState(await loadAppState());
+    // No URL for this member; bootstrapScheduling will reconcile after all handlers complete.
     return;
   }
 
@@ -222,13 +228,13 @@ async function handleGlobalMemberAlarm(
 
   if (refreshTabId === undefined) {
     await schedLog('global member alarm: no tab to refresh (skip)', { memberKey });
-    await syncAlarmsWithState(await loadAppState());
+    // No tab found; bootstrapScheduling will reconcile after all handlers complete.
     return;
   }
 
   if (paused.has(memberKey)) {
     await schedLog('global member alarm: member paused (skip)', { memberKey });
-    await syncAlarmsWithState(await loadAppState());
+    // Paused; bootstrapScheduling will reconcile after all handlers complete.
     return;
   }
 
@@ -270,11 +276,12 @@ async function handleGlobalMemberAlarm(
     });
     state = { ...state, globalGroups: nextGroups };
     await saveAppState(state);
-    await syncAlarmsWithState(state);
+    // Tab update failed; bootstrapScheduling will reconcile after all handlers complete.
     return;
   }
 
-  memberNextFireAt[memberKey] = Date.now() + computeNextDelayMs(baseMs, jitterMs);
+  const nextWhen = Date.now() + computeNextDelayMs(baseMs, jitterMs);
+  memberNextFireAt[memberKey] = nextWhen;
   await schedLog('global member alarm: refresh ok, next tick scheduled', {
     memberKey,
     refreshTabId,
@@ -287,7 +294,8 @@ async function handleGlobalMemberAlarm(
   });
   state = { ...state, globalGroups: nextGroups };
   await saveAppState(state);
-  await syncAlarmsWithState(state);
+  // Only reschedule this member's alarm; leave all other members' alarms untouched.
+  await chrome.alarms.create(alarmNameGlobalMember(groupId, memberKey), { when: nextWhen });
 }
 
 /**
