@@ -30,6 +30,23 @@ const MEMBER_TAB_RESCHEDULE_DEBOUNCE_MS = 300;
 let storageDebounce: ReturnType<typeof setTimeout> | undefined;
 let memberTabRescheduleDebounce: ReturnType<typeof setTimeout> | undefined;
 
+/**
+ * Alarm handler serialization: prevents concurrent onAlarm handlers from
+ * racing on loadAppState/saveAppState/syncAlarmsWithState when multiple alarms
+ * fire at once (e.g. SW wakes with a pile of pending alarms after screen switch).
+ *
+ * Without this, all N handlers read the same stale state, each saves only its
+ * own member's nextFireAt (overwriting the others), and syncAlarmsWithState
+ * recreates alarms with past timestamps → SOON_MS (250 ms) retry → multi-refresh storm.
+ */
+let alarmHandlerChain: Promise<void> = Promise.resolve();
+let activeAlarmHandlerCount = 0;
+
+/** True while at least one alarm handler dispatch is in-flight. */
+export function isAlarmHandlerActive(): boolean {
+  return activeAlarmHandlerCount > 0;
+}
+
 /** Align memberNextFireAt when a schedulable member tab is open (seeds missing countdown keys). */
 export async function rescheduleIfMemberTabOpen(tabUrl: string): Promise<void> {
   const state = await loadAppState();
@@ -59,8 +76,24 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
     return;
   }
 
+  // Serialize: queue this handler behind any already-running alarm handler.
+  // Prevents concurrent reads/writes to AppState and interleaved clearOurAlarms
+  // + alarm recreation calls when multiple alarms fire simultaneously.
+  const mySlot = alarmHandlerChain.then(async () => {
+    activeAlarmHandlerCount++;
+    try {
+      await dispatchSchedulerAlarm(parsed);
+    } finally {
+      activeAlarmHandlerCount--;
+    }
+  });
+  // Advance the chain; swallow errors so a failed handler doesn't block the queue.
+  alarmHandlerChain = mySlot.catch(() => {});
+
   try {
-    await dispatchSchedulerAlarm(parsed);
+    await mySlot;
+  } catch {
+    // dispatchSchedulerAlarm error: already logged inside; don't propagate.
   } finally {
     await refreshActionBadge();
   }
@@ -140,6 +173,12 @@ export function attachSchedulingListeners(): void {
     }
     clearTimeout(storageDebounce);
     storageDebounce = setTimeout(() => {
+      // Skip bootstrapScheduling if alarm handlers are still in-flight: they will
+      // call syncAlarmsWithState themselves and reading state now would see an
+      // incomplete picture, recreating alarms with near-zero delays.
+      if (isAlarmHandlerActive()) {
+        return;
+      }
       void bootstrapScheduling().then(() => syncTwitchRaidGuardForAllOpenTabs());
     }, STORAGE_DEBOUNCE_MS);
   });
