@@ -831,13 +831,17 @@ if (overlayBootstrapStale()) {
     });
   }
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.type !== PAGE_OVERLAY_SYNC_REQUEST) {
-      return;
-    }
-    void syncFromBackground().then(() => sendResponse({ ok: true }));
-    return true;
-  });
+  // Guard: chrome.runtime can be undefined when the extension reloads/updates
+  // and re-injects this content script before the new service worker is fully live.
+  if (extensionRuntimeContextLikelyAlive()) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message?.type !== PAGE_OVERLAY_SYNC_REQUEST) {
+        return;
+      }
+      void syncFromBackground().then(() => sendResponse({ ok: true }));
+      return true;
+    });
+  }
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') {
