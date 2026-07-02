@@ -15,7 +15,7 @@ alwaysApply: true
 | **Shipped on `main`** | **`0.16.2`** — Backlog **#9** + **#8** polish; CI Node **24**; **alarm-handler race fix** (multi-refresh storm) |
 | **In progress** | `fix/alarm-storm-v2` — targeted per-member alarm create (replaces syncAlarmsWithState in handlers); needs Edge smoke-test then merge |
 | **Next up** | Verify `fix/alarm-storm-v2` in Edge → merge to `main`; then Backlog **#11** or **#12** |
-| **Last handoff** | `doc/handoff/HANDOFF-2026-06-23-155500.md` (gitignored) |
+| **Last handoff** | `doc/handoff/HANDOFF-2026-07-02-120800.md` (gitignored) |
 
 Cursor rules, skills, handoff protocol, and test discipline from [AgenticTemplate](https://github.com/pbuckles22/AgenticTemplate). Document your toolchain in AGENT_HANDOFF.md and TEST_PLAN.md.
 
