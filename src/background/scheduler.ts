@@ -29,6 +29,7 @@ const MEMBER_TAB_RESCHEDULE_DEBOUNCE_MS = 300;
 
 let storageDebounce: ReturnType<typeof setTimeout> | undefined;
 let memberTabRescheduleDebounce: ReturnType<typeof setTimeout> | undefined;
+let schedulingListenersAttached = false;
 
 /**
  * Alarm handler serialization: prevents concurrent onAlarm handlers from
@@ -41,6 +42,20 @@ let memberTabRescheduleDebounce: ReturnType<typeof setTimeout> | undefined;
  */
 let alarmHandlerChain: Promise<void> = Promise.resolve();
 let activeAlarmHandlerCount = 0;
+/** Alarms queued on the handler chain but not yet finished (includes in-flight). */
+let alarmHandlersPending = 0;
+
+/** Test-only reset for module-level alarm queue state. */
+export function __resetSchedulerAlarmQueueForTests(): void {
+  alarmHandlerChain = Promise.resolve();
+  activeAlarmHandlerCount = 0;
+  alarmHandlersPending = 0;
+  schedulingListenersAttached = false;
+  clearTimeout(storageDebounce);
+  clearTimeout(memberTabRescheduleDebounce);
+  storageDebounce = undefined;
+  memberTabRescheduleDebounce = undefined;
+}
 
 /** True while at least one alarm handler dispatch is in-flight. */
 export function isAlarmHandlerActive(): boolean {
@@ -85,12 +100,24 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
   // Serialize: queue this handler behind any already-running alarm handler.
   // Prevents concurrent reads/writes to AppState and interleaved clearOurAlarms
   // + alarm recreation calls when multiple alarms fire simultaneously.
+  alarmHandlersPending++;
   const mySlot = alarmHandlerChain.then(async () => {
     activeAlarmHandlerCount++;
     try {
       await dispatchSchedulerAlarm(parsed);
     } finally {
       activeAlarmHandlerCount--;
+      const remaining = --alarmHandlersPending;
+      // Handlers that early-return (no tab, paused, etc.) rely on bootstrapScheduling
+      // to reconcile alarms. storage.onChanged skips bootstrap while handlers run;
+      // run it once after the entire queued chain drains.
+      if (remaining === 0 && activeAlarmHandlerCount === 0) {
+        void bootstrapScheduling()
+          .then(() => syncTwitchRaidGuardForAllOpenTabs())
+          .catch(() => {
+            /* storage or alarm APIs may fail transiently */
+          });
+      }
     }
   });
   // Advance the chain; swallow errors so a failed handler doesn't block the queue.
@@ -149,6 +176,11 @@ export async function observeMemberTabNavigation(tabId: number, tabUrl: string):
 }
 
 export function attachSchedulingListeners(): void {
+  if (schedulingListenersAttached) {
+    return;
+  }
+  schedulingListenersAttached = true;
+
   chrome.alarms.onAlarm.addListener((a) => {
     void onAlarmFired(a);
   });

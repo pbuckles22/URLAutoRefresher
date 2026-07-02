@@ -13,12 +13,15 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Re-import the module fresh each test so module-level state is reset.
-// vitest isolates modules per test file but shares across tests within a file,
-// so we reset the exported flag via the mocked dispatch.
-import { isAlarmHandlerActive } from './scheduler';
+import {
+  __resetSchedulerAlarmQueueForTests,
+  attachSchedulingListeners,
+  isAlarmHandlerActive,
+} from './scheduler';
 import * as dispatchMod from './scheduler-alarm-handlers';
 import * as storageMod from '../lib/storage';
+import { STORAGE_KEY } from '../lib/storage';
+import { alarmNameGlobalMember } from '../lib/alarm-names';
 import * as syncMod from './scheduler-sync-alarms';
 import * as badgeMod from './badge';
 
@@ -27,8 +30,22 @@ vi.mock('../lib/storage');
 vi.mock('./scheduler-sync-alarms');
 vi.mock('./badge');
 
-// Mock chrome globals used by attachSchedulingListeners
+let alarmListener: ((a: chrome.alarms.Alarm) => void) | undefined;
+let storageListener:
+  | ((changes: Record<string, chrome.storage.StorageChange>, area: string) => void)
+  | undefined;
+
+const flush = async (rounds = 30) => {
+  for (let i = 0; i < rounds; i++) {
+    await Promise.resolve();
+  }
+};
+
 beforeEach(() => {
+  __resetSchedulerAlarmQueueForTests();
+  alarmListener = undefined;
+  storageListener = undefined;
+
   global.chrome = {
     alarms: {
       onAlarm: { addListener: vi.fn() },
@@ -42,6 +59,19 @@ beforeEach(() => {
     },
   } as unknown as typeof chrome;
 
+  vi.mocked(chrome.alarms.onAlarm.addListener).mockImplementation((fn) => {
+    alarmListener = fn as (a: chrome.alarms.Alarm) => void;
+  });
+  vi.mocked(chrome.storage.onChanged.addListener).mockImplementation((fn) => {
+    storageListener = fn as (
+      changes: Record<string, chrome.storage.StorageChange>,
+      area: string
+    ) => void;
+  });
+
+  attachSchedulingListeners();
+  expect(alarmListener).toBeDefined();
+
   vi.mocked(dispatchMod.dispatchSchedulerAlarm).mockResolvedValue(undefined);
   vi.mocked(storageMod.loadAppState).mockResolvedValue({
     schemaVersion: 3,
@@ -49,6 +79,7 @@ beforeEach(() => {
     individualJobs: [],
   });
   vi.mocked(storageMod.saveAppState).mockResolvedValue(undefined);
+  vi.mocked(syncMod.syncAlarmsWithState).mockClear();
   vi.mocked(syncMod.syncAlarmsWithState).mockResolvedValue(undefined);
   vi.mocked(badgeMod.refreshActionBadge).mockResolvedValue(undefined);
 });
@@ -61,15 +92,6 @@ describe('isAlarmHandlerActive', () => {
 
 describe('alarm handler serialization (regression: multi-refresh storm)', () => {
   it('runs concurrent alarm dispatches one at a time, not in parallel', async () => {
-    const { attachSchedulingListeners } = await import('./scheduler');
-
-    let capturedListener: ((a: chrome.alarms.Alarm) => void) | undefined;
-    vi.mocked(chrome.alarms.onAlarm.addListener).mockImplementation((fn) => {
-      capturedListener = fn as (a: chrome.alarms.Alarm) => void;
-    });
-    attachSchedulingListeners();
-    expect(capturedListener).toBeDefined();
-
     const order: string[] = [];
     let resolveA!: () => void;
     let resolveB!: () => void;
@@ -95,30 +117,78 @@ describe('alarm handler serialization (regression: multi-refresh storm)', () => 
     const alarmA = { name: 'urlar:i:A' } as chrome.alarms.Alarm;
     const alarmB = { name: 'urlar:i:B' } as chrome.alarms.Alarm;
 
-    // Fire both alarms "simultaneously" (neither awaited before the other fires)
-    capturedListener!(alarmA);
-    capturedListener!(alarmB);
+    alarmListener!(alarmA);
+    alarmListener!(alarmB);
 
-    // Helper: drain the microtask queue deeply enough for the promise chain.
-    const flush = async () => {
-      for (let i = 0; i < 20; i++) {
-        await Promise.resolve();
-      }
-    };
-
-    // Allow A to start; B must NOT start yet because A hasn't finished.
     await flush();
     expect(order).toEqual(['A-start']);
 
-    // Finish A → B should start automatically via the chain.
     resolveA();
     await flush();
     expect(order).toContain('A-end');
     expect(order).toContain('B-start');
 
-    // Finish B.
     resolveB();
     await flush();
     expect(order).toEqual(['A-start', 'A-end', 'B-start', 'B-end']);
+  });
+});
+
+describe('post-chain bootstrap (regression: deferred reconcile after handler chain)', () => {
+  it('calls syncAlarmsWithState once after a globalMember handler completes', async () => {
+    alarmListener!({ name: alarmNameGlobalMember('g1', 'mk1') } as chrome.alarms.Alarm);
+    await flush();
+
+    expect(syncMod.syncAlarmsWithState).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT bootstrap mid-chain while a second handler is still queued', async () => {
+    let resolveA!: () => void;
+    const slowA = new Promise<void>((res) => {
+      resolveA = res;
+    });
+
+    vi.mocked(dispatchMod.dispatchSchedulerAlarm).mockImplementation(async (parsed) => {
+      if (parsed.kind === 'globalMember' && parsed.memberKey === 'A') {
+        await slowA;
+      }
+    });
+
+    alarmListener!({ name: alarmNameGlobalMember('g1', 'A') } as chrome.alarms.Alarm);
+    alarmListener!({ name: alarmNameGlobalMember('g1', 'B') } as chrome.alarms.Alarm);
+    await flush();
+
+    expect(syncMod.syncAlarmsWithState).not.toHaveBeenCalled();
+
+    resolveA();
+    await flush();
+
+    expect(syncMod.syncAlarmsWithState).toHaveBeenCalledTimes(1);
+  });
+
+  it('reconciles after chain when storage.onChanged was skipped during handlers', async () => {
+    vi.useFakeTimers();
+
+    let resolveHandler!: () => void;
+    const slowHandler = new Promise<void>((res) => {
+      resolveHandler = res;
+    });
+    vi.mocked(dispatchMod.dispatchSchedulerAlarm).mockImplementation(async () => {
+      await slowHandler;
+    });
+
+    alarmListener!({ name: alarmNameGlobalMember('g1', 'mk1') } as chrome.alarms.Alarm);
+    await flush();
+    expect(isAlarmHandlerActive()).toBe(true);
+
+    storageListener!({ [STORAGE_KEY]: { oldValue: {}, newValue: {} } }, 'local');
+    await vi.advanceTimersByTimeAsync(200);
+    expect(syncMod.syncAlarmsWithState).not.toHaveBeenCalled();
+
+    resolveHandler();
+    await flush();
+
+    expect(syncMod.syncAlarmsWithState).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
   });
 });
