@@ -12,6 +12,10 @@ import {
   attachTwitchRaidGuardListeners,
   syncTwitchRaidGuardForAllOpenTabs,
 } from './twitch-raid-guard';
+import {
+  attachTwitchChannelPointsBonusListeners,
+  syncTwitchChannelPointsBonusForAllOpenTabs,
+} from './twitch-channel-points-bonus';
 import { syncAllOpenTwitchFavsTabs } from './twitch-open-tabs-sync';
 import { attachVolumeCommandListeners } from './volume-commands';
 
@@ -23,6 +27,7 @@ attachBadgeListeners();
 attachPageOverlayMessageHandler();
 attachLiveAwareListeners();
 attachTwitchRaidGuardListeners();
+attachTwitchChannelPointsBonusListeners();
 
 /** Serialize SW bootstrap so module load, onInstalled, and onStartup do not interleave. */
 let bootstrapChain: Promise<void> = Promise.resolve();
@@ -33,6 +38,7 @@ function enqueueBootstrap(reinjectOverlays: boolean): void {
       await bootstrapScheduling();
       await syncAllOpenTwitchFavsTabs({ reinjectOverlays });
       await syncTwitchRaidGuardForAllOpenTabs();
+      await syncTwitchChannelPointsBonusForAllOpenTabs();
     })
     .catch(() => {
       /* storage or alarm APIs may fail transiently on SW wake */

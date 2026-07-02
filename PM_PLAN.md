@@ -44,7 +44,7 @@ High-level phases stay aligned with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](d
 
 ## Later (see EDGE plan)
 
-- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5**, **6**, **8**, **9**, **10** (see EDGE plan). **Open:** **4** (Play after long idle — **on hold**); **7** _(superseded by Epic 10 — traceability only)_; **11** (per-chatter live chat history — opt-in capture, IndexedDB, 3-hour window — design deferred to epic); **12** (Twitch channel points bonus auto-click — opt-in, TwitchFavs-shaped, design deferred to epic). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
+- **Backlog:** [EDGE plan — Backlog](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md#backlog-ux--polish--bugs). **Shipped:** items **1–3**, **5**, **6**, **8**, **9**, **10**, **12** (see EDGE plan). **Open:** **4** (Play after long idle — **on hold**); **7** _(superseded by Epic 10 — traceability only)_; **11** (per-chatter live chat history — opt-in capture, IndexedDB, 3-hour window — design deferred to epic). TDD handoff: [doc/requirements/backlog-tdd-handoff.md](doc/requirements/backlog-tdd-handoff.md).
 - New epics/stories should still be added to the EDGE plan and [doc/requirements/](doc/requirements/) when you formalize scope.
 
 Keep this file in sync with [doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md](doc/plan/EDGE_URL_AUTO_REFRESHER_PLAN.md) checkboxes when scope changes. Session handoff notes use `doc/handoff/HANDOFF-*.md` (gitignored — not on `main`); prefer **timestamped** names (`HANDOFF-YYYY-MM-DD-HHmmss.md`) and a **Recorded** line — [AGENT_HANDOFF.md](AGENT_HANDOFF.md). Add `doc/requirements/` when you use it.

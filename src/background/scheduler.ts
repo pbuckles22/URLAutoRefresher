@@ -21,6 +21,11 @@ import {
   disarmTwitchRaidGuardForTab,
   syncTwitchRaidGuardForAllOpenTabs,
 } from './twitch-raid-guard';
+import {
+  syncTwitchChannelPointsBonusForTab,
+  disarmTwitchChannelPointsBonusForTab,
+  syncTwitchChannelPointsBonusForAllOpenTabs,
+} from './twitch-channel-points-bonus';
 
 export { syncAlarmsWithState };
 
@@ -114,6 +119,7 @@ async function onAlarmFired(alarm: chrome.alarms.Alarm): Promise<void> {
       if (remaining === 0 && activeAlarmHandlerCount === 0) {
         void bootstrapScheduling()
           .then(() => syncTwitchRaidGuardForAllOpenTabs())
+          .then(() => syncTwitchChannelPointsBonusForAllOpenTabs())
           .catch(() => {
             /* storage or alarm APIs may fail transiently */
           });
@@ -161,6 +167,7 @@ export async function observeMemberTabNavigation(tabId: number, tabUrl: string):
     forgetSchedTabId(tabId);
     noteTabUrl(tabId, url);
     void disarmTwitchRaidGuardForTab(tabId);
+    void disarmTwitchChannelPointsBonusForTab(tabId);
     return;
   }
 
@@ -168,11 +175,13 @@ export async function observeMemberTabNavigation(tabId: number, tabUrl: string):
   if (snappedBack) {
     // Do not stamp the detour as last URL; wait for the redirected home navigation event.
     void disarmTwitchRaidGuardForTab(tabId);
+    void disarmTwitchChannelPointsBonusForTab(tabId);
     return;
   }
   noteTabUrl(tabId, url);
   await maybeRememberSchedTabFromFavHome(tabId, url);
   void syncTwitchRaidGuardForTab(tabId, url);
+  void syncTwitchChannelPointsBonusForTab(tabId, url);
 }
 
 export function attachSchedulingListeners(): void {
@@ -217,7 +226,12 @@ export function attachSchedulingListeners(): void {
       if (isAlarmHandlerActive()) {
         return;
       }
-      void bootstrapScheduling().then(() => syncTwitchRaidGuardForAllOpenTabs());
+      void bootstrapScheduling().then(() =>
+        Promise.all([
+          syncTwitchRaidGuardForAllOpenTabs(),
+          syncTwitchChannelPointsBonusForAllOpenTabs(),
+        ])
+      );
     }, STORAGE_DEBOUNCE_MS);
   });
 }

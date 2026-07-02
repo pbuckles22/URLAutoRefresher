@@ -21,6 +21,8 @@ export type ExtensionPrefs = {
   showOverlaySnapBackDebug: boolean;
   /** Epic 15 — live/offline Twitch watch layout (theater + chat policy). Default true. */
   twitchWatchLayoutEnabled: boolean;
+  /** Backlog #12 — auto-click channel points bonus on TwitchFavs home tabs. Default off. */
+  twitchChannelPointsBonusEnabled: boolean;
   /** Epic 11.5 — precision volume dashboard state. */
   precisionVolume: PrecisionVolumePrefs;
   /** Backlog #8 — overlay snap/drag position (global, persisted across refresh). */
@@ -37,6 +39,7 @@ export const DEFAULT_PREFS: ExtensionPrefs = {
   showPageOverlayTimer: true,
   showOverlaySnapBackDebug: true,
   twitchWatchLayoutEnabled: true,
+  twitchChannelPointsBonusEnabled: false,
   precisionVolume: { ...DEFAULT_PRECISION_VOLUME },
   overlayPosition: { ...DEFAULT_OVERLAY_POSITION },
 };
@@ -77,10 +80,15 @@ export function parsePrefs(raw: unknown): ExtensionPrefs {
     typeof o.twitchWatchLayoutEnabled === 'boolean'
       ? o.twitchWatchLayoutEnabled
       : DEFAULT_PREFS.twitchWatchLayoutEnabled;
+  const channelPointsBonus =
+    typeof o.twitchChannelPointsBonusEnabled === 'boolean'
+      ? o.twitchChannelPointsBonusEnabled
+      : DEFAULT_PREFS.twitchChannelPointsBonusEnabled;
   return {
     showPageOverlayTimer: show,
     showOverlaySnapBackDebug: showDebug,
     twitchWatchLayoutEnabled: watchLayout,
+    twitchChannelPointsBonusEnabled: channelPointsBonus,
     precisionVolume: parsePrecisionVolumePrefs(o.precisionVolume),
     overlayPosition: parseOverlayPosition(o.overlayPosition),
   };
@@ -96,6 +104,7 @@ export type SaveExtensionPrefsInput = {
   showPageOverlayTimer?: boolean;
   showOverlaySnapBackDebug?: boolean;
   twitchWatchLayoutEnabled?: boolean;
+  twitchChannelPointsBonusEnabled?: boolean;
   precisionVolume?: Partial<PrecisionVolumePrefs>;
   overlayPosition?: OverlayPosition;
 };
@@ -106,6 +115,8 @@ export async function saveExtensionPrefs(partial: SaveExtensionPrefsInput): Prom
     showPageOverlayTimer: partial.showPageOverlayTimer ?? existing.showPageOverlayTimer,
     showOverlaySnapBackDebug: partial.showOverlaySnapBackDebug ?? existing.showOverlaySnapBackDebug,
     twitchWatchLayoutEnabled: partial.twitchWatchLayoutEnabled ?? existing.twitchWatchLayoutEnabled,
+    twitchChannelPointsBonusEnabled:
+      partial.twitchChannelPointsBonusEnabled ?? existing.twitchChannelPointsBonusEnabled,
     precisionVolume: {
       ...existing.precisionVolume,
       ...(partial.precisionVolume ?? {}),

@@ -34,6 +34,7 @@ describe('prefs', () => {
       showPageOverlayTimer: true,
       showOverlaySnapBackDebug: true,
       twitchWatchLayoutEnabled: true,
+      twitchChannelPointsBonusEnabled: false,
       precisionVolume: { lastTabId: 42, lastLinearGain: -0.25 },
       overlayPosition: { anchor: 'right' },
     });
@@ -49,6 +50,16 @@ describe('prefs', () => {
 
   it('twitchWatchLayoutEnabled defaults true when missing', () => {
     expect(parsePrefs({}).twitchWatchLayoutEnabled).toBe(true);
+  });
+
+  it('twitchChannelPointsBonusEnabled false when set', () => {
+    expect(
+      parsePrefs({ twitchChannelPointsBonusEnabled: true }).twitchChannelPointsBonusEnabled
+    ).toBe(true);
+  });
+
+  it('twitchChannelPointsBonusEnabled defaults false when missing', () => {
+    expect(parsePrefs({}).twitchChannelPointsBonusEnabled).toBe(false);
   });
 
   it('ignores invalid twitchWatchLayoutEnabled', () => {
@@ -105,6 +116,7 @@ describe('extension prefs in chrome.storage.local (Epic 3.0)', () => {
       showPageOverlayTimer: false,
       showOverlaySnapBackDebug: true,
       twitchWatchLayoutEnabled: true,
+      twitchChannelPointsBonusEnabled: false,
       precisionVolume: DEFAULT_PRECISION_VOLUME,
       overlayPosition: { anchor: 'right' },
     });
@@ -153,6 +165,7 @@ describe('extension prefs in chrome.storage.local (Epic 3.0)', () => {
       showPageOverlayTimer: false,
       showOverlaySnapBackDebug: true,
       twitchWatchLayoutEnabled: true,
+      twitchChannelPointsBonusEnabled: false,
       precisionVolume: DEFAULT_PRECISION_VOLUME,
       overlayPosition: { anchor: 'right' },
     });

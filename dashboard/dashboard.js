@@ -2450,6 +2450,7 @@
     showPageOverlayTimer: true,
     showOverlaySnapBackDebug: true,
     twitchWatchLayoutEnabled: true,
+    twitchChannelPointsBonusEnabled: false,
     precisionVolume: { ...DEFAULT_PRECISION_VOLUME },
     overlayPosition: { ...DEFAULT_OVERLAY_POSITION }
   };
@@ -2479,10 +2480,12 @@
     const show = typeof o.showPageOverlayTimer === "boolean" ? o.showPageOverlayTimer : DEFAULT_PREFS.showPageOverlayTimer;
     const showDebug = typeof o.showOverlaySnapBackDebug === "boolean" ? o.showOverlaySnapBackDebug : DEFAULT_PREFS.showOverlaySnapBackDebug;
     const watchLayout = typeof o.twitchWatchLayoutEnabled === "boolean" ? o.twitchWatchLayoutEnabled : DEFAULT_PREFS.twitchWatchLayoutEnabled;
+    const channelPointsBonus = typeof o.twitchChannelPointsBonusEnabled === "boolean" ? o.twitchChannelPointsBonusEnabled : DEFAULT_PREFS.twitchChannelPointsBonusEnabled;
     return {
       showPageOverlayTimer: show,
       showOverlaySnapBackDebug: showDebug,
       twitchWatchLayoutEnabled: watchLayout,
+      twitchChannelPointsBonusEnabled: channelPointsBonus,
       precisionVolume: parsePrecisionVolumePrefs(o.precisionVolume),
       overlayPosition: parseOverlayPosition(o.overlayPosition)
     };
@@ -2498,6 +2501,7 @@
       showPageOverlayTimer: partial.showPageOverlayTimer ?? existing.showPageOverlayTimer,
       showOverlaySnapBackDebug: partial.showOverlaySnapBackDebug ?? existing.showOverlaySnapBackDebug,
       twitchWatchLayoutEnabled: partial.twitchWatchLayoutEnabled ?? existing.twitchWatchLayoutEnabled,
+      twitchChannelPointsBonusEnabled: partial.twitchChannelPointsBonusEnabled ?? existing.twitchChannelPointsBonusEnabled,
       precisionVolume: {
         ...existing.precisionVolume,
         ...partial.precisionVolume ?? {}
@@ -2735,6 +2739,9 @@
         twitchWatchLayoutPreference: document.querySelector(
           "[data-pref-twitch-watch-layout]"
         ),
+        twitchChannelPointsBonusPreference: document.querySelector(
+          "[data-pref-twitch-channel-points-bonus]"
+        ),
         individualSectionHeading: document.querySelector(
           "[data-individual-section-heading]"
         ),
@@ -2793,7 +2800,8 @@
     const overlayPref = ctx.dom.overlayPreference;
     const debugPref = ctx.dom.overlaySnapBackDebugPreference;
     const watchLayoutPref = ctx.dom.twitchWatchLayoutPreference;
-    if (!overlayPref && !debugPref && !watchLayoutPref) {
+    const channelPointsBonusPref = ctx.dom.twitchChannelPointsBonusPreference;
+    if (!overlayPref && !debugPref && !watchLayoutPref && !channelPointsBonusPref) {
       return;
     }
     void loadExtensionPrefs().then((p) => {
@@ -2806,6 +2814,9 @@
       if (watchLayoutPref) {
         watchLayoutPref.checked = p.twitchWatchLayoutEnabled;
       }
+      if (channelPointsBonusPref) {
+        channelPointsBonusPref.checked = p.twitchChannelPointsBonusEnabled;
+      }
     });
     overlayPref?.addEventListener("change", () => {
       void saveExtensionPrefs({ showPageOverlayTimer: overlayPref.checked });
@@ -2815,6 +2826,9 @@
     });
     watchLayoutPref?.addEventListener("change", () => {
       void saveExtensionPrefs({ twitchWatchLayoutEnabled: watchLayoutPref.checked });
+    });
+    channelPointsBonusPref?.addEventListener("change", () => {
+      void saveExtensionPrefs({ twitchChannelPointsBonusEnabled: channelPointsBonusPref.checked });
     });
   }
   function wireCrossSurfaceLinks(ctx) {

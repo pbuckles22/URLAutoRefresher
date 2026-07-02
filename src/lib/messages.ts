@@ -114,6 +114,23 @@ export type TwitchRaidBlockReportMessage = {
   type: typeof TWITCH_RAID_BLOCK_REPORT;
 };
 
+/** Background → Twitch tabs: channel points bonus auto-click armed (Backlog #12). */
+export const TWITCH_CHANNEL_POINTS_BONUS_PUSH =
+  'urlAutoRefresher:twitchChannelPointsBonusPush' as const;
+
+export type TwitchChannelPointsBonusPushMessage = {
+  type: typeof TWITCH_CHANNEL_POINTS_BONUS_PUSH;
+  armed: boolean;
+};
+
+/** Twitch bridge → background: request armed-state push after late injection (Backlog #12). */
+export const TWITCH_CHANNEL_POINTS_BONUS_SYNC_REQUEST =
+  'urlAutoRefresher:twitchChannelPointsBonusSyncRequest' as const;
+
+export type TwitchChannelPointsBonusSyncRequestMessage = {
+  type: typeof TWITCH_CHANNEL_POINTS_BONUS_SYNC_REQUEST;
+};
+
 /** Page overlay → background: stream On/Off toggle (interval refresh pause vs resume). */
 export const TWITCH_LIVE_MANUAL_OVERRIDE = 'urlAutoRefresher:twitchLiveManualOverride' as const;
 

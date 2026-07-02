@@ -23,6 +23,7 @@ import { refreshActionBadge } from './badge';
 import { getSchedHintForTab, rememberSchedTabId } from '../lib/sched-member-tab-hint';
 import { observeMemberTabNavigation, syncAlarmsWithState } from './scheduler';
 import { syncTwitchRaidGuardForTab } from './twitch-raid-guard';
+import { syncTwitchChannelPointsBonusForTab } from './twitch-channel-points-bonus';
 
 const blipRefreshHits = new Map<number, number[]>();
 
@@ -336,6 +337,7 @@ export function attachPageOverlayMessageHandler(): void {
               debug.refreshTargetUrl
             );
             void syncTwitchRaidGuardForTab(debug.schedulerTabId, tabUrl);
+            void syncTwitchChannelPointsBonusForTab(debug.schedulerTabId, tabUrl);
           }
         }
         if (!vm.show) {

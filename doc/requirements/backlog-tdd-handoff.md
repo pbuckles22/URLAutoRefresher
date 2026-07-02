@@ -139,7 +139,7 @@ Normative spec: [EDGE plan backlog **#11**](../plan/EDGE_URL_AUTO_REFRESHER_PLAN
 
 ---
 
-## 12) Twitch — auto-click channel points bonus — **open (epic TBD)**
+## 12) Twitch — auto-click channel points bonus — **shipped (`0.16.5`)**
 
 ### Goal
 

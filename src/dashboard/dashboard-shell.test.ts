@@ -16,6 +16,7 @@ function emptyShellDom(over: Partial<DashboardDom> = {}): DashboardDom {
     overlayPreference: null,
     overlaySnapBackDebugPreference: null,
     twitchWatchLayoutPreference: null,
+    twitchChannelPointsBonusPreference: null,
     jobsList: null,
     addJobForm: null,
     addJobError: null,
@@ -159,6 +160,19 @@ describe('bindExtensionPreferences', () => {
     input.checked = false;
     input.dispatchEvent(new Event('change'));
     expect(saveSpy).toHaveBeenCalledWith({ twitchWatchLayoutEnabled: false });
+  });
+
+  it('hydrates channel points bonus checkbox and saves on change', async () => {
+    document.body.innerHTML = '<input type="checkbox" data-pref-twitch-channel-points-bonus />';
+    const ctx = createDashboardContext();
+    bindExtensionPreferences(ctx);
+    const input = ctx.dom.twitchChannelPointsBonusPreference!;
+    await vi.waitFor(() => {
+      expect(input.checked).toBe(false);
+    });
+    input.checked = true;
+    input.dispatchEvent(new Event('change'));
+    expect(saveSpy).toHaveBeenCalledWith({ twitchChannelPointsBonusEnabled: true });
   });
 });
 

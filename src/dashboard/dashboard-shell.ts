@@ -12,6 +12,7 @@ export type DashboardDom = {
   overlayPreference: HTMLInputElement | null;
   overlaySnapBackDebugPreference: HTMLInputElement | null;
   twitchWatchLayoutPreference: HTMLInputElement | null;
+  twitchChannelPointsBonusPreference: HTMLInputElement | null;
   /** Epic 13.B2 — individual jobs list + add-job form */
   individualSectionHeading: HTMLElement | null;
   jobsList: HTMLUListElement | null;
@@ -67,6 +68,9 @@ export function createDashboardContext(): DashboardContext {
       ),
       twitchWatchLayoutPreference: document.querySelector<HTMLInputElement>(
         '[data-pref-twitch-watch-layout]'
+      ),
+      twitchChannelPointsBonusPreference: document.querySelector<HTMLInputElement>(
+        '[data-pref-twitch-channel-points-bonus]'
       ),
       individualSectionHeading: document.querySelector<HTMLElement>(
         '[data-individual-section-heading]'
@@ -127,7 +131,8 @@ export function bindExtensionPreferences(ctx: DashboardContext): void {
   const overlayPref = ctx.dom.overlayPreference;
   const debugPref = ctx.dom.overlaySnapBackDebugPreference;
   const watchLayoutPref = ctx.dom.twitchWatchLayoutPreference;
-  if (!overlayPref && !debugPref && !watchLayoutPref) {
+  const channelPointsBonusPref = ctx.dom.twitchChannelPointsBonusPreference;
+  if (!overlayPref && !debugPref && !watchLayoutPref && !channelPointsBonusPref) {
     return;
   }
   void loadExtensionPrefs().then((p) => {
@@ -140,6 +145,9 @@ export function bindExtensionPreferences(ctx: DashboardContext): void {
     if (watchLayoutPref) {
       watchLayoutPref.checked = p.twitchWatchLayoutEnabled;
     }
+    if (channelPointsBonusPref) {
+      channelPointsBonusPref.checked = p.twitchChannelPointsBonusEnabled;
+    }
   });
   overlayPref?.addEventListener('change', () => {
     void saveExtensionPrefs({ showPageOverlayTimer: overlayPref.checked });
@@ -149,6 +157,9 @@ export function bindExtensionPreferences(ctx: DashboardContext): void {
   });
   watchLayoutPref?.addEventListener('change', () => {
     void saveExtensionPrefs({ twitchWatchLayoutEnabled: watchLayoutPref.checked });
+  });
+  channelPointsBonusPref?.addEventListener('change', () => {
+    void saveExtensionPrefs({ twitchChannelPointsBonusEnabled: channelPointsBonusPref.checked });
   });
 }
 

@@ -14,6 +14,8 @@ import {
   TWITCH_RAID_BLOCK_REPORT,
   TWITCH_RAID_GUARD_PUSH,
   TWITCH_RAID_GUARD_SYNC_REQUEST,
+  TWITCH_CHANNEL_POINTS_BONUS_PUSH,
+  TWITCH_CHANNEL_POINTS_BONUS_SYNC_REQUEST,
 } from '../lib/messages';
 import { sendExtensionMessageFireAndForget } from '../lib/extension-runtime-send';
 import { loadExtensionPrefs, parsePrefs, PREFS_STORAGE_KEY } from '../lib/prefs';
@@ -26,6 +28,7 @@ import {
   runTwitchChannelWatchLayout,
 } from './twitch-watch-layout';
 import { installTwitchRaidGuardRunner } from './twitch-raid-guard-runner';
+import { installTwitchChannelPointsBonusRunner } from './twitch-channel-points-bonus-runner';
 import {
   applyWatchLayoutPrefChange,
   canRunWatchLayout,
@@ -49,6 +52,7 @@ let tornDown = false;
 let lastReportedLive: boolean | null | undefined;
 let disposeLayoutRunner: (() => void) | undefined;
 let raidGuardRunner: ReturnType<typeof installTwitchRaidGuardRunner> | undefined;
+let channelPointsBonusRunner: ReturnType<typeof installTwitchChannelPointsBonusRunner> | undefined;
 const layoutState = createTwitchWatchLayoutState();
 const watchLayoutPrefState: WatchLayoutPrefState = createWatchLayoutPrefState();
 
@@ -95,6 +99,8 @@ function teardown(): void {
   disposeWatchLayoutRunner();
   raidGuardRunner?.dispose();
   raidGuardRunner = undefined;
+  channelPointsBonusRunner?.dispose();
+  channelPointsBonusRunner = undefined;
   document.removeEventListener('visibilitychange', onVisibilityChange);
 }
 
@@ -263,6 +269,19 @@ function setRaidGuardArmed(armed: boolean): void {
   ensureRaidGuardRunner().setArmed(armed);
 }
 
+function ensureChannelPointsBonusRunner(): ReturnType<
+  typeof installTwitchChannelPointsBonusRunner
+> {
+  if (!channelPointsBonusRunner) {
+    channelPointsBonusRunner = installTwitchChannelPointsBonusRunner(document);
+  }
+  return channelPointsBonusRunner;
+}
+
+function setChannelPointsBonusArmed(armed: boolean): void {
+  ensureChannelPointsBonusRunner().setArmed(armed);
+}
+
 function startBridge(): void {
   try {
     window.addEventListener('unhandledrejection', (ev) => {
@@ -280,6 +299,9 @@ function startBridge(): void {
       if (message?.type === TWITCH_RAID_GUARD_PUSH) {
         setRaidGuardArmed(message.armed === true);
       }
+      if (message?.type === TWITCH_CHANNEL_POINTS_BONUS_PUSH) {
+        setChannelPointsBonusArmed(message.armed === true);
+      }
     });
 
     chrome.storage.onChanged.addListener((changes, area) => {
@@ -296,6 +318,7 @@ function startBridge(): void {
 
     hydrateWatchLayoutPref();
     sendExtensionMessageFireAndForget({ type: TWITCH_RAID_GUARD_SYNC_REQUEST });
+    sendExtensionMessageFireAndForget({ type: TWITCH_CHANNEL_POINTS_BONUS_SYNC_REQUEST });
     send(sampleLive());
     pollTimer = window.setInterval(() => {
       try {

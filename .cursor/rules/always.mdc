@@ -12,10 +12,10 @@ alwaysApply: true
 | Item | Value |
 | ---- | ----- |
 | **Branch** | **`main`** — synced with `origin`; ship complete |
-| **Shipped on `main`** | **`0.16.4`** — scheduler post-chain bootstrap reconcile; GH CI **success** |
+| **Shipped on `main`** | **`0.16.5`** — Backlog #12 channel points bonus auto-click |
 | **In progress** | None — pick next slice |
-| **Next up** | **Backlog #12** (channel points auto-click, recommended) or **#11** (chat history — needs epic design); branch `feature/backlog-12-channel-points` from `main` |
-| **Last handoff** | `doc/handoff/HANDOFF-2026-07-02-140500.md` (gitignored) |
+| **Next up** | **Backlog #11** (chat history — epic design first) or real-Twitch Gate 3 spot-check for #12 |
+| **Last handoff** | `doc/handoff/HANDOFF-2026-07-02-145500.md` (gitignored) |
 
 Cursor rules, skills, handoff protocol, and test discipline from [AgenticTemplate](https://github.com/pbuckles22/AgenticTemplate). Document your toolchain in AGENT_HANDOFF.md and TEST_PLAN.md.
 

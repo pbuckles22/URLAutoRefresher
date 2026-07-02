@@ -14,7 +14,7 @@ export function twitchChannelUrl(login: string): string {
 export async function stubTwitchChannelRoutes(
   page: Page,
   logins: readonly string[],
-  opts?: { raidBannerOnLogin?: string }
+  opts?: { raidBannerOnLogin?: string; channelPointsBonusOnLogin?: string }
 ): Promise<void> {
   const escaped = logins.map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   const channelRe = new RegExp(`^https://(www\\.)?twitch\\.tv/(${escaped})/?(\\?.*)?$`, 'i');
@@ -27,10 +27,15 @@ export async function stubTwitchChannelRoutes(
       const raidBlock = showRaidBanner
         ? `<div class="chat-room__notifications"><div class="chat-notification"><span>${login} is raiding e2e_raid_target with 3 raiders.</span><button type="button" id="urlar-raid-decline" onclick="this.dataset.urlarDeclined='1'">Leave</button></div></div>`
         : '';
+      const bonusBlock =
+        opts?.channelPointsBonusOnLogin !== undefined &&
+        login.toLowerCase() === opts.channelPointsBonusOnLogin.toLowerCase()
+          ? `<div class="community-points-summary"><button type="button" aria-label="Claim Bonus" id="urlar-bonus-claim" onclick="this.dataset.urlarClaimed='1'">Bonus</button></div>`
+          : '';
       await route.fulfill({
         status: 200,
         contentType: 'text/html; charset=utf-8',
-        body: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${login}</title></head><body>${login}${raidBlock}</body></html>`,
+        body: `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${login}</title></head><body>${login}${raidBlock}${bonusBlock}</body></html>`,
       });
     } else {
       await route.abort();
